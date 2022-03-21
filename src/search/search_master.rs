@@ -3,13 +3,21 @@
 #![allow(unused_mut)]
 
 use cozy_chess::*;
-use std::time::Instant;
+
+use std::thread;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Instant, Duration};
+
 use crate::eval::evaluator::*;
 
 pub struct Engine {
 	pub board: Board,
-	pub searching_depth: i32,
+	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
+	pub wtime: u64,
+	pub btime: u64,
+	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
 	evaluator: Evaluator
@@ -19,33 +27,79 @@ impl Engine {
 	pub fn new() -> Engine {
 		Engine {
 			board: Board::default(),
-			searching_depth: 0,
+			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
+			wtime: 300000,
+			btime: 300000,
+			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
 			evaluator: Evaluator::new()
 		}
 	}
 
-	pub fn go(&mut self) -> (String, String, i32, u64, u64) {
-		self.nodes = 0;
-
+	pub fn go(&mut self) -> String {
 		let now = Instant::now();
 
-		let board = &self.board.clone();
+		let mut best_move = None;
+		let mut time: f32;
 
-		//set up pv table
-		self.pv = [[None; 100]; 100];
-
-		let (best_move, eval) = self.search(board, self.searching_depth, -i32::MAX, i32::MAX);
-		
-		let elapsed = now.elapsed().as_secs() * 1000;
-
-		let mut nps: u64;
-		if elapsed == 0 {
-			nps = self.nodes;
+		if self.board.side_to_move() == Color::White {
+			time = self.wtime as f32;
 		} else {
-			nps = (self.nodes * 1000) / elapsed;
+			time = self.btime as f32;
+		}
+
+		for depth_index in 0..self.max_depth {
+			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+			if search_elapsed < time / 50_f32 {
+				self.nodes = 0;
+				self.searching_depth = depth_index + 1;
+
+				let search_time = Instant::now();
+				let board = &self.board.clone();
+
+				//set up pv table
+				self.pv = [[None; 100]; 100];
+
+				//set up multithread for search abort
+				let search_abort = Arc::new(AtomicBool::new(false));
+				let counter_abort = search_abort.clone();
+				std::thread::spawn(move || {
+					thread::sleep(Duration::from_millis(time as u64 / 32));
+					counter_abort.store(true, Ordering::Relaxed);
+				});
+
+				let result = self.search(&search_abort, board, self.searching_depth, -i32::MAX, i32::MAX);
+
+				if result != None {
+					let (best_mv, eval) = result.unwrap();
+					best_move = best_mv.clone();
+
+					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+
+					let mut nps: u64;
+					if elapsed == 0_f32 {
+						nps = self.nodes;
+					} else {
+						nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
+					}
+
+					let mut pv = String::new();
+
+					for i in 0..self.pv[0].len() {
+						if self.pv[0][i] != None {
+							pv += &(self.parse_to_uci(self.pv[0][i]) + " ");
+						}
+					}
+
+					println!("{}", String::from("info depth ") + &self.searching_depth.to_string() + &String::from(" nodes ") + &self.nodes.to_string() + &String::from(" pv ") + &pv.trim().to_string() + &String::from(" score ") + &eval.to_string() + &String::from(" nps ") + &nps.to_string());
+				} else {
+					break;
+				}
+			} else {
+				break;
+			}
 		}
 
 		self.board.play_unchecked(best_move.unwrap());
@@ -62,11 +116,11 @@ impl Engine {
 
 		let mut phase = total_phase;
 
-		let pawns = board.pieces(Piece::Pawn);
-		let knights = board.pieces(Piece::Knight);
-		let bishops = board.pieces(Piece::Bishop);
-		let rooks = board.pieces(Piece::Rook);
-		let queens = board.pieces(Piece::Queen);
+		let pawns = self.board.pieces(Piece::Pawn);
+		let knights = self.board.pieces(Piece::Knight);
+		let bishops = self.board.pieces(Piece::Bishop);
+		let rooks = self.board.pieces(Piece::Rook);
+		let queens = self.board.pieces(Piece::Queen);
 
 		phase -= self.get_piece_amount(pawns) * pawn_phase;
 		phase -= self.get_piece_amount(knights) * knight_phase;
@@ -80,15 +134,7 @@ impl Engine {
 			self.evaluator.end_game = true;
 		}
 
-		let mut pv = String::new();
-
-		for i in 0..self.pv[0].len() {
-			if self.pv[0][i] != None {
-				pv += &(self.parse_to_uci(self.pv[0][i]) + " ");
-			}
-		}
-
-		(self.parse_to_uci(best_move), pv.trim().to_string(), eval, self.nodes, nps)
+		self.parse_to_uci(best_move)
 	}
 
 	fn parse_to_uci(&self, mv: Option<Move>) -> String {
@@ -122,13 +168,18 @@ impl Engine {
 		piece_amount
 	}
 
-	fn qsearch(&mut self, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> (Option<Move>, i32) {
+	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, i32)> {
+		//abort?
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+			return None;
+		}
+
 		self.nodes += 1;
 		ply += 1;
 
 		match board.status() {
-			GameStatus::Won => return (None, -30000 + ply),
-			GameStatus::Drawn => return (None, 0),
+			GameStatus::Won => return Some((None, -30000 + ply)),
+			GameStatus::Drawn => return Some((None, 0)),
 			GameStatus::Ongoing => {}
 		}
 
@@ -136,7 +187,7 @@ impl Engine {
 		if self.my_past_positions.len() > 6 {
 			let curr_hash = board.hash();
 			if curr_hash == self.my_past_positions[self.my_past_positions.len() - 4] {
-				return (None, 0);
+				return Some((None, 0));
 			}
 		}
 
@@ -144,7 +195,7 @@ impl Engine {
 
 		//checking to see if the move the opponent makes is in our favor, if so, just return it no checking necessary
 		if stand_pat >= beta {
-			return (None, beta);
+			return Some((None, beta));
 		}
 
 		//new best move eval
@@ -156,7 +207,7 @@ impl Engine {
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {
-			return (None, stand_pat);
+			return Some((None, stand_pat));
 		}
 
 		let mut best_move = None;
@@ -165,7 +216,7 @@ impl Engine {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
-			let (_, mut child_eval) = self.qsearch(&board_cache, -beta, -alpha, ply);
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply)?;
 			child_eval *= -1;
 			if child_eval > eval {
 				eval = child_eval;
@@ -180,15 +231,20 @@ impl Engine {
 			}
 		}
 
-		(best_move, alpha)
+		return Some((best_move, alpha));
 	}
 
-	fn search(&mut self, board: &Board, depth: i32, mut alpha: i32, beta: i32) -> (Option<Move>, i32) {
+	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32) -> Option<(Option<Move>, i32)> {
+		//abort?
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+			return None;
+		}
+
 		self.nodes += 1;
 
 		match board.status() {
-			GameStatus::Won => return (None, -30000 + (self.searching_depth - depth)),
-			GameStatus::Drawn => return (None, 0),
+			GameStatus::Won => return Some((None, -30000 + (self.searching_depth - depth))),
+			GameStatus::Drawn => return Some((None, 0)),
 			GameStatus::Ongoing => {}
 		}
 
@@ -196,12 +252,12 @@ impl Engine {
 		if self.my_past_positions.len() > 6 {
 			let curr_hash = board.hash();
 			if curr_hash == self.my_past_positions[self.my_past_positions.len() - 4] {
-				return (None, 0);
+				return Some((None, 0));
 			}
 		}
 
 		if depth == 0 {
-			return self.qsearch(board, alpha, beta, self.searching_depth);
+			return self.qsearch(&abort, board, alpha, beta, self.searching_depth);
 		}
 
 		let mut best_move = None;
@@ -210,7 +266,7 @@ impl Engine {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
-			let (_, mut child_eval) = self.search(&board_cache, depth - 1, -beta, -alpha);
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, -beta, -alpha)?;
 			child_eval *= -1;
 			if child_eval > eval {
 				eval = child_eval;
@@ -224,6 +280,7 @@ impl Engine {
 				}
 			}
 		}
-		(best_move, eval)
+
+		return Some((best_move, eval));
 	}
 }

@@ -35,17 +35,27 @@ impl UCICmd {
 		} else if cmd_vec[0] == "isready" {
 			return Some(String::from("readyok"));
 		} else if cmd.starts_with("go") {
-			let mut depth = 5;
+			let mut depth = i32::MAX;
 
 			if cmd_vec.len() > 1 {
-				if cmd_vec[cmd_vec.len() - 2] == "depth" {
-					depth = cmd_vec[cmd_vec.len() - 1].parse::<i32>().unwrap();
+				if cmd_vec[1] == "wtime" {
+					//specified time
+					self.engine.wtime = cmd_vec[2].parse::<u64>().unwrap();
+					self.engine.btime = cmd_vec[4].parse::<u64>().unwrap();
+				} else if cmd_vec[1] == "depth" {
+					//specified depth without time
+					depth = cmd_vec[2].parse::<i32>().unwrap();
+				}
+
+				if cmd_vec.len() > 7 {
+					//specified depth with time
+					depth = cmd_vec[8].parse::<i32>().unwrap();
 				}
 			}
 
-			self.engine.searching_depth = depth;
-			let (best_move, pv, eval, nodes, nps) = self.engine.go();
-			println!("{}", String::from("info depth ") + &cmd_vec[cmd_vec.len() - 1].to_string() + &String::from(" nodes ") + &nodes.to_string() + &String::from(" pv ") + &pv + &String::from(" score ") + &eval.to_string() + &String::from(" nps ") + &nps.to_string());
+			self.engine.max_depth = depth;
+			let best_move = self.engine.go();
+
 			return Some(String::from("bestmove ") + &best_move);
 		} else if cmd_vec[0] == "position" {
 			if cmd_vec[1] == "startpos" {

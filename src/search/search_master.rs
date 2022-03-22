@@ -65,7 +65,7 @@ impl Engine {
 				//set up multithread for search abort
 				let search_abort = Arc::new(AtomicBool::new(false));
 				let counter_abort = search_abort.clone();
-				std::thread::spawn(move || {
+				thread::spawn(move || {
 					thread::sleep(Duration::from_millis(time as u64 / 32));
 					counter_abort.store(true, Ordering::Relaxed);
 				});

@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{Instant, Duration};
 
 use crate::eval::evaluator::*;
+use crate::search::tt::*;
 
 pub struct Engine {
 	pub board: Board,
@@ -20,7 +21,8 @@ pub struct Engine {
 	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
-	evaluator: Evaluator
+	evaluator: Evaluator,
+	tt: TT
 }
 
 impl Engine {
@@ -34,7 +36,8 @@ impl Engine {
 			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
-			evaluator: Evaluator::new()
+			evaluator: Evaluator::new(),
+			tt: TT::new()
 		}
 	}
 
@@ -57,7 +60,7 @@ impl Engine {
 				self.searching_depth = depth_index + 1;
 
 				let search_time = Instant::now();
-				let board = &self.board.clone();
+				let board = &mut self.board.clone();
 
 				//set up pv table
 				self.pv = [[None; 100]; 100];
@@ -93,7 +96,7 @@ impl Engine {
 						}
 					}
 
-					println!("{}", String::from("info depth ") + &self.searching_depth.to_string() + &String::from(" nodes ") + &self.nodes.to_string() + &String::from(" pv ") + &pv.trim().to_string() + &String::from(" score ") + &eval.to_string() + &String::from(" nps ") + &nps.to_string());
+					println!("{}", String::from("info depth ") + &self.searching_depth.to_string() + &String::from(" nodes ") + &self.nodes.to_string() + &String::from(" pv ") + &pv.trim().to_string() + &String::from(" score cp ") + &eval.to_string() + &String::from(" nps ") + &nps.to_string());
 				} else {
 					break;
 				}
@@ -216,6 +219,7 @@ impl Engine {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
+
 			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply)?;
 			child_eval *= -1;
 			if child_eval > eval {
@@ -234,6 +238,13 @@ impl Engine {
 		return Some((best_move, alpha));
 	}
 
+	fn add_to_front(&self, legal_moves: &mut Vec<SortedMove>, best_move: Option<Move>) {
+		let sm = SortedMove::new(best_move.unwrap(), 1000);
+		let index = legal_moves.iter().position(|x| x.mv == best_move.unwrap()).unwrap();
+		legal_moves.remove(index);
+		legal_moves.insert(0, sm);
+	}
+
 	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32) -> Option<(Option<Move>, i32)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
@@ -241,6 +252,7 @@ impl Engine {
 		}
 
 		self.nodes += 1;
+		let mut legal_moves = self.evaluator.move_gen(board);
 
 		match board.status() {
 			GameStatus::Won => return Some((None, -30000 + (self.searching_depth - depth))),
@@ -256,16 +268,37 @@ impl Engine {
 			}
 		}
 
+		//look up tt
+		let table_find = self.tt.find(board.hash(), self.searching_depth, depth);
+		if board.hash() == table_find.position {
+			//if sufficient depth and NOT pv node
+			if table_find.depth >= depth && alpha == beta - 1 {
+				if table_find.node_kind == NodeKind::Exact {
+					return Some((table_find.best_move, table_find.eval));
+				} else if table_find.node_kind == NodeKind::UpperBound {
+					if table_find.eval <= alpha {
+						return Some((table_find.best_move, table_find.eval));	
+					}
+				} else if table_find.node_kind == NodeKind::LowerBound {
+					if table_find.eval >= beta {
+						return Some((table_find.best_move, table_find.eval));	
+					}
+				}
+			}
+			self.add_to_front(&mut legal_moves, table_find.best_move);
+		}
+
 		if depth == 0 {
 			return self.qsearch(&abort, board, alpha, beta, self.searching_depth);
 		}
 
 		let mut best_move = None;
 		let mut eval = i32::MIN;
-		for sm in self.evaluator.move_gen(board) {
+		for sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
+
 			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, -beta, -alpha)?;
 			child_eval *= -1;
 			if child_eval > eval {
@@ -275,8 +308,13 @@ impl Engine {
 					self.update_pv(best_move, (self.searching_depth - depth) as usize);
 					alpha = eval;
 					if alpha >= beta {
+						self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::LowerBound);
 						break;
+					} else {
+						self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::Exact);
 					}
+				} else {
+					self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::UpperBound);
 				}
 			}
 		}

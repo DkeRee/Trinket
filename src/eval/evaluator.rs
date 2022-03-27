@@ -5,14 +5,14 @@
 use cozy_chess::*;
 use crate::eval::eval_info::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SortedMove {
 	pub mv: Move,
 	pub importance: u32
 }
 
 impl SortedMove {
-	fn new(mv: Move, importance: u32) -> SortedMove {
+	pub fn new(mv: Move, importance: u32) -> SortedMove {
 		SortedMove {
 			mv: mv,
 			importance: importance

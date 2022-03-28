@@ -47,7 +47,7 @@ impl UCICmd {
 					depth = cmd_vec[2].parse::<i32>().unwrap();
 				}
 
-				if cmd_vec.len() > 7 {
+				if cmd_vec.len() > 7 && cmd_vec[7] == "depth" {
 					//specified depth with time
 					depth = cmd_vec[8].parse::<i32>().unwrap();
 				}

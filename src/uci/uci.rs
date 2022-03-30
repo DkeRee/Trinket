@@ -91,15 +91,16 @@ impl UCICmd {
 						self.engine.my_past_positions.push(self.engine.board.hash());
 					}
 				}
-			} else {
+			} else if cmd_vec[1] == "fen" {
 				let mut fen = String::new();
-				for i in 1..cmd_vec.len() {
+				for i in 2..cmd_vec.len() {
 					let segment = String::from(cmd_vec[i]) + " ";
 					fen += &*segment;
 				}
 				self.engine.board = Board::from_fen(&*fen, false).unwrap();
 			}
 		} else if cmd_vec[0] == "player" {
+			//for debugging purposes/not actually part of UCI protocol
 			if cmd_vec[1].len() == 4 {
 				if self.engine.board.is_legal(cmd_vec[1].parse().unwrap()) {
 					self.engine.board.play(cmd_vec[1].parse().unwrap());

@@ -73,7 +73,9 @@ impl Engine {
 					counter_abort.store(true, Ordering::Relaxed);
 				});
 
-				let result = self.search(&search_abort, board, self.searching_depth, -i32::MAX, i32::MAX);
+				let mut past_positions = self.my_past_positions.clone();
+
+				let result = self.search(&search_abort, board, self.searching_depth, -i32::MAX, i32::MAX, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -154,6 +156,17 @@ impl Engine {
 		uci_mv
 	}
 
+	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
+		if past_positions.len() > 0 {
+			for i in 0..past_positions.len() - 1 {
+				if past_positions[i] == board.hash() {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	fn update_pv(&mut self, mv: Option<Move>, ply: usize) {
 		self.pv[ply][0] = mv;
 		for i in 0..self.pv[ply + 1].len() {
@@ -171,7 +184,7 @@ impl Engine {
 		piece_amount
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, i32)> {
+	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -187,11 +200,8 @@ impl Engine {
 		}
 
 		//check for three move repetition
-		if self.my_past_positions.len() > 6 {
-			let curr_hash = board.hash();
-			if curr_hash == self.my_past_positions[self.my_past_positions.len() - 4] {
-				return Some((None, 0));
-			}
+		if self.is_repetition(board, past_positions) {
+			return Some((None, 0));
 		}
 
 		let stand_pat = self.evaluator.evaluate(board);
@@ -220,7 +230,12 @@ impl Engine {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply)?;
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply, past_positions)?;
+
+			past_positions.pop();
+
 			child_eval *= -1;
 			if child_eval > eval {
 				eval = child_eval;
@@ -245,7 +260,7 @@ impl Engine {
 		legal_moves.insert(0, sm);
 	}
 
-	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32) -> Option<(Option<Move>, i32)> {
+	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -258,14 +273,6 @@ impl Engine {
 			GameStatus::Won => return Some((None, -30000 + (self.searching_depth - depth))),
 			GameStatus::Drawn => return Some((None, 0)),
 			GameStatus::Ongoing => {}
-		}
-
-		//check for three move repetition
-		if self.my_past_positions.len() > 6 {
-			let curr_hash = board.hash();
-			if curr_hash == self.my_past_positions[self.my_past_positions.len() - 4] {
-				return Some((None, 0));
-			}
 		}
 
 		//look up tt
@@ -289,7 +296,12 @@ impl Engine {
 		}
 
 		if depth == 0 {
-			return self.qsearch(&abort, board, alpha, beta, self.searching_depth);
+			return self.qsearch(&abort, board, alpha, beta, self.searching_depth, past_positions);
+		}
+
+		//check for three move repetition
+		if self.is_repetition(board, past_positions) {
+			return Some((None, 0));
 		}
 
 		let mut best_move = None;
@@ -299,7 +311,12 @@ impl Engine {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, -beta, -alpha)?;
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+
+			past_positions.pop();
+
 			child_eval *= -1;
 			if child_eval > eval {
 				eval = child_eval;

@@ -3,12 +3,14 @@ use crate::search::search_master::*;
 
 //uci command parser
 pub struct UCICmd {
+	pub playing: bool,
 	engine: Engine
 }
 
 impl UCICmd {
 	pub fn new() -> UCICmd {
 		UCICmd {
+			playing: true,
 			engine: Engine::new()
 		}
 	}
@@ -54,8 +56,8 @@ impl UCICmd {
 			}
 
 			self.engine.max_depth = depth;
+			
 			let best_move = self.engine.go();
-
 			return Some(String::from("bestmove ") + &best_move);
 		} else if cmd_vec[0] == "position" {
 			if cmd_vec[1] == "startpos" {
@@ -99,6 +101,9 @@ impl UCICmd {
 				}
 				self.engine.board = Board::from_fen(&*fen, false).unwrap();
 			}
+		} else if cmd_vec[0] == "quit" {
+			self.engine.quit();
+			self.playing = false;
 		} else if cmd_vec[0] == "player" {
 			//for debugging purposes/not actually part of UCI protocol
 			if cmd_vec[1].len() == 4 {
@@ -112,6 +117,8 @@ impl UCICmd {
 			} else {
 				return Some(String::from("Invalid Move"));
 			}
+		} else {
+			return Some(String::from("Unknown Command: ".to_owned() + cmd))
 		}
 		return None;
 	}

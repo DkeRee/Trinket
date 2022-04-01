@@ -18,6 +18,7 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub wtime: u64,
 	pub btime: u64,
+	force_abort: bool,
 	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
@@ -33,6 +34,7 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			wtime: 300000,
 			btime: 300000,
+			force_abort: false,
 			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
@@ -46,6 +48,8 @@ impl Engine {
 
 		let mut best_move = None;
 		let mut time: f32;
+
+		self.force_abort = false;
 
 		if self.board.side_to_move() == Color::White {
 			time = self.wtime as f32;
@@ -142,6 +146,10 @@ impl Engine {
 		self.parse_to_uci(best_move)
 	}
 
+	pub fn quit(&mut self) {
+		self.force_abort = true;
+	}
+
 	fn parse_to_uci(&self, mv: Option<Move>) -> String {
 		let mv_parsed = mv.unwrap();
 		let mut uci_mv = String::new();
@@ -186,7 +194,7 @@ impl Engine {
 
 	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) && self.force_abort == false {
 			return None;
 		}
 
@@ -262,7 +270,7 @@ impl Engine {
 
 	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) && self.force_abort == false {
 			return None;
 		}
 

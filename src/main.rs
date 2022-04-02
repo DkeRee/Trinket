@@ -9,15 +9,14 @@ use crate::uci::uci::*;
 use std::io;
 
 fn main() {
-	let mut uci = UCICmd::new();
+	let mut uci = UCIMaster::new();
 
 	loop {
 		if uci.playing {
 				let mut results = String::new();
 				io::stdin().read_line(&mut results);
 			
-				let cmd_result = uci.post(&*results);
-				println!("{}", cmd_result);
+				uci.post(&*results);
 		} else {
 			break;
 		}

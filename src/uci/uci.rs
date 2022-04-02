@@ -50,65 +50,71 @@ impl UCIMaster {
 
 				self.engine_thread = Some(thread::spawn(move || {
 					let mut engine = Engine::new();
+					let mut playing = true;
 
 					loop {
-						match thread_receiver.lock().unwrap().recv().unwrap() {
-							UCICmd::Uci => {
-								println!("id name Trinket");
-								println!("id author DkeRee");
-								println!("uciok");
-							},
-							UCICmd::UciNewGame => {
-								engine = Engine::new();
-							},
-							UCICmd::IsReady => {
-								println!("readyok");
-							},
-							UCICmd::Go(depth, wtime, btime) => {
-								engine.max_depth = depth;
-								engine.wtime = wtime;
-								engine.btime = btime;
+						if playing {
+							match thread_receiver.lock().unwrap().recv().unwrap() {
+								UCICmd::Uci => {
+									println!("id name Trinket");
+									println!("id author DkeRee");
+									println!("uciok");
+								},
+								UCICmd::UciNewGame => {
+									engine = Engine::new();
+								},
+								UCICmd::IsReady => {
+									println!("readyok");
+								},
+								UCICmd::Go(depth, wtime, btime) => {
+									engine.max_depth = depth;
+									engine.wtime = wtime;
+									engine.btime = btime;
 
-								let best_move = engine.go();
-								println!("bestmove {}", best_move);
-							},
-							UCICmd::PositionFen(fen) => {
-								engine.board = Board::from_fen(&*fen, false).unwrap();
-							},
-							UCICmd::PositionPgn(pgn_vec) => {
-								engine.board = Board::default();
-								engine.my_past_positions = Vec::with_capacity(64);
+									let best_move = engine.go();
+									println!("bestmove {}", best_move);
+								},
+								UCICmd::PositionFen(fen) => {
+									engine.board = Board::from_fen(&*fen, false).unwrap();
+								},
+								UCICmd::PositionPgn(pgn_vec) => {
+									engine.board = Board::default();
+									engine.my_past_positions = Vec::with_capacity(64);
 
-								for i in 0..pgn_vec.len() {
-									let mv = &*pgn_vec[i];
-								
-									let from = mv.chars().nth(0).unwrap().to_string() + &mv.chars().nth(1).unwrap().to_string();
-									let to = mv.chars().nth(2).unwrap().to_string() + &mv.chars().nth(3).unwrap().to_string();
+									for i in 0..pgn_vec.len() {
+										let mv = &*pgn_vec[i];
+									
+										let from = mv.chars().nth(0).unwrap().to_string() + &mv.chars().nth(1).unwrap().to_string();
+										let to = mv.chars().nth(2).unwrap().to_string() + &mv.chars().nth(3).unwrap().to_string();
 
-									let square: Square = from.parse().unwrap();
+										let square: Square = from.parse().unwrap();
 
-									if from == "e1" && (to == "c1" || to == "g1") && engine.board.piece_on(square).unwrap() == Piece::King {
-										if to == "c1" {
-											engine.board.play("e1a1".parse().unwrap());
+										if from == "e1" && (to == "c1" || to == "g1") && engine.board.piece_on(square).unwrap() == Piece::King {
+											if to == "c1" {
+												engine.board.play("e1a1".parse().unwrap());
+											} else {
+												engine.board.play("e1h1".parse().unwrap());
+											}
+										} else if from == "e8" && (to == "c8" || to == "g8") && engine.board.piece_on(square).unwrap() == Piece::King {
+											if to == "c8" {
+												engine.board.play("e8a8".parse().unwrap());
+											} else {
+												engine.board.play("e8h8".parse().unwrap());
+											}
 										} else {
-											engine.board.play("e1h1".parse().unwrap());
+											engine.board.play(mv.parse().unwrap());
 										}
-									} else if from == "e8" && (to == "c8" || to == "g8") && engine.board.piece_on(square).unwrap() == Piece::King {
-										if to == "c8" {
-											engine.board.play("e8a8".parse().unwrap());
-										} else {
-											engine.board.play("e8h8".parse().unwrap());
-										}
-									} else {
-										engine.board.play(mv.parse().unwrap());
+
+										engine.my_past_positions.push(engine.board.hash());
 									}
-
-									engine.my_past_positions.push(engine.board.hash());
+								},
+								UCICmd::Quit => {
+									engine.quit();
+									playing = false;
 								}
-							},
-							UCICmd::Quit => {
-								engine.quit();
 							}
+						} else {
+							break;
 						}
 					}
 				}));

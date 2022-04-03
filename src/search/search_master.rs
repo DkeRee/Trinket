@@ -194,7 +194,7 @@ impl Engine {
 
 	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) && self.force_abort == false {
+		if (self.searching_depth > 1 && abort.load(Ordering::Relaxed)) || self.force_abort == true {
 			return None;
 		}
 
@@ -270,7 +270,7 @@ impl Engine {
 
 	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) && self.force_abort == false {
+		if (self.searching_depth > 1 && abort.load(Ordering::Relaxed)) || self.force_abort == true {
 			return None;
 		}
 

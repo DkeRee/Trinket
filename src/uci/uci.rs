@@ -13,7 +13,7 @@ enum UCICmd {
 	IsReady,
 	Go(i32, i64, i64),
 	PositionFen(String),
-	PositionPgn(Vec<String>),
+	PositionPgn(Vec<String>, bool),
 	Quit
 }
 
@@ -77,8 +77,11 @@ impl UCIMaster {
 								UCICmd::PositionFen(fen) => {
 									engine.board = Board::from_fen(&*fen, false).unwrap();
 								},
-								UCICmd::PositionPgn(pgn_vec) => {
-									engine.board = Board::default();
+								UCICmd::PositionPgn(pgn_vec, default) => {
+									if default {
+										engine.board = Board::default();
+									}
+									
 									engine.my_past_positions = Vec::with_capacity(64);
 
 									for i in 0..pgn_vec.len() {
@@ -158,15 +161,29 @@ impl UCIMaster {
 						for i in 3..cmd_vec.len() {
 							pgn_vec.push(String::from(cmd_vec[i]));
 						}
-						sender.send(UCICmd::PositionPgn(pgn_vec)).unwrap();
+						sender.send(UCICmd::PositionPgn(pgn_vec, true)).unwrap();
 					}
 				} else if cmd_vec[1] == "fen" {
 					let mut fen = String::new();
+					let mut pgn_index: Option<usize> = None;
+
 					for i in 2..cmd_vec.len() {
+						if cmd_vec[i] == "moves" {
+							pgn_index = Some(i + 1);
+							break;
+						}
 						let segment = String::from(cmd_vec[i]) + " ";
 						fen += &segment;
 					}
 					sender.send(UCICmd::PositionFen(fen.clone())).unwrap();
+				
+					if pgn_index != None {
+						let mut pgn_vec = Vec::with_capacity(64);
+						for i in pgn_index.unwrap()..cmd_vec.len() {
+							pgn_vec.push(String::from(cmd_vec[i]));
+						}
+						sender.send(UCICmd::PositionPgn(pgn_vec, false)).unwrap();
+					}
 				}
 			},
 			"quit" => {

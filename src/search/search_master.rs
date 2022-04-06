@@ -12,6 +12,9 @@ use std::time::{Instant, Duration};
 use crate::eval::evaluator::*;
 use crate::search::tt::*;
 
+const MAX_DEPTH_RFP: i32 = 6;
+const MULTIPLIER_RFP: i32 = 100;
+
 pub struct Engine {
 	pub board: Board,
 	pub max_depth: i32,
@@ -233,6 +236,7 @@ impl Engine {
 
 		let mut best_move = None;
 		let mut eval = i32::MIN;
+
 		for sm in move_list {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -252,7 +256,7 @@ impl Engine {
 					self.update_pv(best_move, ply as usize);
 					alpha = eval;
 					if alpha >= beta {
-						break;
+						return Some((None, beta));
 					}
 				}
 			}
@@ -303,8 +307,24 @@ impl Engine {
 			self.add_to_front(&mut legal_moves, table_find.best_move);
 		}
 
+		//reverse futility pruning
+		/*
+		// if depth isn't too deep
+		// if NOT in check
+		// if NON-PV node
+		// if NOT a checkmate
+		// THEN prune
+		*/
+		if depth <= MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1{
+			let eval = self.evaluator.evaluate(board);
+			if eval - (MULTIPLIER_RFP * depth) >= beta {
+				return Some((None, eval));
+			}
+		}
+
 		if depth == 0 {
 			return self.qsearch(&abort, board, alpha, beta, self.searching_depth, past_positions);
+			//return Some((None, self.evaluator.evaluate(board)));
 		}
 
 		//check for three move repetition

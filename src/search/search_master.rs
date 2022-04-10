@@ -11,9 +11,7 @@ use std::time::{Instant, Duration};
 
 use crate::eval::evaluator::*;
 use crate::search::tt::*;
-
-const MAX_DEPTH_RFP: i32 = 6;
-const MULTIPLIER_RFP: i32 = 100;
+use crate::movegen::movegen::*;
 
 pub struct Engine {
 	pub board: Board,
@@ -26,6 +24,7 @@ pub struct Engine {
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
 	evaluator: Evaluator,
+	movegen: MoveGen,
 	tt: TT
 }
 
@@ -42,6 +41,7 @@ impl Engine {
 			nodes: 0,
 			pv: [[None; 100]; 100],
 			evaluator: Evaluator::new(),
+			movegen: MoveGen::new(),
 			tt: TT::new()
 		}
 	}
@@ -227,7 +227,7 @@ impl Engine {
 			alpha = stand_pat;
 		}
 
-		let move_list = self.evaluator.qmove_gen(board);
+		let move_list = self.movegen.qmove_gen(board);
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {
@@ -265,13 +265,6 @@ impl Engine {
 		return Some((best_move, alpha));
 	}
 
-	fn add_to_front(&self, legal_moves: &mut Vec<SortedMove>, best_move: Option<Move>) {
-		let sm = SortedMove::new(best_move.unwrap(), 1000);
-		let index = legal_moves.iter().position(|x| x.mv == best_move.unwrap()).unwrap();
-		legal_moves.remove(index);
-		legal_moves.insert(0, sm);
-	}
-
 	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
 		if (self.searching_depth > 1 && abort.load(Ordering::Relaxed)) || self.force_abort == true {
@@ -279,7 +272,7 @@ impl Engine {
 		}
 
 		self.nodes += 1;
-		let mut legal_moves = self.evaluator.move_gen(board);
+		let mut legal_moves: Vec<SortedMove>;
 
 		match board.status() {
 			GameStatus::Won => return Some((None, -30000 + (self.searching_depth - depth))),
@@ -304,7 +297,9 @@ impl Engine {
 					}
 				}
 			}
-			self.add_to_front(&mut legal_moves, table_find.best_move);
+			legal_moves = self.movegen.move_gen(board, table_find.best_move);
+		} else {
+			legal_moves = self.movegen.move_gen(board, None);
 		}
 
 		//reverse futility pruning
@@ -315,16 +310,15 @@ impl Engine {
 		// if NOT a checkmate
 		// THEN prune
 		*/
-		if depth <= MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1{
+		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1{
 			let eval = self.evaluator.evaluate(board);
-			if eval - (MULTIPLIER_RFP * depth) >= beta {
+			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, eval));
 			}
 		}
 
 		if depth == 0 {
 			return self.qsearch(&abort, board, alpha, beta, self.searching_depth, past_positions);
-			//return Some((None, self.evaluator.evaluate(board)));
 		}
 
 		//check for three move repetition
@@ -366,4 +360,9 @@ impl Engine {
 
 		return Some((best_move, eval));
 	}
+}
+
+impl Engine {
+	const MAX_DEPTH_RFP: i32 = 6;
+	const MULTIPLIER_RFP: i32 = 100;
 }

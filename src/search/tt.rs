@@ -1,5 +1,10 @@
 use cozy_chess::*;
 
+/*
+Special thanks to MinusKelvin from OpenBench!
+https://www.chessprogramming.org/Transposition_Table
+*/
+
 const MB: usize = 16;
 
 #[derive(Copy, Clone, PartialEq, Debug)]

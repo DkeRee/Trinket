@@ -4,6 +4,7 @@
 mod uci;
 mod search;
 mod eval;
+mod movegen;
 
 use crate::uci::uci::*;
 use std::io;

@@ -310,7 +310,7 @@ impl Engine {
 		// if NOT a checkmate
 		// THEN prune
 		*/
-		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1{
+		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
 			let eval = self.evaluator.evaluate(board);
 			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, eval));

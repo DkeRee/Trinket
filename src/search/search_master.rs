@@ -105,7 +105,7 @@ impl Engine {
 						}
 					}
 
-					println!("{}", String::from("info depth ") + &self.searching_depth.to_string() + &String::from(" nodes ") + &self.nodes.to_string() + &String::from(" pv ") + &pv.trim().to_string() + &String::from(" score cp ") + &eval.to_string() + &String::from(" nps ") + &nps.to_string());
+					println!("info depth {} nodes {} pv {} score cp {} nps {}", self.searching_depth, self.nodes, pv.trim(), eval, nps);
 				} else {
 					break;
 				}

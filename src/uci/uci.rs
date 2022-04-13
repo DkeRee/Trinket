@@ -31,6 +31,12 @@ pub struct UCIMaster {
 
 impl UCIMaster {
 	pub fn new() -> UCIMaster {
+		println!("Trinket V{}", env!("CARGO_PKG_VERSION"));
+		println!("{}", env!("CARGO_PKG_REPOSITORY"));
+		println!("If manually operating, initialize engine before use by running the command 'uci' ONCE");
+		println!("Engine runs on UCI protocol");
+		println!("http://wbec-ridderkerk.nl/html/UCIProtocol.html");
+
 		UCIMaster {
 			playing: true,
 			engine_thread: None,

@@ -54,6 +54,8 @@ impl Engine {
 		self.wtime = wtime;
 		self.btime = btime;
 
+		self.nodes = 0;
+
 		if self.board.side_to_move() == Color::White {
 			time = self.wtime as f32;
 		} else {
@@ -63,7 +65,6 @@ impl Engine {
 		for depth_index in 0..self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < time / 50_f32 {
-				self.nodes = 0;
 				self.searching_depth = depth_index + 1;
 
 				let search_time = Instant::now();

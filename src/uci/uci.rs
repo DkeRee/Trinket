@@ -1,6 +1,7 @@
 use cozy_chess::*;
 
 use std::sync::{Mutex, Arc, mpsc::channel};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::Receiver;
 use std::thread;
@@ -11,7 +12,7 @@ enum UCICmd {
 	Uci,
 	UciNewGame,
 	IsReady,
-	Go(i32, i64, i64),
+	Go(i32, i64, i64, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
 	Quit
@@ -26,6 +27,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 pub struct UCIMaster {
 	pub playing: bool,
 	engine_thread: Option<thread::JoinHandle<()>>,
+	stop_abort: Option<Arc<AtomicBool>>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
 }
 
@@ -40,6 +42,7 @@ impl UCIMaster {
 		UCIMaster {
 			playing: true,
 			engine_thread: None,
+			stop_abort: None,
 			channel: get_channel()
 		}
 	}
@@ -72,16 +75,13 @@ impl UCIMaster {
 								UCICmd::IsReady => {
 									println!("readyok");
 								},
-								UCICmd::Go(depth, wtime, btime) => {
-									engine.max_depth = depth;
-									engine.wtime = wtime;
-									engine.btime = btime;
-
-									let best_move = engine.go();
+								UCICmd::Go(depth, wtime, btime, stop_abort) => {
+									let best_move = engine.go(depth, wtime, btime, stop_abort);
 									println!("bestmove {}", best_move);
 								},
 								UCICmd::PositionFen(fen) => {
 									engine.board = Board::from_fen(&*fen, false).unwrap();
+									engine.my_past_positions.push(engine.board.hash());
 								},
 								UCICmd::PositionPgn(pgn_vec, default) => {
 									if default {
@@ -118,7 +118,6 @@ impl UCIMaster {
 									}
 								},
 								UCICmd::Quit => {
-									engine.quit();
 									playing = false;
 								}
 							}
@@ -136,6 +135,8 @@ impl UCIMaster {
 				sender.send(UCICmd::IsReady).unwrap();
 			},
 			"go" => {
+				self.stop_abort = Some(Arc::new(AtomicBool::new(false)));
+
 				let mut depth = i32::MAX;
 				let mut wtime: i64 = 300000;
 				let mut btime: i64 = 300000;
@@ -156,7 +157,7 @@ impl UCIMaster {
 					}
 				}
 
-				sender.send(UCICmd::Go(depth, wtime, btime)).unwrap();
+				sender.send(UCICmd::Go(depth, wtime, btime, self.stop_abort.clone().unwrap())).unwrap();
 			},
 			"position" => {
 				if cmd_vec[1] == "startpos" {
@@ -191,6 +192,9 @@ impl UCIMaster {
 						sender.send(UCICmd::PositionPgn(pgn_vec, false)).unwrap();
 					}
 				}
+			},
+			"stop" => {
+				self.stop_abort.as_ref().unwrap().store(true, Ordering::Relaxed);
 			},
 			"quit" => {
 				sender.send(UCICmd::Quit).unwrap();

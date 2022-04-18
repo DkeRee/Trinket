@@ -19,7 +19,6 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub wtime: i64,
 	pub btime: i64,
-	force_abort: bool,
 	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
@@ -36,7 +35,6 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			wtime: 300000,
 			btime: 300000,
-			force_abort: false,
 			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
@@ -46,13 +44,15 @@ impl Engine {
 		}
 	}
 
-	pub fn go(&mut self) -> String {
+	pub fn go(&mut self, max_depth: i32, wtime: i64, btime: i64, stop_abort: Arc<AtomicBool>) -> String {
 		let now = Instant::now();
 
 		let mut best_move = None;
 		let mut time: f32;
 
-		self.force_abort = false;
+		self.max_depth = max_depth;
+		self.wtime = wtime;
+		self.btime = btime;
 
 		if self.board.side_to_move() == Color::White {
 			time = self.wtime as f32;
@@ -82,7 +82,7 @@ impl Engine {
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, board, self.searching_depth, -i32::MAX, i32::MAX, &mut past_positions);
+				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, -i32::MAX, i32::MAX, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -114,9 +114,6 @@ impl Engine {
 			}
 		}
 
-		self.board.play_unchecked(best_move.unwrap());
-		self.my_past_positions.push(self.board.hash());
-
 		//detect if endgame via tapered eval
 		//source: https://www.chessprogramming.org/Tapered_Eval
 		let pawn_phase = 0;
@@ -147,10 +144,6 @@ impl Engine {
 		}
 
 		self.parse_to_uci(best_move)
-	}
-
-	pub fn quit(&mut self) {
-		self.force_abort = true;
 	}
 
 	fn parse_to_uci(&self, mv: Option<Move>) -> String {
@@ -195,9 +188,9 @@ impl Engine {
 		piece_amount
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
+	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if (self.searching_depth > 1 && abort.load(Ordering::Relaxed)) || self.force_abort == true {
+		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
 		}
 
@@ -217,12 +210,11 @@ impl Engine {
 
 		let stand_pat = self.evaluator.evaluate(board);
 
-		//checking to see if the move the opponent makes is in our favor, if so, just return it no checking necessary
+		//beta cutoff
 		if stand_pat >= beta {
 			return Some((None, beta));
 		}
 
-		//new best move eval
 		if alpha < stand_pat {
 			alpha = stand_pat;
 		}
@@ -244,7 +236,7 @@ impl Engine {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply, past_positions)?;
+			let (_, mut child_eval) = self.qsearch(&abort, &stop_abort, &board_cache, -beta, -alpha, ply, past_positions)?;
 
 			past_positions.pop();
 
@@ -265,9 +257,9 @@ impl Engine {
 		return Some((best_move, alpha));
 	}
 
-	fn search(&mut self, abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
+	fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
 		//abort?
-		if (self.searching_depth > 1 && abort.load(Ordering::Relaxed)) || self.force_abort == true {
+		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
 		}
 
@@ -285,16 +277,21 @@ impl Engine {
 		if board.hash() == table_find.position {
 			//if sufficient depth and NOT pv node
 			if table_find.depth >= depth && alpha == beta - 1 {
-				if table_find.node_kind == NodeKind::Exact {
-					return Some((table_find.best_move, table_find.eval));
-				} else if table_find.node_kind == NodeKind::UpperBound {
-					if table_find.eval <= alpha {
-						return Some((table_find.best_move, table_find.eval));	
-					}
-				} else if table_find.node_kind == NodeKind::LowerBound {
-					if table_find.eval >= beta {
-						return Some((table_find.best_move, table_find.eval));	
-					}
+				match table_find.node_kind {
+					NodeKind::Exact => {
+						return Some((table_find.best_move, table_find.eval));
+					},
+					NodeKind::UpperBound => {
+						if table_find.eval <= alpha {
+							return Some((table_find.best_move, table_find.eval));	
+						}	
+					},
+					NodeKind::LowerBound => {
+						if table_find.eval >= beta {
+							return Some((table_find.best_move, table_find.eval));	
+						}
+					},
+					NodeKind::Null => {}
 				}
 			}
 			legal_moves = self.movegen.move_gen(board, table_find.best_move);
@@ -318,7 +315,7 @@ impl Engine {
 		}
 
 		if depth == 0 {
-			return self.qsearch(&abort, board, alpha, beta, self.searching_depth, past_positions);
+			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions);
 		}
 
 		//check for three move repetition
@@ -335,7 +332,7 @@ impl Engine {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+			let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
 
 			past_positions.pop();
 

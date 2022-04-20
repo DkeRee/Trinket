@@ -81,14 +81,15 @@ impl UCIMaster {
 								},
 								UCICmd::PositionFen(fen) => {
 									engine.board = Board::from_fen(&*fen, false).unwrap();
+
+									engine.my_past_positions = Vec::with_capacity(64);
 									engine.my_past_positions.push(engine.board.hash());
 								},
 								UCICmd::PositionPgn(pgn_vec, default) => {
 									if default {
 										engine.board = Board::default();
+										engine.my_past_positions = Vec::with_capacity(64);
 									}
-									
-									engine.my_past_positions = Vec::with_capacity(64);
 
 									for i in 0..pgn_vec.len() {
 										let mv = &*pgn_vec[i];

@@ -205,7 +205,7 @@ impl Engine {
 		}
 
 		//check for three move repetition
-		if self.is_repetition(board, past_positions) && self.board.hash() != board.hash() {
+		if self.is_repetition(board, past_positions) {
 			return Some((None, 0));
 		}
 
@@ -320,7 +320,7 @@ impl Engine {
 		}
 
 		//check for three move repetition
-		if self.is_repetition(board, past_positions) && self.board.hash() != board.hash() {
+		if self.is_repetition(board, past_positions) && self.searching_depth - depth > 0 {
 			return Some((None, 0));
 		}
 

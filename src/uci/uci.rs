@@ -65,7 +65,7 @@ impl UCIMaster {
 						if playing {
 							match thread_receiver.lock().unwrap().recv().unwrap() {
 								UCICmd::Uci => {
-									println!("id name Trinket");
+									println!("id name Trinket 1.0.0");
 									println!("id author DkeRee");
 									println!("uciok");
 								},

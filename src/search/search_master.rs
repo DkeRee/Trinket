@@ -149,16 +149,36 @@ impl Engine {
 
 	fn parse_to_uci(&self, mv: Option<Move>) -> String {
 		let mv_parsed = mv.unwrap();
-		let mut uci_mv = String::new();
 
-		uci_mv += &mv_parsed.from.to_string();
-		uci_mv += &mv_parsed.to.to_string();
+		let from = mv_parsed.from.to_string();
+		let to = mv_parsed.to.to_string();
 
-		if mv_parsed.promotion != None {
-			uci_mv += &mv_parsed.promotion.unwrap().to_string();
+		let square: Square = from.parse().unwrap();
+
+		if from == "e1" && (to == "a1" || to == "h1") && self.board.piece_on(square).unwrap() == Piece::King {
+			if to == "a1" {
+				return String::from("e1c1");
+			} else {
+				return String::from("e1g1");
+			}
+		} else if from == "e8" && (to == "a8" || to == "h8") && self.board.piece_on(square).unwrap() == Piece::King {
+			if to == "a8" {
+				return String::from("e8c8");
+			} else {
+				return String::from("e8g8");
+			}
+		} else {
+			let mut uci_mv = String::new();
+
+			uci_mv += &from;
+			uci_mv += &to;
+
+			if mv_parsed.promotion != None {
+				uci_mv += &mv_parsed.promotion.unwrap().to_string();
+			}
+
+			return uci_mv;
 		}
-
-		uci_mv
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {

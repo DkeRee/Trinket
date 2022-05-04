@@ -1,7 +1,3 @@
-#![allow(unused_variables)]
-#![allow(unused_assignments)]
-#![allow(unused_mut)]
-
 use cozy_chess::*;
 
 use std::thread;
@@ -12,13 +8,12 @@ use std::time::{Instant, Duration};
 use crate::eval::evaluator::*;
 use crate::search::tt::*;
 use crate::movegen::movegen::*;
+use crate::uci::castle_parse::*;
 
 pub struct Engine {
 	pub board: Board,
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
-	pub wtime: i64,
-	pub btime: i64,
 	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
@@ -33,8 +28,6 @@ impl Engine {
 			board: Board::default(),
 			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
-			wtime: 300000,
-			btime: 300000,
 			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
@@ -44,30 +37,34 @@ impl Engine {
 		}
 	}
 
-	pub fn go(&mut self, max_depth: i32, wtime: i64, btime: i64, stop_abort: Arc<AtomicBool>) -> String {
+	pub fn go(&mut self, max_depth: i32, wtime: i64, btime: i64, winc: i64, binc: i64, movestogo: i64, stop_abort: Arc<AtomicBool>) -> String {
 		let now = Instant::now();
 
 		let mut best_move = None;
 		let mut time: f32;
+		let mut timeinc: f32;
 
 		self.max_depth = max_depth;
-		self.wtime = wtime;
-		self.btime = btime;
 
 		self.nodes = 0;
 
-		if self.board.side_to_move() == Color::White {
-			time = self.wtime as f32;
-		} else {
-			time = self.btime as f32;
+		//set time
+		match self.board.side_to_move() {
+			Color::White => {
+				time = wtime as f32;
+				timeinc = winc as f32;
+			},
+			Color::Black => {
+				time = btime as f32;
+				timeinc = binc as f32;	
+			}
 		}
 
 		for depth_index in 0..self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-			if search_elapsed < time / 50_f32 {
+			if search_elapsed < ((time + timeinc) / f32::min(40_f32, movestogo as f32)) {
 				self.searching_depth = depth_index + 1;
 
-				let search_time = Instant::now();
 				let board = &mut self.board.clone();
 
 				//set up pv table
@@ -91,6 +88,7 @@ impl Engine {
 
 					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
+					//get nps
 					let mut nps: u64;
 					if elapsed == 0_f32 {
 						nps = self.nodes;
@@ -98,15 +96,46 @@ impl Engine {
 						nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
 					}
 
+					//get pv
 					let mut pv = String::new();
+					let pv_board = &mut self.board.clone();
 
 					for i in 0..self.pv[0].len() {
 						if self.pv[0][i] != None {
-							pv += &(self.parse_to_uci(self.pv[0][i]) + " ");
+							let pv_parsed = _960_to_regular_(self.pv[0][i], pv_board);
+
+							pv += &(pv_parsed.clone() + " ");
+
+							let mut uci_mv = String::new();
+							let pv_mv = self.pv[0][i].unwrap();
+
+							let from = pv_mv.from.to_string();
+							let to = pv_mv.to.to_string();
+
+							uci_mv += &from;
+							uci_mv += &to;
+
+							if pv_mv.promotion != None {
+								uci_mv += &pv_mv.promotion.unwrap().to_string();
+							}
+
+							pv_board.play(uci_mv.parse().unwrap());
 						}
 					}
 
-					println!("info depth {} nodes {} pv {} score cp {} nps {}", self.searching_depth, self.nodes, pv.trim(), eval, nps);
+					let mut score_str = if eval.mate {
+						let mut mate_score = if eval.score > 0 {
+							(eval.mate_ply - (eval.mate_ply / 2)) as i32
+						} else {
+							(eval.mate_ply - (eval.mate_ply / 2)) as i32 * -1
+						};
+
+						format!("mate {}", mate_score)
+					} else {
+						format!("cp {}", eval.score)
+					};
+
+					println!("info depth {} nodes {} pv {} score {} nps {}", self.searching_depth, self.nodes, pv.trim(), score_str, nps);
 				} else {
 					break;
 				}
@@ -144,41 +173,7 @@ impl Engine {
 			self.evaluator.end_game = true;
 		}
 
-		self.parse_to_uci(best_move)
-	}
-
-	fn parse_to_uci(&self, mv: Option<Move>) -> String {
-		let mv_parsed = mv.unwrap();
-
-		let from = mv_parsed.from.to_string();
-		let to = mv_parsed.to.to_string();
-
-		let square: Square = from.parse().unwrap();
-
-		if from == "e1" && (to == "a1" || to == "h1") && self.board.piece_on(square).unwrap() == Piece::King {
-			if to == "a1" {
-				return String::from("e1c1");
-			} else {
-				return String::from("e1g1");
-			}
-		} else if from == "e8" && (to == "a8" || to == "h8") && self.board.piece_on(square).unwrap() == Piece::King {
-			if to == "a8" {
-				return String::from("e8c8");
-			} else {
-				return String::from("e8g8");
-			}
-		} else {
-			let mut uci_mv = String::new();
-
-			uci_mv += &from;
-			uci_mv += &to;
-
-			if mv_parsed.promotion != None {
-				uci_mv += &mv_parsed.promotion.unwrap().to_string();
-			}
-
-			return uci_mv;
-		}
+		_960_to_regular_(best_move, &self.board)
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
@@ -203,41 +198,42 @@ impl Engine {
 
 	fn get_piece_amount(&self, piece_type: BitBoard) -> usize {
 		let mut piece_amount = 0;
-		for piece in piece_type {
+		for _piece in piece_type {
 			piece_amount += 1;
 		}
 		piece_amount
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
+	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
 		}
 
 		self.nodes += 1;
+		self.pv[ply as usize] = [None; 100];
 		ply += 1;
 
 		match board.status() {
-			GameStatus::Won => return Some((None, -30000 + ply)),
-			GameStatus::Drawn => return Some((None, 0)),
+			GameStatus::Won => return Some((None, Eval::new(-30000 + ply, true, ply as usize))),
+			GameStatus::Drawn => return Some((None, Eval::new(0, false, 0))),
 			GameStatus::Ongoing => {}
 		}
 
 		//check for three move repetition
 		if self.is_repetition(board, past_positions) {
-			return Some((None, 0));
+			return Some((None, Eval::new(0, false, 0)));
 		}
 
-		let stand_pat = self.evaluator.evaluate(board);
+		let stand_pat = Eval::new(self.evaluator.evaluate(board), false, 0);
 
 		//beta cutoff
-		if stand_pat >= beta {
-			return Some((None, beta));
+		if stand_pat.score >= beta {
+			return Some((None, Eval::new(beta, false, 0)));
 		}
 
-		if alpha < stand_pat {
-			alpha = stand_pat;
+		if alpha < stand_pat.score {
+			alpha = stand_pat.score;
 		}
 
 		let move_list = self.movegen.qmove_gen(board);
@@ -248,7 +244,7 @@ impl Engine {
 		}
 
 		let mut best_move = None;
-		let mut eval = i32::MIN;
+		let mut eval = Eval::new(i32::MIN, false, 0);
 
 		for sm in move_list {
 			let mv = sm.mv;
@@ -261,35 +257,36 @@ impl Engine {
 
 			past_positions.pop();
 
-			child_eval *= -1;
-			if child_eval > eval {
+			child_eval.score *= -1;
+			if child_eval.score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
-				if eval > alpha {
+				if eval.score > alpha {
 					self.update_pv(best_move, ply as usize);
-					alpha = eval;
+					alpha = eval.score;
 					if alpha >= beta {
-						return Some((None, beta));
+						return Some((None, Eval::new(beta, false , 0)));
 					}
 				}
 			}
 		}
 
-		return Some((best_move, alpha));
+		return Some((best_move, eval));
 	}
 
-	fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, i32)> {
+	fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
 		}
 
 		self.nodes += 1;
+		self.pv[(self.searching_depth - depth) as usize] = [None; 100];
 		let mut legal_moves: Vec<SortedMove>;
 
 		match board.status() {
-			GameStatus::Won => return Some((None, -30000 + (self.searching_depth - depth))),
-			GameStatus::Drawn => return Some((None, 0)),
+			GameStatus::Won => return Some((None, Eval::new(-30000 + (self.searching_depth - depth), true, (self.searching_depth - depth) as usize))),
+			GameStatus::Drawn => return Some((None, Eval::new(0, false, 0))),
 			GameStatus::Ongoing => {}
 		}
 
@@ -300,16 +297,16 @@ impl Engine {
 			if table_find.depth >= depth && alpha == beta - 1 {
 				match table_find.node_kind {
 					NodeKind::Exact => {
-						return Some((table_find.best_move, table_find.eval));
+						return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
 					},
 					NodeKind::UpperBound => {
 						if table_find.eval <= alpha {
-							return Some((table_find.best_move, table_find.eval));	
+							return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
 						}	
 					},
 					NodeKind::LowerBound => {
 						if table_find.eval >= beta {
-							return Some((table_find.best_move, table_find.eval));	
+							return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
 						}
 					},
 					NodeKind::Null => {}
@@ -331,7 +328,7 @@ impl Engine {
 		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
 			let eval = self.evaluator.evaluate(board);
 			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
-				return Some((None, eval));
+				return Some((None, Eval::new(eval, false, 0)));
 			}
 		}
 
@@ -341,11 +338,11 @@ impl Engine {
 
 		//check for three move repetition
 		if self.is_repetition(board, past_positions) && self.searching_depth - depth > 0 {
-			return Some((None, 0));
+			return Some((None, Eval::new(0, false, 0)));
 		}
 
 		let mut best_move = None;
-		let mut eval = i32::MIN;
+		let mut eval = Eval::new(i32::MIN, false, 0);
 		for sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -357,21 +354,21 @@ impl Engine {
 
 			past_positions.pop();
 
-			child_eval *= -1;
-			if child_eval > eval {
+			child_eval.score *= -1;
+			if child_eval.score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
-				if eval > alpha {
+				if eval.score > alpha {
 					self.update_pv(best_move, (self.searching_depth - depth) as usize);
-					alpha = eval;
+					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::LowerBound);
 						break;
 					} else {
-						self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::Exact);
 					}
 				} else {
-					self.tt.insert(best_move, eval, board.hash(), self.searching_depth, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::UpperBound);
 				}
 			}
 		}

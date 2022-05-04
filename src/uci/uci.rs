@@ -7,12 +7,13 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 
 use crate::search::search_master::*;
+use crate::uci::castle_parse::*;
 
 enum UCICmd {
 	Uci,
 	UciNewGame,
 	IsReady,
-	Go(i32, i64, i64, Arc<AtomicBool>),
+	Go(i32, i64, i64, i64, i64, i64, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
 	Quit
@@ -27,7 +28,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 pub struct UCIMaster {
 	pub playing: bool,
 	engine_thread: Option<thread::JoinHandle<()>>,
-	stop_abort: Option<Arc<AtomicBool>>,
+	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
 }
 
@@ -42,7 +43,7 @@ impl UCIMaster {
 		UCIMaster {
 			playing: true,
 			engine_thread: None,
-			stop_abort: None,
+			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
 		}
 	}
@@ -55,78 +56,61 @@ impl UCIMaster {
 
 		match cmd_vec[0] {
 			"uci" => {
-				let thread_receiver = receiver.clone();
 
-				self.engine_thread = Some(thread::spawn(move || {
-					let mut engine = Engine::new();
-					let mut playing = true;
+				//init engine
+				if self.engine_thread.is_none() {
+					let thread_receiver = receiver.clone();
 
-					loop {
-						if playing {
-							match thread_receiver.lock().unwrap().recv().unwrap() {
-								UCICmd::Uci => {
-									println!("id name Trinket 1.0.0");
-									println!("id author DkeRee");
-									println!("uciok");
-								},
-								UCICmd::UciNewGame => {
-									engine = Engine::new();
-								},
-								UCICmd::IsReady => {
-									println!("readyok");
-								},
-								UCICmd::Go(depth, wtime, btime, stop_abort) => {
-									let best_move = engine.go(depth, wtime, btime, stop_abort);
-									println!("bestmove {}", best_move);
-								},
-								UCICmd::PositionFen(fen) => {
-									engine.board = Board::from_fen(&*fen, false).unwrap();
+					self.engine_thread = Some(thread::spawn(move || {
+						let mut engine = Engine::new();
+						let mut playing = true;
 
-									engine.my_past_positions = Vec::with_capacity(64);
-									engine.my_past_positions.push(engine.board.hash());
-								},
-								UCICmd::PositionPgn(pgn_vec, default) => {
-									if default {
-										engine.board = Board::default();
+						loop {
+							if playing {
+								match thread_receiver.lock().unwrap().recv().unwrap() {
+									UCICmd::Uci => {
+										println!("id name Trinket 1.0.0");
+										println!("id author DkeRee");
+										println!("uciok");
+									},
+									UCICmd::UciNewGame => {
+										engine = Engine::new();
+									},
+									UCICmd::IsReady => {
+										println!("readyok");
+									},
+									UCICmd::Go(depth, wtime, btime, winc, binc, movestogo, stop_abort) => {
+										let best_move = engine.go(depth, wtime, btime, winc, binc, movestogo, stop_abort);
+										println!("bestmove {}", best_move);
+									},
+									UCICmd::PositionFen(fen) => {
+										engine.board = Board::from_fen(&*fen, false).unwrap();
+
 										engine.my_past_positions = Vec::with_capacity(64);
-									}
-
-									for i in 0..pgn_vec.len() {
-										let mv = &*pgn_vec[i];
-									
-										let from = mv.chars().nth(0).unwrap().to_string() + &mv.chars().nth(1).unwrap().to_string();
-										let to = mv.chars().nth(2).unwrap().to_string() + &mv.chars().nth(3).unwrap().to_string();
-
-										let square: Square = from.parse().unwrap();
-
-										if from == "e1" && (to == "c1" || to == "g1") && engine.board.piece_on(square).unwrap() == Piece::King {
-											if to == "c1" {
-												engine.board.play("e1a1".parse().unwrap());
-											} else {
-												engine.board.play("e1h1".parse().unwrap());
-											}
-										} else if from == "e8" && (to == "c8" || to == "g8") && engine.board.piece_on(square).unwrap() == Piece::King {
-											if to == "c8" {
-												engine.board.play("e8a8".parse().unwrap());
-											} else {
-												engine.board.play("e8h8".parse().unwrap());
-											}
-										} else {
-											engine.board.play(mv.parse().unwrap());
+										engine.my_past_positions.push(engine.board.hash());
+									},
+									UCICmd::PositionPgn(pgn_vec, default) => {
+										if default {
+											engine.board = Board::default();
+											engine.my_past_positions = Vec::with_capacity(64);
 										}
 
-										engine.my_past_positions.push(engine.board.hash());
+										for i in 0..pgn_vec.len() {
+											engine.board.play_unchecked(_regular_to_960_(pgn_vec[i].clone(), &engine.board).parse().unwrap());
+											engine.my_past_positions.push(engine.board.hash());
+										}
+									},
+									UCICmd::Quit => {
+										playing = false;
 									}
-								},
-								UCICmd::Quit => {
-									playing = false;
 								}
+							} else {
+								break;
 							}
-						} else {
-							break;
 						}
-					}
-				}));
+					}));
+				}
+
 				sender.send(UCICmd::Uci).unwrap();
 			},
 			"ucinewgame" => {
@@ -136,29 +120,44 @@ impl UCIMaster {
 				sender.send(UCICmd::IsReady).unwrap();
 			},
 			"go" => {
-				self.stop_abort = Some(Arc::new(AtomicBool::new(false)));
+				self.stop_abort = Arc::new(AtomicBool::new(false));
 
 				let mut depth = i32::MAX;
-				let mut wtime: i64 = 300000;
-				let mut btime: i64 = 300000;
+				let mut wtime: i64 = i64::MAX;
+				let mut btime: i64 = i64::MAX;
+				let mut winc: i64 = 0;
+				let mut binc: i64 = 0;
+				let mut movestogo: i64 = i64::MAX;
 
-				if cmd_vec.len() > 1 {
-					if cmd_vec[1] == "wtime" {
-						//specified time
-						wtime = cmd_vec[2].parse::<i64>().unwrap();
-						btime = cmd_vec[4].parse::<i64>().unwrap();
-					} else if cmd_vec[1] == "depth" {
-						//specified depth without time
-						depth = cmd_vec[2].parse::<i32>().unwrap();
-					}
-
-					if cmd_vec.len() > 7 && cmd_vec[7] == "depth" {
-						//specified depth with time
-						depth = cmd_vec[8].parse::<i32>().unwrap();
+				for i in 1..cmd_vec.len() {
+					match cmd_vec[i] {
+						"depth" => {
+							depth = cmd_vec[i + 1].parse::<i32>().unwrap();
+						},
+						"movetime" => {
+							wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						"wtime" => {
+							wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						"btime" => {
+							btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						"winc" => {
+							winc = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						"binc" => {
+							binc = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						"movestogo" => {
+							movestogo = cmd_vec[i + 1].parse::<i64>().unwrap();
+						},
+						_ => {}
 					}
 				}
 
-				sender.send(UCICmd::Go(depth, wtime, btime, self.stop_abort.clone().unwrap())).unwrap();
+				sender.send(UCICmd::Go(depth, wtime, btime, winc, binc, movestogo, self.stop_abort.clone())).unwrap();
 			},
 			"position" => {
 				if cmd_vec[1] == "startpos" {
@@ -195,7 +194,7 @@ impl UCIMaster {
 				}
 			},
 			"stop" => {
-				self.stop_abort.as_ref().unwrap().store(true, Ordering::Relaxed);
+				self.stop_abort.as_ref().store(true, Ordering::Relaxed);
 			},
 			"quit" => {
 				sender.send(UCICmd::Quit).unwrap();

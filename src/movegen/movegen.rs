@@ -8,6 +8,13 @@ pub struct SortedMove {
 	pub movetype: MoveType
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Eval {
+	pub score: i32,
+	pub mate: bool,
+	pub mate_ply: usize
+}
+
 //mvv_lva MVV_LVA[(self.piece_index(moves.piece) * 7) + self.piece_index(piece)]
 
 impl SortedMove {
@@ -16,6 +23,16 @@ impl SortedMove {
 			mv: mv,
 			importance: importance,
 			movetype: movetype
+		}
+	}
+}
+
+impl Eval {
+	pub fn new(score: i32, mate: bool, mate_ply: usize) -> Eval {
+		Eval {
+			score: score,
+			mate: mate,
+			mate_ply: mate_ply
 		}
 	}
 }

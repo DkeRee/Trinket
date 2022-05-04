@@ -36,9 +36,9 @@ impl Evaluator {
 					Piece::Pawn => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 208;
+							weight = pawn_endgame;
 						} else {
-							weight = 126;
+							weight = pawn_normal;
 						}
 
 						piece_sum = weight;
@@ -52,9 +52,9 @@ impl Evaluator {
 					Piece::Knight => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 854;
+							weight = knight_endgame;
 						} else {
-							weight = 781;
+							weight = knight_normal;
 						}
 
 						piece_sum = weight;
@@ -68,9 +68,9 @@ impl Evaluator {
 					Piece::Bishop => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 915;
+							weight = bishop_endgame;
 						} else {
-							weight = 825;
+							weight = bishop_normal;
 						}
 
 						piece_sum = weight;
@@ -84,9 +84,9 @@ impl Evaluator {
 					Piece::Rook => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 1380;
+							weight = rook_endgame;
 						} else {
-							weight = 1276;
+							weight = rook_normal;
 						}
 
 						piece_sum = weight;
@@ -100,9 +100,9 @@ impl Evaluator {
 					Piece::Queen => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 2682;
+							weight = queen_endgame;
 						} else {
-							weight = 2538;
+							weight = queen_normal;
 						}
 
 						piece_sum = weight;
@@ -143,9 +143,9 @@ impl Evaluator {
 					Piece::Pawn => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 208;
+							weight = pawn_endgame;
 						} else {
-							weight = 126;
+							weight = pawn_normal;
 						}
 
 						piece_sum = weight;
@@ -159,9 +159,9 @@ impl Evaluator {
 					Piece::Knight => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 854;
+							weight = knight_endgame;
 						} else {
-							weight = 781;
+							weight = knight_normal;
 						}
 
 						piece_sum = weight;
@@ -175,9 +175,9 @@ impl Evaluator {
 					Piece::Bishop => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 915;
+							weight = bishop_endgame;
 						} else {
-							weight = 825;
+							weight = bishop_normal;
 						}
 
 						piece_sum = weight;
@@ -191,9 +191,9 @@ impl Evaluator {
 					Piece::Rook => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 1380;
+							weight = rook_endgame;
 						} else {
-							weight = 1276;
+							weight = rook_normal;
 						}
 
 						piece_sum = weight;
@@ -207,9 +207,9 @@ impl Evaluator {
 					Piece::Queen => {
 						let mut weight = 0;
 						if self.end_game {
-							weight = 2682;
+							weight = queen_endgame;
 						} else {
-							weight = 2538;
+							weight = queen_normal;
 						}
 
 						piece_sum = weight;

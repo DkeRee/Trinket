@@ -40,36 +40,24 @@ impl See {
 				let mut victim_square = match piece {
 					Piece::Pawn => {
 						cozy_chess::get_pawn_attacks(mv.to, !color)
-							& defenders
-							& board.pieces(Piece::Pawn)
 					},
 					Piece::Knight => {
 						cozy_chess::get_knight_moves(mv.to)
-							& defenders
-							& board.pieces(Piece::Knight)
 					},
 					Piece::Bishop => {
 						cozy_chess::get_bishop_moves(mv.to, blockers)
-							& defenders
-							& board.pieces(Piece::Knight)
 					},
 					Piece::Rook => {
 						cozy_chess::get_rook_moves(mv.to, blockers)
-							& defenders
-							& board.pieces(Piece::Rook)
 					},
 					Piece::Queen => {
 						cozy_chess::get_rook_moves(mv.to, blockers)
-							& cozy_chess::get_bishop_moves(mv.to, blockers)
-							& defenders
-							& board.pieces(Piece::Queen)
+							| cozy_chess::get_bishop_moves(mv.to, blockers)
 					},
 					Piece::King => {
 						cozy_chess::get_king_moves(mv.to)
-							& defenders
-							& board.pieces(Piece::King)
 					}
-				};
+				} & board.pieces(piece) & defenders;
 
 				if victim_square != BitBoard::EMPTY {
 					let attacker = victim_square.next().unwrap();

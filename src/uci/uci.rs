@@ -69,7 +69,7 @@ impl UCIMaster {
 							if playing {
 								match thread_receiver.lock().unwrap().recv().unwrap() {
 									UCICmd::Uci => {
-										println!("id name Trinket 1.0.0");
+										println!("id name Trinket 2.0.0");
 										println!("id author DkeRee");
 										println!("uciok");
 									},
@@ -160,37 +160,45 @@ impl UCIMaster {
 				sender.send(UCICmd::Go(depth, wtime, btime, winc, binc, movestogo, self.stop_abort.clone())).unwrap();
 			},
 			"position" => {
-				if cmd_vec[1] == "startpos" {
-					if cmd_vec.len() == 2 {
-						sender.send(UCICmd::UciNewGame).unwrap();
-					} else {
-						let mut pgn_vec = Vec::with_capacity(64);
-						for i in 3..cmd_vec.len() {
-							pgn_vec.push(String::from(cmd_vec[i]));
-						}
-						sender.send(UCICmd::PositionPgn(pgn_vec, true)).unwrap();
-					}
-				} else if cmd_vec[1] == "fen" {
-					let mut fen = String::new();
-					let mut pgn_index: Option<usize> = None;
+				if cmd_vec.len() > 1 {
+					match cmd_vec[1] {
+						"startpos" => {
+							if cmd_vec.len() == 2 {
+								sender.send(UCICmd::UciNewGame).unwrap();
+							} else {
+								let mut pgn_vec = Vec::with_capacity(64);
+								for i in 3..cmd_vec.len() {
+									pgn_vec.push(String::from(cmd_vec[i]));
+								}
+								sender.send(UCICmd::PositionPgn(pgn_vec, true)).unwrap();
+							}
+						},
+						"fen" => {
+							let mut fen = String::new();
+							let mut pgn_index: Option<usize> = None;
 
-					for i in 2..cmd_vec.len() {
-						if cmd_vec[i] == "moves" {
-							pgn_index = Some(i + 1);
-							break;
-						}
-						let segment = String::from(cmd_vec[i]) + " ";
-						fen += &segment;
+							for i in 2..cmd_vec.len() {
+								if cmd_vec[i] == "moves" {
+									pgn_index = Some(i + 1);
+									break;
+								}
+								let segment = String::from(cmd_vec[i]) + " ";
+								fen += &segment;
+							}
+							sender.send(UCICmd::PositionFen(fen.clone())).unwrap();
+						
+							if pgn_index != None {
+								let mut pgn_vec = Vec::with_capacity(64);
+								for i in pgn_index.unwrap()..cmd_vec.len() {
+									pgn_vec.push(String::from(cmd_vec[i]));
+								}
+								sender.send(UCICmd::PositionPgn(pgn_vec, false)).unwrap();
+							}
+						},
+						_ => {}
 					}
-					sender.send(UCICmd::PositionFen(fen.clone())).unwrap();
-				
-					if pgn_index != None {
-						let mut pgn_vec = Vec::with_capacity(64);
-						for i in pgn_index.unwrap()..cmd_vec.len() {
-							pgn_vec.push(String::from(cmd_vec[i]));
-						}
-						sender.send(UCICmd::PositionPgn(pgn_vec, false)).unwrap();
-					}
+				} else {
+					println!("You must provide commands startpos or fen for board initialization");
 				}
 			},
 			"stop" => {

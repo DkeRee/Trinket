@@ -52,24 +52,22 @@ impl TT {
 	//adjust tricky mate scores to make valid eval
 	fn add_mate_score(&self, eval: i32, searching_depth: i32, depth: i32) -> i32 {
 		if eval < -30000 {
-			eval + (searching_depth - depth);
+			eval + (searching_depth - depth)
 		} else if eval > 30000 {
-			eval - (searching_depth - depth);
+			eval - (searching_depth - depth)
 		} else {
-			return eval;
+			eval
 		}
-		return eval;
 	}
 
 	fn remove_mate_score(&self, eval: i32, searching_depth: i32, depth: i32) -> i32 {
 		if eval < -30000 {
-			eval - (searching_depth - depth);
+			eval - (searching_depth - depth)
 		} else if eval > 30000 {
-			eval + (searching_depth - depth);
+			eval + (searching_depth - depth)
 		} else {
-			return eval;
+			eval
 		}
-		return eval;
 	}
 
 	pub fn insert(&mut self, best_move: Option<Move>, eval: i32, position: u64, searching_depth: i32, depth: i32, node_kind: NodeKind) {

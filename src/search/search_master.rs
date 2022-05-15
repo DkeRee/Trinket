@@ -244,9 +244,15 @@ impl Engine {
 		}
 
 		let mut best_move = None;
-		let mut eval = Eval::new(i32::MIN, false, 0);
+		let mut eval = stand_pat;
 
 		for sm in move_list {
+
+			//prune losing captures found through SEE swap algorithm
+			if sm.importance < 0 {
+				break;
+			}
+
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -258,6 +264,7 @@ impl Engine {
 			past_positions.pop();
 
 			child_eval.score *= -1;
+
 			if child_eval.score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
@@ -291,6 +298,7 @@ impl Engine {
 		}
 
 		//look up tt
+		
 		let table_find = self.tt.find(board.hash(), self.searching_depth, depth);
 		if board.hash() == table_find.position {
 			//if sufficient depth and NOT pv node
@@ -316,6 +324,7 @@ impl Engine {
 		} else {
 			legal_moves = self.movegen.move_gen(board, None);
 		}
+		
 
 		//reverse futility pruning
 		/*
@@ -355,6 +364,7 @@ impl Engine {
 			past_positions.pop();
 
 			child_eval.score *= -1;
+
 			if child_eval.score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);

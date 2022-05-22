@@ -56,7 +56,6 @@ impl UCIMaster {
 
 		match cmd_vec[0] {
 			"uci" => {
-
 				//init engine
 				if self.engine_thread.is_none() {
 					let thread_receiver = receiver.clone();
@@ -69,7 +68,7 @@ impl UCIMaster {
 							if playing {
 								match thread_receiver.lock().unwrap().recv().unwrap() {
 									UCICmd::Uci => {
-										println!("id name Trinket 2.0.0");
+										println!("id name Trinket {}", env!("CARGO_PKG_VERSION"));
 										println!("id author DkeRee");
 										println!("uciok");
 									},

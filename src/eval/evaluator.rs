@@ -5,247 +5,120 @@
 use cozy_chess::*;
 use crate::eval::eval_info::*;
 
-pub struct Evaluator {
-	pub end_game: bool
+struct Evaluator<'a> {
+	board: &'a Board,
+	color: Color
 }
 
-impl Evaluator {
-	pub fn new() -> Evaluator {
+impl Evaluator<'_> {
+	fn new(board: &Board, color: Color) -> Evaluator {
 		Evaluator {
-			end_game: false
+			board: board,
+			color: color
 		}
 	}
 
-	pub fn evaluate(&self, board: &Board) -> i32 {
-		//our color
-		let color = board.side_to_move();
-		let our_pieces = board.colors(color);
-		let their_pieces = board.colors(!color);
-		let mut eval = 0;
-		
-		let mut mysum = 0;
-		let mut theirsum = 0;
+	//evaluates piece weights + PST with tapered eval
+	fn eval(&self) -> i32 {
+		let phase = self.calculate_phase();
+		let mut sum = 0;
 
 		for &piece in &Piece::ALL {
-		   	let my_pieces = our_pieces & board.pieces(piece);
-		   	let enemy_pieces = their_pieces & board.pieces(piece);
+			let pieces = self.board.colors(self.color) & self.board.pieces(piece);
 
-		    for square in my_pieces {
-		    	let mut piece_sum = 0;
+			for square in pieces {
+				let square_idx = self.square_index(square);
+
 				match piece {
 					Piece::Pawn => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = pawn_endgame;
-						} else {
-							weight = pawn_normal;
-						}
-
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += p[square as usize];
-						} else {
-							piece_sum += pr[square as usize];
-						}
+						sum += PAWN.eval(phase);
+						sum += P[square_idx].eval(phase);
 					},
 					Piece::Knight => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = knight_endgame;
-						} else {
-							weight = knight_normal;
-						}
-
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += n[square as usize];
-						} else {
-							piece_sum += nr[square as usize];
-						}
+						sum += KNIGHT.eval(phase);
+						sum += N[square_idx].eval(phase);
 					},
 					Piece::Bishop => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = bishop_endgame;
-						} else {
-							weight = bishop_normal;
-						}
-
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += b[square as usize];
-						} else {
-							piece_sum += br[square as usize];
-						}
+						sum += BISHOP.eval(phase);
+						sum += B[square_idx].eval(phase);
 					},
 					Piece::Rook => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = rook_endgame;
-						} else {
-							weight = rook_normal;
-						}
-
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += r[square as usize];
-						} else {
-							piece_sum += rr[square as usize];
-						}
+						sum += ROOK.eval(phase);
+						sum += R[square_idx].eval(phase);
 					},
 					Piece::Queen => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = queen_endgame;
-						} else {
-							weight = queen_normal;
-						}
-
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += q[square as usize];
-						} else {
-							piece_sum += qr[square as usize];
-						}
+						sum += QUEEN.eval(phase);
+						sum += Q[square_idx].eval(phase);
 					},
 					Piece::King => {
-						let weight = 0;
+						sum += K[square_idx].eval(phase);
+					}
+				}
+			}
+		}
 
-						piece_sum = weight;
+		sum
+	}
 
-						if self.end_game {
-							if color == Color::White {
-								piece_sum += k_e[square as usize];
-							} else {
-								piece_sum += k_er[square as usize];
-							}
-						} else {
-							if color == Color::White {
-								piece_sum += k[square as usize];
-							} else {
-								piece_sum += kr[square as usize];
-							}
-						}
-					},
-					_ => unreachable!()
-				};
-				mysum += piece_sum;
-		    }
+	fn calculate_phase(&self) -> i32 {
+		let mut phase = Self::TOTAL_PIECE_PHASE;
 
-		    for square in enemy_pieces {
-		    	let mut piece_sum = 0;
-				match piece {
-					Piece::Pawn => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = pawn_endgame;
-						} else {
-							weight = pawn_normal;
-						}
+		let pawns = self.board.pieces(Piece::Pawn);
+		let knights = self.board.pieces(Piece::Knight);
+		let bishops = self.board.pieces(Piece::Bishop);
+		let rooks = self.board.pieces(Piece::Rook);
+		let queens = self.board.pieces(Piece::Queen);
 
-						piece_sum = weight;
+		phase -= self.get_piece_amount(pawns) * Self::PAWN_PHASE;
+		phase -= self.get_piece_amount(knights) * Self::KNIGHT_PHASE;
+		phase -= self.get_piece_amount(bishops) * Self::BISHOP_PHASE;
+		phase -= self.get_piece_amount(rooks) * Self::ROOK_PHASE;
+		phase -= self.get_piece_amount(queens) * Self::QUEEN_PHASE;
 
-						if color == Color::White {
-							piece_sum += pr[square as usize];
-						} else {
-							piece_sum += p[square as usize];
-						}
-					},
-					Piece::Knight => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = knight_endgame;
-						} else {
-							weight = knight_normal;
-						}
+		phase = (phase * 256 + (Self::TOTAL_PIECE_PHASE / 2)) / Self::TOTAL_PIECE_PHASE;
+	
+		phase
+	}
 
-						piece_sum = weight;
+	fn square_index(&self, square: Square) -> usize {
+		if self.color == Color::White {
+			square as usize
+		} else {
+			//mirrors square
+			square as usize ^ 0x38
+		}
+	}
 
-						if color == Color::White {
-							piece_sum += nr[square as usize];
-						} else {
-							piece_sum += n[square as usize];
-						}
-					},
-					Piece::Bishop => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = bishop_endgame;
-						} else {
-							weight = bishop_normal;
-						}
+	fn get_piece_amount(&self, piece_type: BitBoard) -> i32 {
+		let mut piece_amount = 0;
+		for _piece in piece_type {
+			piece_amount += 1;
+		}
+		piece_amount
+	}
+}
 
-						piece_sum = weight;
+impl Evaluator<'_> {
+	const PAWN_PHASE: i32 = 0;
+	const KNIGHT_PHASE: i32 = 1;
+	const BISHOP_PHASE: i32 = 1;
+	const ROOK_PHASE: i32 = 2;
+	const QUEEN_PHASE: i32 = 4;
+	const TOTAL_PIECE_PHASE: i32 = 24;
+}
 
-						if color == Color::White {
-							piece_sum += br[square as usize];
-						} else {
-							piece_sum += b[square as usize];
-						}
-					},
-					Piece::Rook => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = rook_endgame;
-						} else {
-							weight = rook_normal;
-						}
+pub fn evaluate(board: &Board) -> i32 {
+	let mut eval = 0;
 
-						piece_sum = weight;
+	let white_eval = Evaluator::new(board, Color::White);
+	let black_eval = Evaluator::new(board, Color::Black);
 
-						if color == Color::White {
-							piece_sum += rr[square as usize];
-						} else {
-							piece_sum += r[square as usize];
-						}
-					},
-					Piece::Queen => {
-						let mut weight = 0;
-						if self.end_game {
-							weight = queen_endgame;
-						} else {
-							weight = queen_normal;
-						}
+	eval += white_eval.eval();
+	eval -= black_eval.eval();
 
-						piece_sum = weight;
-
-						if color == Color::White {
-							piece_sum += qr[square as usize];
-						} else {
-							piece_sum += q[square as usize];
-						}
-					},
-					Piece::King => {
-						let weight = 0;
-
-						piece_sum = weight;
-
-						if self.end_game {
-							if color == Color::White {
-								piece_sum += k_er[square as usize];
-							} else {
-								piece_sum += k_e[square as usize];
-							}
-						} else {
-							if color == Color::White {
-								piece_sum += kr[square as usize];
-							} else {
-								piece_sum += k[square as usize];
-							}
-						}
-					},
-					_ => unreachable!()
-				};
-				theirsum += piece_sum;
-	    	}
-	    }
-		eval = mysum - theirsum;
-
-	    eval
+	if board.side_to_move() == Color::White {
+		eval
+	} else {
+		-eval
 	}
 }

@@ -21,9 +21,15 @@ impl See {
 
 		let mut max_depth = 0;
 		let mv_piece = board.piece_on(mv.from).unwrap();
-		let target_piece = board.piece_on(mv.to).unwrap();
 
-		self.gains[0] = self.piece_pts(target_piece);
+		self.gains[0] = if let Some(piece) = board.piece_on(mv.to) {
+			self.piece_pts(piece)
+		} else {
+			if mv_piece == Piece::King {
+				return 0;
+			}
+			0
+		};
 
 		let mut color = !board.side_to_move();
 		let mut blockers = board.occupied() & !mv.from.bitboard();

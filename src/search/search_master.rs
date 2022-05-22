@@ -17,7 +17,6 @@ pub struct Engine {
 	searching_depth: i32,
 	nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
-	evaluator: Evaluator,
 	movegen: MoveGen,
 	tt: TT
 }
@@ -31,7 +30,6 @@ impl Engine {
 			searching_depth: 0,
 			nodes: 0,
 			pv: [[None; 100]; 100],
-			evaluator: Evaluator::new(),
 			movegen: MoveGen::new(),
 			tt: TT::new()
 		}
@@ -125,9 +123,9 @@ impl Engine {
 
 					let mut score_str = if eval.mate {
 						let mut mate_score = if eval.score > 0 {
-							(eval.mate_ply - (eval.mate_ply / 2)) as i32
+							((eval.mate_ply as f32 / 2_f32)).ceil()
 						} else {
-							(eval.mate_ply - (eval.mate_ply / 2)) as i32 * -1
+							-((eval.mate_ply as f32 / 2_f32)).ceil()
 						};
 
 						format!("mate {}", mate_score)
@@ -142,35 +140,6 @@ impl Engine {
 			} else {
 				break;
 			}
-		}
-
-		//detect if endgame via tapered eval
-		//source: https://www.chessprogramming.org/Tapered_Eval
-		let pawn_phase = 0;
-		let knight_phase = 1;
-		let bishop_phase = 1;
-		let rook_phase = 2;
-		let queen_phase = 4;
-		let total_phase = pawn_phase * 16 + knight_phase * 4 + bishop_phase * 4 + rook_phase * 4 + queen_phase * 2;
-
-		let mut phase = total_phase;
-
-		let pawns = self.board.pieces(Piece::Pawn);
-		let knights = self.board.pieces(Piece::Knight);
-		let bishops = self.board.pieces(Piece::Bishop);
-		let rooks = self.board.pieces(Piece::Rook);
-		let queens = self.board.pieces(Piece::Queen);
-
-		phase -= self.get_piece_amount(pawns) * pawn_phase;
-		phase -= self.get_piece_amount(knights) * knight_phase;
-		phase -= self.get_piece_amount(bishops) * bishop_phase;
-		phase -= self.get_piece_amount(rooks) * rook_phase;
-		phase -= self.get_piece_amount(queens) * queen_phase;
-
-		phase = (phase * 256 + (total_phase / 2)) / total_phase;
-		
-		if phase > 145 {
-			self.evaluator.end_game = true;
 		}
 
 		_960_to_regular_(best_move, &self.board)
@@ -196,14 +165,6 @@ impl Engine {
 		}
 	}
 
-	fn get_piece_amount(&self, piece_type: BitBoard) -> usize {
-		let mut piece_amount = 0;
-		for _piece in piece_type {
-			piece_amount += 1;
-		}
-		piece_amount
-	}
-
 	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
@@ -225,7 +186,7 @@ impl Engine {
 			return Some((None, Eval::new(0, false, 0)));
 		}
 
-		let stand_pat = Eval::new(self.evaluator.evaluate(board), false, 0);
+		let stand_pat = Eval::new(evaluate(board), false, 0);
 
 		//beta cutoff
 		if stand_pat.score >= beta {
@@ -334,8 +295,9 @@ impl Engine {
 		// if NOT a checkmate
 		// THEN prune
 		*/
+
 		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
-			let eval = self.evaluator.evaluate(board);
+			let eval = evaluate(board);
 			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, Eval::new(eval, false, 0)));
 			}

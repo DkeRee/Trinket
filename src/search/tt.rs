@@ -1,5 +1,7 @@
 use cozy_chess::*;
 
+use crate::eval::score::*;
+
 /*
 Special thanks to MinusKelvin from OpenBench!
 https://www.chessprogramming.org/Transposition_Table
@@ -51,9 +53,9 @@ impl TT {
 
 	//adjust tricky mate scores to make valid eval
 	fn add_mate_score(&self, eval: i32, ply: i32) -> i32 {
-		if eval < -30000 {
+		if eval < -Score::CHECKMATE_BASE {
 			eval + ply
-		} else if eval > 30000 {
+		} else if eval > Score::CHECKMATE_BASE {
 			eval - ply
 		} else {
 			eval
@@ -61,9 +63,9 @@ impl TT {
 	}
 
 	fn remove_mate_score(&self, eval: i32, ply: i32) -> i32 {
-		if eval < -30000 {
+		if eval < -Score::CHECKMATE_BASE {
 			eval - ply
-		} else if eval > 30000 {
+		} else if eval > Score::CHECKMATE_BASE {
 			eval + ply
 		} else {
 			eval

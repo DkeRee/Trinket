@@ -50,33 +50,33 @@ impl TT {
 	}
 
 	//adjust tricky mate scores to make valid eval
-	fn add_mate_score(&self, eval: i32, searching_depth: i32, depth: i32) -> i32 {
+	fn add_mate_score(&self, eval: i32, ply: i32) -> i32 {
 		if eval < -30000 {
-			eval + (searching_depth - depth)
+			eval + ply
 		} else if eval > 30000 {
-			eval - (searching_depth - depth)
+			eval - ply
 		} else {
 			eval
 		}
 	}
 
-	fn remove_mate_score(&self, eval: i32, searching_depth: i32, depth: i32) -> i32 {
+	fn remove_mate_score(&self, eval: i32, ply: i32) -> i32 {
 		if eval < -30000 {
-			eval - (searching_depth - depth)
+			eval - ply
 		} else if eval > 30000 {
-			eval + (searching_depth - depth)
+			eval + ply
 		} else {
 			eval
 		}
 	}
 
-	pub fn insert(&mut self, best_move: Option<Move>, eval: i32, position: u64, searching_depth: i32, depth: i32, node_kind: NodeKind) {
-		self.table[(position % self.length) as usize] = TTSlot::new(best_move, self.remove_mate_score(eval, searching_depth, depth), position, depth, node_kind);
+	pub fn insert(&mut self, best_move: Option<Move>, eval: i32, position: u64, ply: i32, depth: i32, node_kind: NodeKind) {
+		self.table[(position % self.length) as usize] = TTSlot::new(best_move, self.remove_mate_score(eval, ply), position, depth, node_kind);
 	}
 
-	pub fn find(&self, position: u64, searching_depth: i32, depth: i32) -> TTSlot {
+	pub fn find(&self, position: u64, ply: i32) -> TTSlot {
 		let mut data = self.table[(position % self.length) as usize];
-		data.eval = self.add_mate_score(data.eval, searching_depth, depth);
+		data.eval = self.add_mate_score(data.eval, ply);
 		data
 	}
 }

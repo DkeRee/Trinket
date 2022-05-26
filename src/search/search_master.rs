@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::{Instant, Duration};
 
 use crate::eval::evaluator::*;
+use crate::eval::score::*;
 use crate::search::tt::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
@@ -123,9 +124,9 @@ impl Engine {
 
 					let mut score_str = if eval.mate {
 						let mut mate_score = if eval.score > 0 {
-							((eval.mate_ply as f32 / 2_f32)).ceil()
+							(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
 						} else {
-							-((eval.mate_ply as f32 / 2_f32)).ceil()
+							((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
 						};
 
 						format!("mate {}", mate_score)
@@ -176,21 +177,21 @@ impl Engine {
 		ply += 1;
 
 		match board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-30000 + ply, true, ply as usize))),
-			GameStatus::Drawn => return Some((None, Eval::new(0, false, 0))),
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
 			GameStatus::Ongoing => {}
 		}
 
 		//check for three move repetition
 		if self.is_repetition(board, past_positions) {
-			return Some((None, Eval::new(0, false, 0)));
+			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
-		let stand_pat = Eval::new(evaluate(board), false, 0);
+		let stand_pat = Eval::new(evaluate(board), false);
 
 		//beta cutoff
 		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false, 0)));
+			return Some((None, Eval::new(beta, false)));
 		}
 
 		if alpha < stand_pat.score {
@@ -233,7 +234,7 @@ impl Engine {
 					self.update_pv(best_move, ply as usize);
 					alpha = eval.score;
 					if alpha >= beta {
-						return Some((None, Eval::new(beta, false , 0)));
+						return Some((None, Eval::new(beta, false)));
 					}
 				}
 			}
@@ -248,34 +249,36 @@ impl Engine {
 			return None;
 		}
 
+		let ply = self.searching_depth - depth;
+
 		self.nodes += 1;
-		self.pv[(self.searching_depth - depth) as usize] = [None; 100];
+		self.pv[ply as usize] = [None; 100];
 		let mut legal_moves: Vec<SortedMove>;
 
 		match board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-30000 + (self.searching_depth - depth), true, (self.searching_depth - depth) as usize))),
-			GameStatus::Drawn => return Some((None, Eval::new(0, false, 0))),
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
 			GameStatus::Ongoing => {}
 		}
 
 		//look up tt
 		
-		let table_find = self.tt.find(board.hash(), self.searching_depth, depth);
+		let table_find = self.tt.find(board.hash(), ply);
 		if board.hash() == table_find.position {
 			//if sufficient depth and NOT pv node
 			if table_find.depth >= depth && alpha == beta - 1 {
 				match table_find.node_kind {
 					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
+						return Some((table_find.best_move, Eval::new(table_find.eval, false)));
 					},
 					NodeKind::UpperBound => {
 						if table_find.eval <= alpha {
-							return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
+							return Some((table_find.best_move, Eval::new(table_find.eval, false)));
 						}	
 					},
 					NodeKind::LowerBound => {
 						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, false, 0)));
+							return Some((table_find.best_move, Eval::new(table_find.eval, false)));
 						}
 					},
 					NodeKind::Null => {}
@@ -299,7 +302,7 @@ impl Engine {
 		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
 			let eval = evaluate(board);
 			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
-				return Some((None, Eval::new(eval, false, 0)));
+				return Some((None, Eval::new(eval, false)));
 			}
 		}
 
@@ -308,12 +311,12 @@ impl Engine {
 		}
 
 		//check for three move repetition
-		if self.is_repetition(board, past_positions) && self.searching_depth - depth > 0 {
-			return Some((None, Eval::new(0, false, 0)));
+		if self.is_repetition(board, past_positions) && ply > 0 {
+			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
 		let mut best_move = None;
-		let mut eval = Eval::new(i32::MIN, false, 0);
+		let mut eval = Eval::new(i32::MIN, false);
 		for sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -331,16 +334,16 @@ impl Engine {
 				eval = child_eval;
 				best_move = Some(mv);
 				if eval.score > alpha {
-					self.update_pv(best_move, (self.searching_depth - depth) as usize);
+					self.update_pv(best_move, ply as usize);
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), self.searching_depth, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 		}

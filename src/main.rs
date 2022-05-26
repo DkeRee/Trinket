@@ -14,10 +14,10 @@ fn main() {
 
 	loop {
 		if uci.playing {
-				let mut results = String::new();
-				io::stdin().read_line(&mut results);
+			let mut results = String::new();
+			io::stdin().read_line(&mut results);
 			
-				uci.post(&*results);
+			uci.post(&*results);
 		} else {
 			break;
 		}

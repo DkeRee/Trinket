@@ -1,12 +1,27 @@
+#[derive(Clone, Debug, PartialEq)]
+pub struct Eval {
+	pub score: i32,
+	pub mate: bool
+}
+
 pub struct Score {
-	pub mg: i32,
-	pub eg: i32
+	mg: i32,
+	eg: i32
 }
 
 macro_rules! S {
 	($x:expr, $y:expr) => {
 		Score::new($x, $y)
 	};
+}
+
+impl Eval {
+	pub fn new(score: i32, mate: bool) -> Eval {
+		Eval {
+			score: score,
+			mate: mate
+		}
+	}
 }
 
 impl Score {
@@ -23,5 +38,7 @@ impl Score {
 }
 
 impl Score {
+	pub const DRAW: i32 = 0;
+	pub const CHECKMATE_BASE: i32 = 30000;
 	const TOTAL_PHASE: i32 = 256;
 }

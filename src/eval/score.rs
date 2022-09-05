@@ -1,4 +1,5 @@
 #[derive(Clone, Debug, PartialEq)]
+
 pub struct Eval {
 	pub score: i32,
 	pub mate: bool

@@ -116,6 +116,14 @@ pub fn evaluate(board: &Board) -> i32 {
 	eval += white_eval.eval();
 	eval -= black_eval.eval();
 
+	//load in extra calculations
+	let phase = white_eval.calculate_phase();
+	if board.side_to_move() == Color::White {
+		eval += TEMPO.eval(phase);
+	} else {
+		eval -= TEMPO.eval(phase);
+	}
+
 	if board.side_to_move() == Color::White {
 		eval
 	} else {

@@ -9,12 +9,14 @@ pub enum MoveType {
 }
 
 pub struct MoveSorter {
+	history_table: [[i32; 64]; 64],
 	see: See
 }
 
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
+			history_table: [[0; 64]; 64],
 			see: See::new()
 		}
 	}
@@ -33,6 +35,8 @@ impl MoveSorter {
 				if self.is_castling(mv_info.mv, board) {
 					mv_info.importance += Self::CASTLING_SCORE;
 				}
+
+				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);
 			}
 
 			if mv_info.movetype == MoveType::Loud {
@@ -58,6 +62,14 @@ impl MoveSorter {
 		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
 	}
 
+	pub fn add_history(&mut self, mv: Move, depth: i32) {
+		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
+	}
+
+	fn get_history(&self, mv: Move) -> i32 {
+		return self.history_table[mv.from as usize][mv.to as usize];
+	}
+
 	fn is_castling(&self, mv: Move, board: &Board) -> bool {
 		if mv.from == Square::E1 && (mv.to == Square::C1 || mv.to == Square::G1) && board.piece_on(mv.from).unwrap() == Piece::King {
 			return true;
@@ -77,5 +89,6 @@ impl MoveSorter {
 	const BISHOP_PROMO: i32 = 6;
 	const KNIGHT_PROMO: i32 = 5;
 	const CASTLING_SCORE: i32 = 1;
-	const LOSING_CAPTURE: i32 = -30000;
+	const HISTORY_MOVE_OFFSET: i32 = -30000;
+	const LOSING_CAPTURE: i32 = -30001;
 }

@@ -261,12 +261,16 @@ impl Engine {
 			GameStatus::Ongoing => {}
 		}
 
+		//check for three move repetition
+		if self.is_repetition(board, past_positions) && ply > 0 {
+			return Some((None, Eval::new(Score::DRAW, false)));
+		}
+
 		//look up tt
-		
 		let table_find = self.tt.find(board.hash(), ply);
 		if board.hash() == table_find.position {
-			//if sufficient depth and NOT pv node
-			if table_find.depth >= depth && alpha == beta - 1 {
+			//if sufficient depth
+			if table_find.depth >= depth {
 				match table_find.node_kind {
 					NodeKind::Exact => {
 						return Some((table_find.best_move, Eval::new(table_find.eval, false)));
@@ -290,34 +294,55 @@ impl Engine {
 		}
 		
 
-		//reverse futility pruning
+		//Reverse Futility Pruning
 		/*
 		// if depth isn't too deep
 		// if NOT in check
-		// if NON-PV node
-		// if NOT a checkmate
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
+		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY {
 			let eval = evaluate(board);
 			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, Eval::new(eval, false)));
 			}
 		}
 
-		if depth == 0 {
-			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions);
+		//Null Move Pruning
+		/*
+		// if NOT root node
+		// if NOT in check
+		// if board has non pawn material
+		// if board can produce a beta cutoff
+		// THEN prune
+		*/
+
+		let our_pieces = board.colors(board.side_to_move());
+		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
+		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && evaluate(board) >= beta {
+			let r = if depth > 6 {
+				3
+			} else {
+				2
+			};
+
+			let nulled_board = board.clone().null_move().unwrap();
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+
+			null_score.score *= -1;
+		
+			if null_score.score >= beta {
+				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+			}
 		}
 
-		//check for three move repetition
-		if self.is_repetition(board, past_positions) && ply > 0 {
-			return Some((None, Eval::new(Score::DRAW, false)));
+		if depth <= 0 {
+			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions); //proceed with qSearch to avoid horizon effect
 		}
 
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
-		for sm in legal_moves {
+		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -338,6 +363,7 @@ impl Engine {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						sm.insert_history(&mut self.movegen.sorter, depth);
 						break;
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);

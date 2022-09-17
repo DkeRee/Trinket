@@ -83,7 +83,7 @@ impl UCIMaster {
 										println!("bestmove {}", best_move);
 									},
 									UCICmd::PositionFen(fen) => {
-										engine.board = Board::from_fen(&*fen, false).unwrap();
+										engine.board = Board::from_fen(&*fen.trim(), false).unwrap();
 
 										engine.my_past_positions = Vec::with_capacity(64);
 										engine.my_past_positions.push(engine.board.hash());

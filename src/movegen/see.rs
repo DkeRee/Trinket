@@ -66,7 +66,7 @@ impl See {
 				} & board.pieces(piece) & defenders;
 
 				if victim_square != BitBoard::EMPTY {
-					let attacker = victim_square.next().unwrap();
+					let attacker = victim_square.next_square().unwrap();
 					blockers &= !attacker.bitboard();
 					color = !color;
 					continue 'outer;

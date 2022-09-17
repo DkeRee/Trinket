@@ -11,4 +11,4 @@ opt-level = 3
 lto = "thin"
 
 [dependencies]
-cozy-chess = "0.2.1"
+cozy-chess = "0.3.0"

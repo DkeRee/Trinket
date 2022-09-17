@@ -158,10 +158,12 @@ impl Engine {
 	}
 
 	fn update_pv(&mut self, mv: Option<Move>, ply: usize) {
-		self.pv[ply][0] = mv;
-		for i in 0..self.pv[ply + 1].len() {
-			if i + 1 != self.pv[ply].len() {
-				self.pv[ply][i + 1] = self.pv[ply + 1][i];
+		if ply < 99 {
+			self.pv[ply][0] = mv;
+			for i in 0..self.pv[ply + 1].len() {
+				if i + 1 != self.pv[ply].len() {
+					self.pv[ply][i + 1] = self.pv[ply + 1][i];
+				}
 			}
 		}
 	}
@@ -173,7 +175,11 @@ impl Engine {
 		}
 
 		self.nodes += 1;
-		self.pv[ply as usize] = [None; 100];
+
+		if ply < 100 {
+			self.pv[ply as usize] = [None; 100];
+		}
+
 		ply += 1;
 
 		match board.status() {
@@ -252,7 +258,11 @@ impl Engine {
 		let ply = self.searching_depth - depth;
 
 		self.nodes += 1;
-		self.pv[ply as usize] = [None; 100];
+
+		if ply < 100 {
+			self.pv[ply as usize] = [None; 100];
+		}
+
 		let mut legal_moves: Vec<SortedMove>;
 
 		match board.status() {
@@ -271,18 +281,25 @@ impl Engine {
 		if board.hash() == table_find.position {
 			//if sufficient depth
 			if table_find.depth >= depth {
+				//check if position from TT is a mate
+				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
+					true
+				} else {
+					false
+				};
+
 				match table_find.node_kind {
 					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, false)));
+						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 					},
 					NodeKind::UpperBound => {
 						if table_find.eval <= alpha {
-							return Some((table_find.best_move, Eval::new(table_find.eval, false)));
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						}	
 					},
 					NodeKind::LowerBound => {
 						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, false)));
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						}
 					},
 					NodeKind::Null => {}

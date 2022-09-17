@@ -53,9 +53,9 @@ impl TT {
 
 	//adjust tricky mate scores to make valid eval
 	fn add_mate_score(&self, eval: i32, ply: i32) -> i32 {
-		if eval < -Score::CHECKMATE_BASE {
+		if eval < -Score::CHECKMATE_DEFINITE {
 			eval + ply
-		} else if eval > Score::CHECKMATE_BASE {
+		} else if eval > Score::CHECKMATE_DEFINITE {
 			eval - ply
 		} else {
 			eval
@@ -63,9 +63,9 @@ impl TT {
 	}
 
 	fn remove_mate_score(&self, eval: i32, ply: i32) -> i32 {
-		if eval < -Score::CHECKMATE_BASE {
+		if eval < -Score::CHECKMATE_DEFINITE {
 			eval - ply
-		} else if eval > Score::CHECKMATE_BASE {
+		} else if eval > Score::CHECKMATE_DEFINITE {
 			eval + ply
 		} else {
 			eval

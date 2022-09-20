@@ -57,7 +57,125 @@ impl Evaluator<'_> {
 			}
 		}
 
+		//load in extra calculations
+		sum += self.bishop_pair(phase);
+		sum += self.passed_pawns(phase);
+		sum += self.pawn_island(phase);
+		sum += self.isolated_pawn(phase);
+		sum += self.rook_files(phase);
+
 		sum
+	}
+
+	fn rook_files(&self, phase: i32) -> i32 {
+		let mut score = 0;
+		let our_pieces = self.board.colors(self.color);
+		let all_pawns = self.board.pieces(Piece::Pawn);
+		let our_pawns = our_pieces & all_pawns;
+		let our_rooks = our_pieces & self.board.pieces(Piece::Rook);
+
+		for rook in our_rooks {
+			let rook_file = rook.file().bitboard();
+
+			//check if there are no pawns on the line our rook is at. if so, it is on open file. if there are only enemy pawns on it, it is on a semi-opem file.
+			if (all_pawns & rook_file).is_empty() {
+				//it is on an open file
+				score += ROOK_OPEN_FILE_BONUS.eval(phase);
+			} else if (our_pawns & rook_file).is_empty() {
+				//it is on a semi open file
+				score += ROOK_SEMI_FILE_BONUS.eval(phase);
+			}
+		}
+
+		score
+	}
+
+	fn passed_pawns(&self, phase: i32) -> i32 {
+		let mut score = 0;
+		let all_pawns = self.board.pieces(Piece::Pawn);
+		let our_pawns = all_pawns & self.board.colors(self.color);
+		let enemy_pawns = all_pawns & self.board.colors(!self.color);
+		let promo_rank = Rank::Eighth.relative_to(self.color);
+
+		for pawn in our_pawns {
+			let mut pawn_goal = Square::new(pawn.file(), promo_rank);
+			let mut checking_file = get_between_rays(pawn, pawn_goal);
+			let mut block_mask = checking_file;
+
+			//use this handy dandy attack function to add files to the right and left of pawn
+			for attack_location in get_pawn_attacks(pawn, self.color) {
+				pawn_goal = Square::new(attack_location.file(), promo_rank);
+				checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
+
+				//add file to the BB block mask
+				block_mask |= checking_file | attack_location.bitboard();
+			}
+
+			//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
+			let passed = (enemy_pawns & block_mask).is_empty() && (our_pawns & get_between_rays(pawn, Square::new(pawn.file(), promo_rank))).is_empty();
+			if passed {
+				score += PASSED_PAWN_BONUS.eval(phase);
+			}
+		}
+
+		score
+	}
+
+	fn pawn_island(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+		let all_pawns = self.board.pieces(Piece::Pawn);
+		let our_pawns = all_pawns & self.board.colors(self.color);
+		let promo_rank = Rank::Eighth.relative_to(self.color);
+
+		for pawn in our_pawns {
+			let pawn_goal = Square::new(pawn.file(), promo_rank);
+			let block_mask = get_between_rays(pawn, pawn_goal);
+
+			//check if there are any of our pawns ahead of us, blocking the way
+			let is_island = !(our_pawns & block_mask).is_empty();
+			if is_island {
+				penalty += PAWN_ISLAND_PENALTY.eval(phase);
+			}
+		}
+
+		penalty
+	}
+
+	fn isolated_pawn(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+		let all_pawns = self.board.pieces(Piece::Pawn);
+		let our_pawns = all_pawns & self.board.colors(self.color);
+		let beginning_rank = Rank::First.relative_to(self.color);
+		let promo_rank = Rank::Eighth.relative_to(self.color);
+
+		for pawn in our_pawns {
+			let mut block_mask = BitBoard::EMPTY;
+
+			for attack_location in get_pawn_attacks(pawn, self.color) {
+				let pawn_start = Square::new(attack_location.file(), beginning_rank);
+				let pawn_goal = Square::new(attack_location.file(), promo_rank);
+				let checking_file = get_between_rays(pawn_start, pawn_goal); //check from the pawn's file's base
+
+				block_mask |= checking_file;
+			}
+
+			//check to see if we have any supporting pawns on neighbouring files
+			let is_isolated = (our_pawns & block_mask).is_empty();
+			if is_isolated {
+				penalty += PAWN_ISOLATION_PENALTY.eval(phase);
+			}
+		}
+
+		penalty
+	}
+
+	fn bishop_pair(&self, phase: i32) -> i32 {
+		let mut score = 0;
+		if (self.board.pieces(Piece::Bishop) & self.board.colors(self.color)).len() >= 2 {
+			score += BISHOP_PAIR_BONUS.eval(phase);
+		}
+
+		score
 	}
 
 	fn calculate_phase(&self) -> i32 {
@@ -69,11 +187,11 @@ impl Evaluator<'_> {
 		let rooks = self.board.pieces(Piece::Rook);
 		let queens = self.board.pieces(Piece::Queen);
 
-		phase -= self.get_piece_amount(pawns) * Self::PAWN_PHASE;
-		phase -= self.get_piece_amount(knights) * Self::KNIGHT_PHASE;
-		phase -= self.get_piece_amount(bishops) * Self::BISHOP_PHASE;
-		phase -= self.get_piece_amount(rooks) * Self::ROOK_PHASE;
-		phase -= self.get_piece_amount(queens) * Self::QUEEN_PHASE;
+		phase -= pawns.len() as i32 * Self::PAWN_PHASE;
+		phase -= knights.len() as i32 * Self::KNIGHT_PHASE;
+		phase -= bishops.len() as i32 * Self::BISHOP_PHASE;
+		phase -= rooks.len() as i32 * Self::ROOK_PHASE;
+		phase -= queens.len() as i32 * Self::QUEEN_PHASE;
 
 		phase = (phase * 256 + (Self::TOTAL_PIECE_PHASE / 2)) / Self::TOTAL_PIECE_PHASE;
 	
@@ -87,14 +205,6 @@ impl Evaluator<'_> {
 			//mirrors square
 			square as usize ^ 0x38
 		}
-	}
-
-	fn get_piece_amount(&self, piece_type: BitBoard) -> i32 {
-		let mut piece_amount = 0;
-		for _piece in piece_type {
-			piece_amount += 1;
-		}
-		piece_amount
 	}
 }
 

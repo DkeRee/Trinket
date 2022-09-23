@@ -7,6 +7,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 
 use crate::search::search_master::*;
+use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
 enum UCICmd {
@@ -40,8 +41,16 @@ impl UCIMaster {
 		println!("Engine runs on UCI protocol");
 		println!("http://wbec-ridderkerk.nl/html/UCIProtocol.html");
 
+		let mut continue_engine = true;
+
+		//run bench if requested for OpenBench
+		if std::env::args().nth(1).as_deref() == Some("bench") {
+			bench();
+			continue_engine = false;
+		}
+
 		UCIMaster {
-			playing: true,
+			playing: continue_engine,
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()

@@ -15,8 +15,8 @@ pub struct Engine {
 	pub board: Board,
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
-	searching_depth: i32,
-	nodes: u64,
+	pub nodes: u64,
+	pub searching_depth: i32,
 	pv: [[Option<Move>; 100]; 100],
 	movegen: MoveGen,
 	tt: TT
@@ -134,7 +134,7 @@ impl Engine {
 						format!("cp {}", eval.score)
 					};
 
-					println!("info depth {} nodes {} pv {} score {} nps {}", self.searching_depth, self.nodes, pv.trim(), score_str, nps);
+					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, pv.trim());
 				} else {
 					break;
 				}
@@ -168,6 +168,152 @@ impl Engine {
 		}
 	}
 
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+		//abort?
+		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
+			return None;
+		}
+
+		let ply = self.searching_depth - depth;
+
+		self.nodes += 1;
+
+		if ply < 100 {
+			self.pv[ply as usize] = [None; 100];
+		}
+
+		match board.status() {
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
+			GameStatus::Ongoing => {}
+		}
+
+		if depth <= 0 {
+			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions); //proceed with qSearch to avoid horizon effect
+		}
+
+		//check for three move repetition
+		if self.is_repetition(board, past_positions) && ply > 0 {
+			return Some((None, Eval::new(Score::DRAW, false)));
+		}
+
+		let mut legal_moves: Vec<SortedMove>;
+
+		//look up tt
+		let table_find = self.tt.find(board.hash(), ply);
+		if board.hash() == table_find.position {
+			//if sufficient depth
+			if table_find.depth >= depth {
+				//check if position from TT is a mate
+				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
+					true
+				} else {
+					false
+				};
+
+				match table_find.node_kind {
+					NodeKind::Exact => {
+						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+					},
+					NodeKind::UpperBound => {
+						if table_find.eval <= alpha {
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+						}	
+					},
+					NodeKind::LowerBound => {
+						if table_find.eval >= beta {
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+						}
+					},
+					NodeKind::Null => {}
+				}
+			}
+			legal_moves = self.movegen.move_gen(board, table_find.best_move);
+		} else {
+			legal_moves = self.movegen.move_gen(board, None);
+		}
+		
+		//static eval for tuning methods
+		let static_eval = evaluate(board);
+
+		//Reverse Futility Pruning
+		/*
+		// if depth isn't too deep
+		// if NOT in check
+		// THEN prune
+		*/
+
+		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY {
+			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
+				return Some((None, Eval::new(static_eval, false)));
+			}
+		}
+
+		//Null Move Pruning
+		/*
+		// if NOT root node
+		// if NOT in check
+		// if board has non pawn material
+		// if board can produce a beta cutoff
+		// THEN prune
+		*/
+
+		let our_pieces = board.colors(board.side_to_move());
+		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
+		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+			let r = if depth > 6 {
+				3
+			} else {
+				2
+			};
+
+			let nulled_board = board.clone().null_move().unwrap();
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+
+			null_score.score *= -1;
+		
+			if null_score.score >= beta {
+				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+			}
+		}
+
+		let mut best_move = None;
+		let mut eval = Eval::new(i32::MIN, false);
+		for mut sm in legal_moves {
+			let mv = sm.mv;
+			let mut board_cache = board.clone();
+			board_cache.play_unchecked(mv);
+
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+
+			past_positions.pop();
+
+			child_eval.score *= -1;
+
+			if child_eval.score > eval.score {
+				eval = child_eval;
+				best_move = Some(mv);
+				if eval.score > alpha {
+					self.update_pv(best_move, ply as usize);
+					alpha = eval.score;
+					if alpha >= beta {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						sm.insert_history(&mut self.movegen.sorter, depth);
+						break;
+					} else {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+					}
+				} else {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+				}
+			}
+		}
+
+		return Some((best_move, eval));
+	}
+
 	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
@@ -186,11 +332,6 @@ impl Engine {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
 			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
 			GameStatus::Ongoing => {}
-		}
-
-		//check for three move repetition
-		if self.is_repetition(board, past_positions) {
-			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
 		let stand_pat = Eval::new(evaluate(board), false);
@@ -242,151 +383,6 @@ impl Engine {
 					if alpha >= beta {
 						return Some((None, Eval::new(beta, false)));
 					}
-				}
-			}
-		}
-
-		return Some((best_move, eval));
-	}
-
-	fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
-		//abort?
-		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
-			return None;
-		}
-
-		let ply = self.searching_depth - depth;
-
-		self.nodes += 1;
-
-		if ply < 100 {
-			self.pv[ply as usize] = [None; 100];
-		}
-
-		let mut legal_moves: Vec<SortedMove>;
-
-		match board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
-			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
-			GameStatus::Ongoing => {}
-		}
-
-		//check for three move repetition
-		if self.is_repetition(board, past_positions) && ply > 0 {
-			return Some((None, Eval::new(Score::DRAW, false)));
-		}
-
-		//look up tt
-		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position {
-			//if sufficient depth
-			if table_find.depth >= depth {
-				//check if position from TT is a mate
-				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
-					true
-				} else {
-					false
-				};
-
-				match table_find.node_kind {
-					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-					},
-					NodeKind::UpperBound => {
-						if table_find.eval <= alpha {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}	
-					},
-					NodeKind::LowerBound => {
-						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}
-					},
-					NodeKind::Null => {}
-				}
-			}
-			legal_moves = self.movegen.move_gen(board, table_find.best_move);
-		} else {
-			legal_moves = self.movegen.move_gen(board, None);
-		}
-		
-
-		//Reverse Futility Pruning
-		/*
-		// if depth isn't too deep
-		// if NOT in check
-		// THEN prune
-		*/
-
-		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY {
-			let eval = evaluate(board);
-			if eval - (Self::MULTIPLIER_RFP * depth) >= beta {
-				return Some((None, Eval::new(eval, false)));
-			}
-		}
-
-		//Null Move Pruning
-		/*
-		// if NOT root node
-		// if NOT in check
-		// if board has non pawn material
-		// if board can produce a beta cutoff
-		// THEN prune
-		*/
-
-		let our_pieces = board.colors(board.side_to_move());
-		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && evaluate(board) >= beta {
-			let r = if depth > 6 {
-				3
-			} else {
-				2
-			};
-
-			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
-
-			null_score.score *= -1;
-		
-			if null_score.score >= beta {
-				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
-			}
-		}
-
-		if depth <= 0 {
-			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions); //proceed with qSearch to avoid horizon effect
-		}
-
-		let mut best_move = None;
-		let mut eval = Eval::new(i32::MIN, false);
-		for mut sm in legal_moves {
-			let mv = sm.mv;
-			let mut board_cache = board.clone();
-			board_cache.play_unchecked(mv);
-
-			past_positions.push(board_cache.hash());
-
-			let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
-
-			past_positions.pop();
-
-			child_eval.score *= -1;
-
-			if child_eval.score > eval.score {
-				eval = child_eval;
-				best_move = Some(mv);
-				if eval.score > alpha {
-					self.update_pv(best_move, ply as usize);
-					alpha = eval.score;
-					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-						sm.insert_history(&mut self.movegen.sorter, depth);
-						break;
-					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
-					}
-				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 		}

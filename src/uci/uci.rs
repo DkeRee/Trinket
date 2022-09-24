@@ -79,6 +79,8 @@ impl UCIMaster {
 									UCICmd::Uci => {
 										println!("id name Trinket {}", env!("CARGO_PKG_VERSION"));
 										println!("id author DkeRee");
+										println!("option name Hash type spin default 16 min 0 max 64000");
+										println!("option name Threads type spin default 1 min 1 max 1");
 										println!("uciok");
 									},
 									UCICmd::UciNewGame => {

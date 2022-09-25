@@ -8,6 +8,7 @@ use std::time::{Instant, Duration};
 use crate::eval::evaluator::*;
 use crate::eval::score::*;
 use crate::search::tt::*;
+use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
 
@@ -277,6 +278,7 @@ impl Engine {
 			}
 		}
 
+		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 		for mut sm in legal_moves {
@@ -286,14 +288,41 @@ impl Engine {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+			let mut value: Eval;
+
+			if moves_searched == 0 {
+				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+				child_eval.score *= -1;
+
+				value = child_eval;
+			} else {
+				//LMR can be applied
+				//IF depth is above sufficient depth
+				//IF the first X searched are searched
+				//IF this move is QUIET
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, -alpha - 1, -alpha, past_positions)?;
+					child_eval.score *= -1;		
+
+					value = child_eval;	
+				} else {
+					//hack to make sure it searches at full depth in the next step
+					value = Eval::new(alpha + 1, false);
+				}
+
+				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
+				if value.score > alpha {
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+					child_eval.score *= -1;		
+
+					value = child_eval;	
+				}
+			}
 
 			past_positions.pop();
 
-			child_eval.score *= -1;
-
-			if child_eval.score > eval.score {
-				eval = child_eval;
+			if value.score > eval.score {
+				eval = value;
 				best_move = Some(mv);
 				if eval.score > alpha {
 					self.update_pv(best_move, ply as usize);
@@ -309,6 +338,8 @@ impl Engine {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
+
+			moves_searched += 1;
 		}
 
 		return Some((best_move, eval));
@@ -394,4 +425,6 @@ impl Engine {
 impl Engine {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 100;
+	const LMR_DEPTH_LIMIT: i32 = 3;
+	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
 }

@@ -9,6 +9,7 @@ pub enum MoveType {
 }
 
 pub struct MoveSorter {
+	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	see: See
 }
@@ -16,12 +17,13 @@ pub struct MoveSorter {
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
+			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
 			see: See::new()
 		}
 	}
 
-	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board) {
+	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32) {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
@@ -34,6 +36,10 @@ impl MoveSorter {
 			if mv_info.movetype == MoveType::Quiet {
 				if self.is_castling(mv_info.mv, board) {
 					mv_info.importance += Self::CASTLING_SCORE;
+				}
+
+				if self.is_killer(mv_info.mv, board, ply) {
+					mv_info.importance += Self::KILLER_MOVE_SCORE;
 				}
 
 				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);
@@ -62,6 +68,23 @@ impl MoveSorter {
 		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
 	}
 
+	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {
+		if ply < 100 {
+			let color = board.side_to_move();
+			let ply_slot = &mut self.killer_table[color as usize][ply as usize];
+
+			//shift everything right in this ply slot one step
+			for i in 0..ply_slot.len() {
+				//watch for overflow
+				if i + 1 != ply_slot.len() {
+					ply_slot[i + 1] = ply_slot[i];
+				}
+			}
+
+			ply_slot[0] = Some(mv);
+		}
+	}
+
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
 
@@ -75,6 +98,23 @@ impl MoveSorter {
 				}
 			}
 		}
+	}
+
+	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
+		if ply < 100 {
+			let color = board.side_to_move();
+			let ply_slot = self.killer_table[color as usize][ply as usize];
+
+			for i in 0..ply_slot.len() {
+				if !ply_slot[i].is_none() {
+					if ply_slot[i].unwrap() == mv {
+						return true;
+					}
+				}
+			}
+		}
+
+		return false;
 	}
 
 	fn get_history(&self, mv: Move) -> i32 {
@@ -99,6 +139,7 @@ impl MoveSorter {
 	const ROOK_PROMO: i32 = 7;
 	const BISHOP_PROMO: i32 = 6;
 	const KNIGHT_PROMO: i32 = 5;
+    const KILLER_MOVE_SCORE: i32 = 2;
 	const CASTLING_SCORE: i32 = 1;
 	const HISTORY_MOVE_OFFSET: i32 = -30000;
 	const LOSING_CAPTURE: i32 = -30001;

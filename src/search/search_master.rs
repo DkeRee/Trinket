@@ -229,9 +229,9 @@ impl Engine {
 					NodeKind::Null => {}
 				}
 			}
-			legal_moves = self.movegen.move_gen(board, table_find.best_move);
+			legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
 		} else {
-			legal_moves = self.movegen.move_gen(board, None);
+			legal_moves = self.movegen.move_gen(board, None, ply);
 		}
 		
 		//static eval for tuning methods
@@ -329,6 +329,7 @@ impl Engine {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						break;
 					} else {
@@ -376,7 +377,7 @@ impl Engine {
 			alpha = stand_pat.score;
 		}
 
-		let move_list = self.movegen.qmove_gen(board);
+		let move_list = self.movegen.qmove_gen(board, ply);
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {

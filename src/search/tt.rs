@@ -3,7 +3,7 @@ use cozy_chess::*;
 use crate::eval::score::*;
 
 /*
-Special thanks to MinusKelvin from OpenBench!
+Special thanks to MinusKelvin!
 https://www.chessprogramming.org/Transposition_Table
 */
 

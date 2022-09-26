@@ -69,18 +69,11 @@ impl MoveSorter {
 	}
 
 	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {
-		if ply < 100 {
+		if ply < 100 && !self.is_killer(mv, board, ply) {
 			let color = board.side_to_move();
 			let ply_slot = &mut self.killer_table[color as usize][ply as usize];
 
-			//shift everything right in this ply slot one step
-			for i in 0..ply_slot.len() {
-				//watch for overflow
-				if i + 1 != ply_slot.len() {
-					ply_slot[i + 1] = ply_slot[i];
-				}
-			}
-
+			ply_slot.rotate_right(1);
 			ply_slot[0] = Some(mv);
 		}
 	}
@@ -134,13 +127,13 @@ impl MoveSorter {
 
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 25000;
-	const WINNING_CAPTURE: i32 = 10;
-	const QUEEN_PROMO: i32 = 8;
-	const ROOK_PROMO: i32 = 7;
-	const BISHOP_PROMO: i32 = 6;
-	const KNIGHT_PROMO: i32 = 5;
-    const KILLER_MOVE_SCORE: i32 = 2;
-	const CASTLING_SCORE: i32 = 1;
+	const WINNING_CAPTURE: i32 = 10000;
+	const QUEEN_PROMO: i32 = 8000;
+    const KILLER_MOVE_SCORE: i32 = 2000;
+	const CASTLING_SCORE: i32 = 1000;
+   	const KNIGHT_PROMO: i32 = -5000;
+	const BISHOP_PROMO: i32 = -6000;
+	const ROOK_PROMO: i32 = -7000;
 	const HISTORY_MOVE_OFFSET: i32 = -30000;
 	const LOSING_CAPTURE: i32 = -30001;
 }

@@ -17,6 +17,12 @@ impl SortedMove {
 		}
 	}
 
+	pub fn insert_killer(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
+		if self.movetype == MoveType::Quiet {
+			move_sorter.add_killer(self.mv, ply, board);
+		}
+	}
+
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.add_history(self.mv, depth);
@@ -35,7 +41,7 @@ impl MoveGen {
 		}
 	}
 
-	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>) -> Vec<SortedMove> {
+	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, ply: i32) -> Vec<SortedMove> {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
@@ -60,12 +66,12 @@ impl MoveGen {
 			false
 		});
 
-		self.sorter.sort(&mut move_list, tt_move, board);
+		self.sorter.sort(&mut move_list, tt_move, board, ply);
 
 		move_list
 	}
 
-	pub fn qmove_gen(&mut self, board: &Board) -> Vec<SortedMove> {
+	pub fn qmove_gen(&mut self, board: &Board, ply: i32) -> Vec<SortedMove> {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
@@ -78,7 +84,7 @@ impl MoveGen {
 			false
 		});
 
-		self.sorter.sort(&mut move_list, None, board);
+		self.sorter.sort(&mut move_list, None, board, ply);
 
 		move_list
 	}

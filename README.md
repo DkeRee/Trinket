@@ -47,6 +47,7 @@ I aspire to get Trinket to 3000 elo one day, but only time will tell for that ;)
 ## Shoutouts
 - MinusKelvin for being MinusEleven, I mean Seven Eleven? What
 - Analog Hors. Pony.
+- 101DonutMan
 - Pali
 - Andrew (GM Andy?)
 - KingKP

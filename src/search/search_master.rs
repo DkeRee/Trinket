@@ -200,9 +200,9 @@ impl Engine {
 
 		let mut legal_moves: Vec<SortedMove>;
 
-		//look up tt if NOT PV node
+		//look up tt && NON PV
 		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position && alpha != beta - 1 {
+		if board.hash() == table_find.position && alpha == beta - 1 {
 			//if sufficient depth
 			if table_find.depth >= depth {
 				//check if position from TT is a mate
@@ -241,11 +241,11 @@ impl Engine {
 		/*
 		// if depth isn't too deep
 		// if NOT in check
-		// if NOT PV node
+		// if NON-PV
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha != beta - 1 {
+		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY && alpha == beta - 1 {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -257,13 +257,13 @@ impl Engine {
 		// if NOT in check
 		// if board has non pawn material
 		// if board can produce a beta cutoff
-		// if NOT PV node
+		// if NON-PV
 		// THEN prune
 		*/
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && alpha != beta - 1 {
+		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && alpha == beta - 1 {
 			let r = if depth > 6 {
 				3
 			} else {

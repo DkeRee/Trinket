@@ -312,10 +312,18 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
+
+					//if pv node
+					if value.score > alpha && value.score < beta {
+						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+						child_eval.score *= -1;		
+
+						value = child_eval;						
+					}
 				}
 			}
 

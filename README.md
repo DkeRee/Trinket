@@ -9,8 +9,10 @@ I aspire to get Trinket to 3000 elo one day, but only time will tell for that ;)
 
 ### Search
 - PV Search w/ Negamax
-- Tranposition Table
+- Transposition Table
 - Quiescence Search
+- Extensions
+  - Check Extension
 - Reductions
   - LMR (Late Move Reduction)
 - Pruning

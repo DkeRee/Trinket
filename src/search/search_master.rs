@@ -18,7 +18,6 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
 	pub searching_depth: i32,
-	pv: [[Option<Move>; 100]; 100],
 	movegen: MoveGen,
 	tt: TT
 }
@@ -31,7 +30,6 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			searching_depth: 0,
 			nodes: 0,
-			pv: [[None; 100]; 100],
 			movegen: MoveGen::new(),
 			tt: TT::new()
 		}
@@ -67,9 +65,6 @@ impl Engine {
 
 				let board = &mut self.board.clone();
 
-				//set up pv table
-				self.pv = [[None; 100]; 100];
-
 				//set up multithread for search abort
 				let search_abort = Arc::new(AtomicBool::new(false));
 				let counter_abort = search_abort.clone();
@@ -96,7 +91,8 @@ impl Engine {
 						nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
 					}
 
-					//get pv
+					//get pv/
+					/*
 					let mut pv = String::new();
 					let pv_board = &mut self.board.clone();
 
@@ -122,6 +118,7 @@ impl Engine {
 							pv_board.play(uci_mv.parse().unwrap());
 						}
 					}
+					*/
 
 					let mut score_str = if eval.mate {
 						let mut mate_score = if eval.score > 0 {
@@ -135,7 +132,7 @@ impl Engine {
 						format!("cp {}", eval.score)
 					};
 
-					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, pv.trim());
+					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth));
 				} else {
 					break;
 				}
@@ -145,6 +142,28 @@ impl Engine {
 		}
 
 		_960_to_regular_(best_move, &self.board)
+	}
+
+	//fish PV from TT
+	fn get_pv(&self, board: &mut Board, depth: i32) -> String {
+		if depth == 0 {
+			return String::new();
+		}
+
+		//probe TT
+		let table_find = self.tt.find(board.hash(), self.searching_depth - depth);
+		if board.hash() == table_find.position {
+			let mut pv = String::new();
+
+			if board.is_legal(table_find.best_move.unwrap()) {
+				board.play_unchecked(table_find.best_move.unwrap());
+				pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1));
+			}
+
+			return pv;
+		}
+
+		String::new()
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
@@ -158,30 +177,23 @@ impl Engine {
 		return false;
 	}
 
-	fn update_pv(&mut self, mv: Option<Move>, ply: usize) {
-		if ply < 99 {
-			self.pv[ply][0] = mv;
-			for i in 0..self.pv[ply + 1].len() {
-				if i + 1 != self.pv[ply].len() {
-					self.pv[ply][i + 1] = self.pv[ply + 1][i];
-				}
-			}
-		}
-	}
-
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
 		}
 
+		let in_check = !board.checkers().is_empty();
+
+		//search a little deeper if we are in check!
+		if in_check {
+			// https://www.chessprogramming.org/Check_Extensions
+			depth += 1;
+		}
+
 		let ply = self.searching_depth - depth;
 
 		self.nodes += 1;
-
-		if ply < 100 {
-			self.pv[ply as usize] = [None; 100];
-		}
 
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
@@ -244,7 +256,7 @@ impl Engine {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && board.checkers() == BitBoard::EMPTY {
+		if depth <= Self::MAX_DEPTH_RFP && !in_check {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -261,7 +273,7 @@ impl Engine {
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && board.checkers() == BitBoard::EMPTY && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
 			let r = if depth > 6 {
 				3
 			} else {
@@ -325,7 +337,6 @@ impl Engine {
 				eval = value;
 				best_move = Some(mv);
 				if eval.score > alpha {
-					self.update_pv(best_move, ply as usize);
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
@@ -353,10 +364,6 @@ impl Engine {
 		}
 
 		self.nodes += 1;
-
-		if ply < 100 {
-			self.pv[ply as usize] = [None; 100];
-		}
 
 		ply += 1;
 
@@ -410,7 +417,6 @@ impl Engine {
 				eval = child_eval;
 				best_move = Some(mv);
 				if eval.score > alpha {
-					self.update_pv(best_move, ply as usize);
 					alpha = eval.score;
 					if alpha >= beta {
 						return Some((None, Eval::new(beta, false)));

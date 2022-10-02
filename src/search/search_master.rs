@@ -157,24 +157,9 @@ impl Engine {
 		self.nodes += 1;
 
 		//MATE DISTANCE PRUNING
-		//make sure that first few branches containing nodes with infinities as placeholders for alpha and beta do not interfere
-		if alpha > -i32::MAX && beta < i32::MAX {
-			let mating_value = Score::CHECKMATE_BASE - ply;
-			if mating_value < beta {
-				//we are in a winning position
-				beta = mating_value;
-				if alpha >= mating_value {
-					//we found a winning mate already, safe to prune
-					return Some((None, Eval::new(mating_value, true)));
-				}
-			} else if -mating_value > alpha {
-				//we are in a losing position
-				alpha = mating_value;
-				if beta <= mating_value {
-					//we are already getting mated in a shorter pv, prune
-					return Some((None, Eval::new(-mating_value, true)));
-				}
-			}
+		//make sure that alpha is not defaulted to negative infinity
+		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
+			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
 		let in_check = !board.checkers().is_empty();

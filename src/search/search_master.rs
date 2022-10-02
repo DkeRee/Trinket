@@ -75,7 +75,7 @@ impl Engine {
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, -i32::MAX, i32::MAX, &mut past_positions);
+				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -91,35 +91,6 @@ impl Engine {
 						nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
 					}
 
-					//get pv/
-					/*
-					let mut pv = String::new();
-					let pv_board = &mut self.board.clone();
-
-					for i in 0..self.pv[0].len() {
-						if self.pv[0][i] != None {
-							let pv_parsed = _960_to_regular_(self.pv[0][i], pv_board);
-
-							pv += &(pv_parsed.clone() + " ");
-
-							let mut uci_mv = String::new();
-							let pv_mv = self.pv[0][i].unwrap();
-
-							let from = pv_mv.from.to_string();
-							let to = pv_mv.to.to_string();
-
-							uci_mv += &from;
-							uci_mv += &to;
-
-							if pv_mv.promotion != None {
-								uci_mv += &pv_mv.promotion.unwrap().to_string();
-							}
-
-							pv_board.play(uci_mv.parse().unwrap());
-						}
-					}
-					*/
-
 					let mut score_str = if eval.mate {
 						let mut mate_score = if eval.score > 0 {
 							(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
@@ -132,7 +103,7 @@ impl Engine {
 						format!("cp {}", eval.score)
 					};
 
-					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth));
+					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 				} else {
 					break;
 				}
@@ -145,19 +116,19 @@ impl Engine {
 	}
 
 	//fish PV from TT
-	fn get_pv(&self, board: &mut Board, depth: i32) -> String {
+	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
 		if depth == 0 {
 			return String::new();
 		}
 
 		//probe TT
-		let table_find = self.tt.find(board.hash(), self.searching_depth - depth);
+		let table_find = self.tt.find(board.hash(), ply);
 		if board.hash() == table_find.position {
 			let mut pv = String::new();
 
 			if board.is_legal(table_find.best_move.unwrap()) {
 				board.play_unchecked(table_find.best_move.unwrap());
-				pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1));
+				pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
 			}
 
 			return pv;
@@ -177,7 +148,7 @@ impl Engine {
 		return false;
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
@@ -191,8 +162,6 @@ impl Engine {
 			depth += 1;
 		}
 
-		let ply = self.searching_depth - depth;
-
 		self.nodes += 1;
 
 		match board.status() {
@@ -202,7 +171,7 @@ impl Engine {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, &stop_abort, board, alpha, beta, self.searching_depth, past_positions); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(&abort, &stop_abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -281,7 +250,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -303,7 +272,7 @@ impl Engine {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -313,7 +282,7 @@ impl Engine {
 				//IF the first X searched are searched
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, -alpha - 1, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -324,7 +293,7 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -364,8 +333,6 @@ impl Engine {
 		}
 
 		self.nodes += 1;
-
-		ply += 1;
 
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
@@ -407,7 +374,7 @@ impl Engine {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.qsearch(&abort, &stop_abort, &board_cache, -beta, -alpha, ply, past_positions)?;
+			let (_, mut child_eval) = self.qsearch(&abort, &stop_abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
 
 			past_positions.pop();
 

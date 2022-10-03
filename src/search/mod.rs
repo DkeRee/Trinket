@@ -1,2 +1,3 @@
-pub mod search_master;
-pub mod tt;
+pub mod uci;
+pub mod bench;
+pub mod castle_parse;

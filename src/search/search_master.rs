@@ -15,8 +15,8 @@ pub struct Engine {
 	pub board: Board,
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
-	searching_depth: i32,
-	nodes: u64,
+	pub searching_depth: i32,
+	pub nodes: u64,
 	pv: [[Option<Move>; 100]; 100],
 	movegen: MoveGen,
 	tt: TT
@@ -243,7 +243,7 @@ impl Engine {
 		return Some((best_move, eval));
 	}
 
-	fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, depth: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;

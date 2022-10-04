@@ -148,10 +148,18 @@ impl Engine {
 		return false;
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
+		}
+
+		self.nodes += 1;
+
+		//MATE DISTANCE PRUNING
+		//make sure that alpha is not defaulted to negative infinity
+		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
+			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
 		let in_check = !board.checkers().is_empty();
@@ -161,8 +169,6 @@ impl Engine {
 			// https://www.chessprogramming.org/Check_Extensions
 			depth += 1;
 		}
-
-		self.nodes += 1;
 
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),

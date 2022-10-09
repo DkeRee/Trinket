@@ -374,15 +374,15 @@ impl Engine {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
-						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_history(&mut self.movegen.sorter, specific_extension);
 						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::Exact);
 					}
 				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::UpperBound);
 				}
 			}
 

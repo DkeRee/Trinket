@@ -220,6 +220,56 @@ impl Engine {
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply);
 		}
+
+		//DO SINGULAR CHECK
+		/*
+			We will do a null window search around the hash move eval
+			We will not check for the hash move
+			If no moves fail high then we know that the hash move is "singular" and can be searched more in depth
+
+		*/
+		let mut do_singular = true;
+		if !table_find.best_move.is_none() {
+			//if table find is PV or LowerBound it has a chance of being MUCH better...
+			//if NOT root node
+			//if depth is sufficient
+			//if depth of table find is sufficient
+			if (table_find.node_kind == NodeKind::Exact || table_find.node_kind == NodeKind::LowerBound) && ply > 0 && depth > Self::SINGULAR_EXTENSION_DEPTH_MIN && table_find.depth >= depth - 3 {
+				let window = table_find.eval - Self::SINGULAR_EXTENSION_MULTIPLIER * depth;
+				let singular_depth = depth / 2;
+
+				for sm in &legal_moves {
+					let mv = sm.mv;
+
+					if mv != table_find.best_move.unwrap() {
+						let mut board_cache = board.clone();
+						board_cache.play_unchecked(mv);
+
+						past_positions.push(board_cache.hash());
+
+						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, window - 1, window, past_positions)?;
+						child_eval.score *= -1;
+
+						past_positions.pop();
+
+						if child_eval.score > window {
+							do_singular = false;
+							break;
+						}
+
+						//MULTI-CUT Pruning
+						//if this singular searched failed high, we can FAIL-SOFT
+						if child_eval.score >= beta {
+							return Some((None, Eval::new(child_eval.score, false)));
+						}
+					}
+				}
+			} else {
+				do_singular = false;
+			}
+		} else {
+			do_singular = false;
+		}
 		
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
@@ -277,29 +327,17 @@ impl Engine {
 
 			let mut value: Eval;
 
-			//SINGULAR EXTENSION
-			//if NOT root node
-			//if depth is GREATER than depth min cap
-			//move is hash move
-			//hash move is NOT checkmating
-			//if this hash move is a lower bound
-			//if this hash move is of sufficient depth
-			if !table_find.best_move.is_none() {
-				if ply > 0 && depth > Self::SINGULAR_EXTENSION_DEPTH_MIN && mv == table_find.best_move.unwrap() && (table_find.eval > -Score::CHECKMATE_DEFINITE && table_find.eval < Score::CHECKMATE_DEFINITE) && table_find.node_kind == NodeKind::LowerBound && table_find.depth >= depth - 3 {
-					let singular_beta = table_find.eval - 3 * depth;
-					let singular_depth = (depth - 1) / 2;
+			let mut specific_extension = depth;
 
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, singular_beta, singular_beta - 1, past_positions)?;
-					child_eval.score *= -1;			
-
-					if child_eval.score < singular_beta {
-						depth += 1;
-					}
+			//DO SINGULAR EXTENSION
+			if do_singular {
+				if mv == table_find.best_move.unwrap() {
+					specific_extension += 1;
 				}
 			}
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 1, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -309,7 +347,7 @@ impl Engine {
 				//IF the first X searched are searched
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -320,7 +358,7 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -429,4 +467,5 @@ impl Engine {
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
 	const SINGULAR_EXTENSION_DEPTH_MIN: i32 = 4;
+	const SINGULAR_EXTENSION_MULTIPLIER: i32 = 3;
 }

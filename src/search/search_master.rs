@@ -247,7 +247,7 @@ impl Engine {
 
 						past_positions.push(board_cache.hash());
 
-						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, window - 1, window, past_positions)?;
+						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, -window - 1, -window, past_positions)?;
 						child_eval.score *= -1;
 
 						past_positions.pop();
@@ -256,12 +256,13 @@ impl Engine {
 							do_singular = false;
 							break;
 						}
-
+/*
 						//MULTI-CUT Pruning
 						//if this singular searched failed high, we can FAIL-SOFT
-						if child_eval.score >= beta {
-							return Some((None, Eval::new(child_eval.score, false)));
+						if window >= beta {
+							return Some((None, Eval::new(window, false)));
 						}
+*/
 					}
 				}
 			} else {

@@ -236,7 +236,7 @@ impl Engine {
 			//if depth of table find is sufficient
 			if (table_find.node_kind == NodeKind::Exact || table_find.node_kind == NodeKind::LowerBound) && ply > 0 && depth > Self::SINGULAR_EXTENSION_DEPTH_MIN && table_find.depth >= depth - 3 {
 				let window = table_find.eval - Self::SINGULAR_EXTENSION_MULTIPLIER * depth;
-				let singular_depth = depth / 2;
+				let singular_depth = (depth - 1) / 2;
 
 				for sm in &legal_moves {
 					let mv = sm.mv;
@@ -272,7 +272,7 @@ impl Engine {
 			do_singular = false;
 		}
 		
-		//static eval for tuning methods
+		//static eval
 		let static_eval = evaluate(board);
 
 		//Reverse Futility Pruning
@@ -347,7 +347,7 @@ impl Engine {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				//IF this move is QUIET
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
+				if specific_extension >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
 					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 

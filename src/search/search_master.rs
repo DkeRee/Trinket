@@ -256,7 +256,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a search with null window
 
 			null_score.score *= -1;
 		
@@ -276,6 +276,27 @@ impl Engine {
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
+
+			//SINGULAR EXTENSION
+			//if NOT root node
+			//if depth is GREATER than depth min cap
+			//move is hash move
+			//hash move is NOT checkmating
+			//if this hash move is a lower bound
+			//if this hash move is of sufficient depth
+			if !table_find.best_move.is_none() {
+				if ply > 0 && depth > Self::SINGULAR_EXTENSION_DEPTH_MIN && mv == table_find.best_move.unwrap() && (table_find.eval > -Score::CHECKMATE_DEFINITE && table_find.eval < Score::CHECKMATE_DEFINITE) && table_find.node_kind == NodeKind::LowerBound && table_find.depth >= depth - 3 {
+					let singular_beta = table_find.eval - 3 * depth;
+					let singular_depth = (depth - 1) / 2;
+
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, singular_beta, singular_beta - 1, past_positions)?;
+					child_eval.score *= -1;			
+
+					if child_eval.score < singular_beta {
+						depth += 1;
+					}
+				}
+			}
 
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
@@ -407,4 +428,5 @@ impl Engine {
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
+	const SINGULAR_EXTENSION_DEPTH_MIN: i32 = 4;
 }

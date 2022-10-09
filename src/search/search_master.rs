@@ -18,6 +18,7 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
 	pub searching_depth: i32,
+	pv_counter: u64,
 	movegen: MoveGen,
 	tt: TT
 }
@@ -30,6 +31,7 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			searching_depth: 0,
 			nodes: 0,
+			pv_counter: 0,
 			movegen: MoveGen::new(),
 			tt: TT::new()
 		}
@@ -62,6 +64,7 @@ impl Engine {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, movestogo as f32)) {
 				self.searching_depth = depth_index + 1;
+				self.pv_counter = 0;
 
 				let board = &mut self.board.clone();
 
@@ -75,7 +78,7 @@ impl Engine {
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions);
+				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions, false);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -148,7 +151,7 @@ impl Engine {
 		return false;
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, is_parent_absolute_pv: bool) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
@@ -164,7 +167,7 @@ impl Engine {
 
 		let in_check = !board.checkers().is_empty();
 
-		//search a little deeper if we are in check!
+		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
 			depth += 1;
@@ -221,59 +224,24 @@ impl Engine {
 			legal_moves = self.movegen.move_gen(board, None, ply);
 		}
 
-		//DO SINGULAR CHECK
-		/*
-			We will do a null window search around the hash move eval
-			We will not check for the hash move
-			If no moves fail high then we know that the hash move is "singular" and can be searched more in depth
-
-		*/
-		let mut do_singular = true;
-		if !table_find.best_move.is_none() {
-			//if table find is PV or LowerBound it has a chance of being MUCH better...
-			//if NOT root node
-			//if depth is sufficient
-			//if depth of table find is sufficient
-			if (table_find.node_kind == NodeKind::Exact || table_find.node_kind == NodeKind::LowerBound) && ply > 0 && depth > Self::SINGULAR_EXTENSION_DEPTH_MIN && table_find.depth >= depth - 3 {
-				let window = table_find.eval - Self::SINGULAR_EXTENSION_MULTIPLIER * depth;
-				let singular_depth = (depth - 1) / 2;
-
-				for sm in &legal_moves {
-					let mv = sm.mv;
-
-					if mv != table_find.best_move.unwrap() {
-						let mut board_cache = board.clone();
-						board_cache.play_unchecked(mv);
-
-						past_positions.push(board_cache.hash());
-
-						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, singular_depth, ply + 1, -window - 1, -window, past_positions)?;
-						child_eval.score *= -1;
-
-						past_positions.pop();
-
-						if child_eval.score > window {
-							do_singular = false;
-							break;
-						}
-/*
-						//MULTI-CUT Pruning
-						//if this singular searched failed high, we can FAIL-SOFT
-						if window >= beta {
-							return Some((None, Eval::new(window, false)));
-						}
-*/
-					}
-				}
-			} else {
-				do_singular = false;
-			}
-		} else {
-			do_singular = false;
-		}
-		
-		//static eval
+		//static eval for tuning methods
 		let static_eval = evaluate(board);
+
+		let is_tt_pv = if !table_find.best_move.is_none() {
+			table_find.node_kind == NodeKind::Exact
+		} else {
+			false
+		};
+		let is_absolute_pv = alpha < static_eval && static_eval < beta && is_tt_pv;
+
+		//PV EXTENSION
+		if is_parent_absolute_pv && is_absolute_pv {
+			self.pv_counter += 1;
+
+			if self.pv_counter % 4 == 0 {
+				depth += 1;
+			}
+		}
 
 		//Reverse Futility Pruning
 		/*
@@ -307,7 +275,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a search with null window
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions, is_absolute_pv)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -328,17 +296,8 @@ impl Engine {
 
 			let mut value: Eval;
 
-			let mut specific_extension = depth;
-
-			//DO SINGULAR EXTENSION
-			if do_singular {
-				if mv == table_find.best_move.unwrap() {
-					specific_extension += 1;
-				}
-			}
-
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, is_absolute_pv)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -347,8 +306,8 @@ impl Engine {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				//IF this move is QUIET
-				if specific_extension >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions, is_absolute_pv)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -359,7 +318,7 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, specific_extension - 1, ply + 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, is_absolute_pv)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -374,15 +333,15 @@ impl Engine {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
-						sm.insert_history(&mut self.movegen.sorter, specific_extension);
+						sm.insert_history(&mut self.movegen.sorter, depth);
 						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, specific_extension, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
@@ -467,6 +426,4 @@ impl Engine {
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
-	const SINGULAR_EXTENSION_DEPTH_MIN: i32 = 4;
-	const SINGULAR_EXTENSION_MULTIPLIER: i32 = 3;
 }

@@ -58,7 +58,13 @@ impl Engine {
 			}
 		}
 
-		for depth_index in 0..self.max_depth {
+		//ASPIRATION WINDOWS ALPHA BETA
+		let mut alpha = -i32::MAX;
+		let mut beta = i32::MAX;
+
+		let mut depth_index = 0;
+
+		while depth_index < self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, movestogo as f32)) {
 				self.searching_depth = depth_index + 1;
@@ -75,11 +81,25 @@ impl Engine {
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions);
+				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
 					best_move = best_mv.clone();
+
+					//MANAGE ASPIRATION WINDOWS
+					if eval.score <= alpha || eval.score >= beta {
+						//eval has fallen out of bound
+						alpha = -i32::MAX;
+						beta = i32::MAX;
+
+						//repeat search
+						continue;
+					} else {
+						alpha = eval.score - Self::ASPIRATION_WINDOW;
+						beta = eval.score + Self::ASPIRATION_WINDOW;
+						depth_index += 1;
+					}
 
 					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
@@ -411,6 +431,7 @@ impl Engine {
 }
 
 impl Engine {
+	const ASPIRATION_WINDOW: i32 = 25;
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;

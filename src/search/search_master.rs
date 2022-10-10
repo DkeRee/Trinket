@@ -164,7 +164,7 @@ impl Engine {
 
 		let in_check = !board.checkers().is_empty();
 
-		//search a little deeper if we are in check!
+		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
 			depth += 1;
@@ -220,9 +220,23 @@ impl Engine {
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply);
 		}
-		
+
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
+
+		let is_tt_pv = if !table_find.best_move.is_none() {
+			table_find.node_kind == NodeKind::Exact
+		} else {
+			false
+		};
+		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
+
+		//PV EXTENSION
+		if ply > 0 && is_absolute_pv {
+			if ply % 4 == 0 {
+				depth += 1;
+			}
+		}
 
 		//Reverse Futility Pruning
 		/*

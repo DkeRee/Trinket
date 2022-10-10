@@ -1,4 +1,4 @@
-|![](logo.png?raw=true "Trinket")|
+![](logo.png?raw=true "Trinket")
 
 # Trinket
 Named after a hilarious spongebob meme, Trinket, a UCI Negamax engine, is here to clap and be clapped.
@@ -13,6 +13,7 @@ I aspire to get Trinket to 3000 elo one day, but only time will tell for that ;)
 - Quiescence Search
 - Extensions
   - Check Extension
+  - PV Extension
 - Reductions
   - LMR (Late Move Reduction)
 - Pruning

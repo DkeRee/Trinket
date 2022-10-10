@@ -232,7 +232,8 @@ impl Engine {
 		} else {
 			false
 		};
-		let is_absolute_pv = alpha < static_eval && static_eval < beta && is_tt_pv;
+
+		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
 
 		//PV EXTENSION
 		if is_parent_absolute_pv && is_absolute_pv {

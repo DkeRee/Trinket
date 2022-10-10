@@ -232,10 +232,8 @@ impl Engine {
 		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
 
 		//PV EXTENSION
-		if ply > 0 && is_absolute_pv {
-			if ply % 4 == 0 {
-				depth += 1;
-			}
+		if is_absolute_pv && (ply + 1) % 4 == 0 {
+			depth += 1;
 		}
 
 		//Reverse Futility Pruning

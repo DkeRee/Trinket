@@ -122,16 +122,18 @@ impl Engine {
 		}
 
 		//probe TT
-		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position {
-			let mut pv = String::new();
+		match self.tt.find(board, ply) {
+			Some(table_find) => {
+				let mut pv = String::new();
 
-			if board.is_legal(table_find.best_move.unwrap()) {
-				board.play_unchecked(table_find.best_move.unwrap());
-				pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
-			}
+				if board.is_legal(table_find.best_move.unwrap()) {
+					board.play_unchecked(table_find.best_move.unwrap());
+					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+				}
 
-			return pv;
+				return pv;
+			},
+			None => {}
 		}
 
 		String::new()
@@ -187,54 +189,59 @@ impl Engine {
 
 		let mut legal_moves: Vec<SortedMove>;
 
-		//look up tt
-		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position {
-			//if sufficient depth
-			if table_find.depth >= depth {
-				//check if position from TT is a mate
-				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
-					true
-				} else {
-					false
-				};
+		//probe tt
+		let table_find = match self.tt.find(board, ply) {
+			Some(table_find) => {
+				//if sufficient depth
+				if table_find.depth >= depth {
+					//check if position from TT is a mate
+					let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
+						true
+					} else {
+						false
+					};
 
-				match table_find.node_kind {
-					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-					},
-					NodeKind::UpperBound => {
-						if table_find.eval <= alpha {
+					match table_find.node_kind {
+						NodeKind::Exact => {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}	
-					},
-					NodeKind::LowerBound => {
-						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}
-					},
-					NodeKind::Null => {}
+						},
+						NodeKind::UpperBound => {
+							if table_find.eval <= alpha {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}	
+						},
+						NodeKind::LowerBound => {
+							if table_find.eval >= beta {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}
+						},
+						NodeKind::Null => {}
+					}
 				}
+				legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
+
+				Some(table_find)
+			},
+			None => {
+				legal_moves = self.movegen.move_gen(board, None, ply);
+
+				None
 			}
-			legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
-		} else {
-			legal_moves = self.movegen.move_gen(board, None, ply);
+		};
+
+		//PV EXTENSION
+		let is_tt_pv = match table_find {
+			Some(table_find) => table_find.node_kind == NodeKind::Exact,
+			None => false
+		};
+		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
+		
+		if is_absolute_pv && (ply + 1) % 4 == 0 {
+			depth += 1;
 		}
 
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
-
-		let is_tt_pv = if !table_find.best_move.is_none() {
-			table_find.node_kind == NodeKind::Exact
-		} else {
-			false
-		};
-		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
-
-		//PV EXTENSION
-		if is_absolute_pv && (ply + 1) % 4 == 0 {
-			depth += 1;
-		}
 
 		//Reverse Futility Pruning
 		/*

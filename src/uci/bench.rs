@@ -51,7 +51,7 @@ pub fn bench() {
 
         let now = Instant::now();
 
-        engine.board =  Board::from_fen(POSITIONS[i], false).unwrap();
+        engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
         let _ = engine.go(DEPTH, i64::MAX, i64::MAX, 0, 0, i64::MAX, placeholder_abort.clone());
 
         total_nodes += engine.nodes;

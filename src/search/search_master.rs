@@ -78,7 +78,7 @@ impl Engine {
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions, false);
+				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, -i32::MAX, i32::MAX, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -151,7 +151,7 @@ impl Engine {
 		return false;
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, is_parent_absolute_pv: bool) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
 			return None;
@@ -232,11 +232,10 @@ impl Engine {
 		} else {
 			false
 		};
-
 		let is_absolute_pv = beta > alpha + 1 && is_tt_pv;
 
 		//PV EXTENSION
-		if is_parent_absolute_pv && is_absolute_pv {
+		if ply > 0 && is_absolute_pv {
 			self.pv_counter += 1;
 
 			if self.pv_counter % 4 == 0 {
@@ -276,7 +275,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions, is_absolute_pv)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -298,7 +297,7 @@ impl Engine {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, is_absolute_pv)?;
+				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -308,7 +307,7 @@ impl Engine {
 				//IF the first X searched are searched
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions, is_absolute_pv)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -319,7 +318,7 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, is_absolute_pv)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	

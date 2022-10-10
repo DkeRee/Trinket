@@ -39,26 +39,28 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
-	let mut engine = Engine::new();
-	let placeholder_abort = Arc::new(AtomicBool::new(false));
+    let mut engine = Engine::new();
+    let placeholder_abort = Arc::new(AtomicBool::new(false));
 
-	let mut total_nodes = 0;
-	let mut total_elapsed: f32 = 0.0;
+    let mut total_nodes = 0;
+    let mut total_elapsed: f32 = 0.0;
 
-	for i in 0..POSITIONS.len() {
-		//init engine search
-		engine.searching_depth = DEPTH;
+    for i in 0..POSITIONS.len() {
+        //init engine search
+        engine.searching_depth = DEPTH;
 
-		let now = Instant::now();
-		let _ = engine.search(&placeholder_abort, &placeholder_abort, &Board::from_fen(POSITIONS[i], false).unwrap(), DEPTH, 0, -i32::MAX, i32::MAX, &mut engine.my_past_positions.clone());
+        let now = Instant::now();
 
-		total_nodes += engine.nodes;
-		total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;
+        engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
+        let _ = engine.go(DEPTH, i64::MAX, i64::MAX, 0, 0, i64::MAX, placeholder_abort.clone());
 
-		//clear engine
-		engine = Engine::new();
-	}
+        total_nodes += engine.nodes;
+        total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;
 
-	let nps = ((total_nodes as f32 * 1000_f32) / total_elapsed) as u64;
-	println!("{} nodes {} nps", total_nodes, nps);
+        //clear engine
+        engine = Engine::new();
+    }
+
+    let nps = ((total_nodes as f32 * 1000_f32) / total_elapsed) as u64;
+    println!("{} nodes {} nps", total_nodes, nps);
 }

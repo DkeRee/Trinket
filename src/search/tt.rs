@@ -76,9 +76,14 @@ impl TT {
 		self.table[(position % self.length) as usize] = TTSlot::new(best_move, self.remove_mate_score(eval, ply), position, depth, node_kind);
 	}
 
-	pub fn find(&self, position: u64, ply: i32) -> TTSlot {
-		let mut data = self.table[(position % self.length) as usize];
+	pub fn find(&self, board: &Board, ply: i32) -> Option<TTSlot> {
+		let mut data = self.table[(board.hash() % self.length) as usize];
 		data.eval = self.add_mate_score(data.eval, ply);
-		data
+
+		if data.position == board.hash() {
+			Some(data)
+		} else {
+			None
+		}
 	}
 }

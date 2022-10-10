@@ -122,16 +122,18 @@ impl Engine {
 		}
 
 		//probe TT
-		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position {
-			let mut pv = String::new();
+		match self.tt.find(board, ply) {
+			Some(table_find) => {
+				let mut pv = String::new();
 
-			if board.is_legal(table_find.best_move.unwrap()) {
-				board.play_unchecked(table_find.best_move.unwrap());
-				pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
-			}
+				if board.is_legal(table_find.best_move.unwrap()) {
+					board.play_unchecked(table_find.best_move.unwrap());
+					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+				}
 
-			return pv;
+				return pv;
+			},
+			None => {}
 		}
 
 		String::new()
@@ -164,7 +166,7 @@ impl Engine {
 
 		let in_check = !board.checkers().is_empty();
 
-		//search a little deeper if we are in check!
+		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
 			depth += 1;
@@ -187,40 +189,46 @@ impl Engine {
 
 		let mut legal_moves: Vec<SortedMove>;
 
-		//look up tt
-		let table_find = self.tt.find(board.hash(), ply);
-		if board.hash() == table_find.position {
-			//if sufficient depth
-			if table_find.depth >= depth {
-				//check if position from TT is a mate
-				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
-					true
-				} else {
-					false
-				};
+		//probe tt
+		let table_find = match self.tt.find(board, ply) {
+			Some(table_find) => {
+				//if sufficient depth
+				if table_find.depth >= depth {
+					//check if position from TT is a mate
+					let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
+						true
+					} else {
+						false
+					};
 
-				match table_find.node_kind {
-					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-					},
-					NodeKind::UpperBound => {
-						if table_find.eval <= alpha {
+					match table_find.node_kind {
+						NodeKind::Exact => {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}	
-					},
-					NodeKind::LowerBound => {
-						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}
-					},
-					NodeKind::Null => {}
+						},
+						NodeKind::UpperBound => {
+							if table_find.eval <= alpha {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}	
+						},
+						NodeKind::LowerBound => {
+							if table_find.eval >= beta {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}
+						},
+						NodeKind::Null => {}
+					}
 				}
+				legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
+
+				Some(table_find)
+			},
+			None => {
+				legal_moves = self.movegen.move_gen(board, None, ply);
+
+				None
 			}
-			legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
-		} else {
-			legal_moves = self.movegen.move_gen(board, None, ply);
-		}
-		
+		};
+
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
 

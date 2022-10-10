@@ -1,4 +1,4 @@
-|![](logo.png?raw=true "Trinket")|
+![](logo.png?raw=true "Trinket")
 
 # Trinket
 Named after a hilarious spongebob meme, Trinket, a UCI Negamax engine, is here to clap and be clapped.

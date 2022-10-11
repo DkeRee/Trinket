@@ -49,6 +49,9 @@ impl UCIMaster {
 			continue_engine = false;
 		}
 
+		//init lmr table
+		init_lmr_table();
+
 		UCIMaster {
 			playing: continue_engine,
 			engine_thread: None,

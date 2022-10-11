@@ -12,6 +12,8 @@ use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
 
+pub static mut LMR_TABLE: [[f32; 64]; 64] = [[0.0; 64]; 64];
+
 pub struct Engine {
 	pub board: Board,
 	pub max_depth: i32,
@@ -170,6 +172,12 @@ impl Engine {
 		return false;
 	}
 
+	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
+		unsafe { 
+			return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+		}
+	}
+
 	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
@@ -316,7 +324,8 @@ impl Engine {
 				//IF the first X searched are searched
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 2, ply + 2, -alpha - 1, -alpha, past_positions)?;
+					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduction_amount - 1, ply + 2, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -436,4 +445,16 @@ impl Engine {
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
+	const LMR_REDUCTION_BASE: f32 = 0.75;
+	const LMR_MOVE_DIVIDER: f32 = 2.25;
+}
+
+pub fn init_lmr_table() {
+	for depth in 1..64 {
+		for played_move in 1..64 {
+			unsafe {
+				LMR_TABLE[depth][played_move] = Engine::LMR_REDUCTION_BASE + f32::ln(depth as f32) * f32::ln(played_move as f32) / Engine::LMR_MOVE_DIVIDER;
+			}
+		}
+	}
 }

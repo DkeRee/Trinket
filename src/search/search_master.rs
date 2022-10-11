@@ -296,8 +296,22 @@ impl Engine {
 		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
+
+		let mut quiet_calc_count = self.get_lmp_quiet_count(depth);
 		for mut sm in legal_moves {
 			let mv = sm.mv;
+
+			//LATE MOVE PRUNING
+			//ONLY CHECK A CERTAIN NUMBER OF QUIETS PER CORRESPONDING DEPTH
+			if quiet_calc_count < usize::MAX && sm.movetype == MoveType::Quiet {
+				if quiet_calc_count > 0 {
+					quiet_calc_count -= 1;
+				} else {
+					//skip all quiets from this point on forward
+					continue;
+				}
+			}
+
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
@@ -428,6 +442,16 @@ impl Engine {
 
 		return Some((best_move, eval));
 	}
+
+	fn get_lmp_quiet_count(&self, mut depth: i32) -> usize {
+		let u_depth = (depth - 1) as usize;
+		if u_depth < Self::LMP_QUIET_COUNT.len() {
+			return Self::LMP_QUIET_COUNT[u_depth as usize];
+		} else {
+			//overflow
+			return usize::MAX;
+		}
+	}
 }
 
 impl Engine {
@@ -436,4 +460,7 @@ impl Engine {
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
+
+	//TAKEN FROM TANTABUS
+	const LMP_QUIET_COUNT: [usize; 3] = [7, 8, 17];
 }

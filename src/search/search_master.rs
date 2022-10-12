@@ -291,7 +291,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -324,12 +324,12 @@ impl Engine {
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
 					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduction_amount - 1, ply + 2, -alpha - 1, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
 				} else {
-					//hack to make sure it searches at full depth in the next step
+					//make sure it searches at full depth in the next step
 					value = Eval::new(alpha + 1, false);
 				}
 

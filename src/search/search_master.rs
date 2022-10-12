@@ -291,7 +291,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + r + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -318,27 +318,37 @@ impl Engine {
 
 				value = child_eval;
 			} else {
+				let mut reduced_depth = depth;
+				
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduction_amount - 1, ply + 2, -alpha - 1, -alpha, past_positions)?;
-					child_eval.score *= -1;		
-
-					value = child_eval;	
-				} else {
-					//hack to make sure it searches at full depth in the next step
-					value = Eval::new(alpha + 1, false);
+					reduced_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
-				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				loop {
+					//Search with null window around alpha. PV Search tactic
+					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduced_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
+
+					//Value is above alpha! We must research now that we know that this move has potential.
+					if value.score > alpha {
+						let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduced_depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+						child_eval.score *= -1;		
+
+						value = child_eval;				
+					}
+
+					//if LMR is being applied and it raises alpha, we must research with full depth to ensure good search since this move must be good
+					if reduced_depth < depth && value.score > alpha {
+						reduced_depth = depth;
+					} else {
+						break;
+					}
 				}
 			}
 

@@ -90,13 +90,12 @@ impl Engine {
 					best_move = best_mv.clone();
 
 					//MANAGE ASPIRATION WINDOWS
-					if eval.score <= alpha || eval.score >= beta {
-						//eval has fallen out of bound
-						alpha = -i32::MAX;
-						beta = i32::MAX;
-
-						//repeat search
-						continue;
+					if eval.score >= beta {
+						beta += Self::ASPIRATION_WINDOW * 4;
+						continue;						
+					} else if eval.score <= alpha {
+						alpha -= Self::ASPIRATION_WINDOW * 4;
+						continue;						
 					} else {
 						alpha = eval.score - Self::ASPIRATION_WINDOW;
 						beta = eval.score + Self::ASPIRATION_WINDOW;

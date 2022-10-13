@@ -87,7 +87,6 @@ impl Engine {
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
-					best_move = best_mv.clone();
 
 					//MANAGE ASPIRATION WINDOWS
 					if eval.score >= beta {
@@ -99,6 +98,7 @@ impl Engine {
 					} else {
 						alpha = eval.score - Self::ASPIRATION_WINDOW;
 						beta = eval.score + Self::ASPIRATION_WINDOW;
+						best_move = best_mv.clone();
 						depth_index += 1;
 					}
 

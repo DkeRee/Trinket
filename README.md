@@ -36,6 +36,7 @@ I aspire to get Trinket to 3000 elo one day, but only time will tell for that ;)
 - Piece Weights
 - Piece Square Tables
 - Tempo
+- Piece Mobility
 - Bishop Pair Bonus
 - Passed Pawn Bonus
 - Pawn Island Penalty

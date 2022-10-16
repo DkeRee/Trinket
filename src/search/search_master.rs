@@ -250,7 +250,25 @@ impl Engine {
 				Some(table_find)
 			},
 			None => {
-				legal_moves = self.movegen.move_gen(board, None, ply);
+				let mut iid_move = None;
+
+				//Internal Iterative Deepening
+				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
+
+				//if sufficient depth
+				//if PV node
+				if depth >= Self::IID_DEPTH_MIN	&& beta > alpha + 1 {
+					let iid_max_depth = depth / 4;
+					let mut iid_depth = 1;
+
+					while iid_depth <= iid_max_depth {
+						let (best_mv, eval) = self.search(&abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						iid_move = best_mv;
+						iid_depth += 1;
+					}
+				}
+
+				legal_moves = self.movegen.move_gen(board, iid_move, ply);
 
 				None
 			}
@@ -446,6 +464,7 @@ impl Engine {
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
+	const IID_DEPTH_MIN: i32 = 6;
 }
 
 pub fn init_lmr_table() {

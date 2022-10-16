@@ -262,15 +262,9 @@ impl Engine {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let result = self.search(&stop_abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions);
-
-						if result != None {
-							let (best_mv, eval) = result.unwrap();
-							iid_move = best_mv;
-							iid_depth += 1;
-						} else {
-							break;
-						}
+						let (best_mv, eval) = self.search(&abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						iid_move = best_mv;
+						iid_depth += 1;
 					}
 				}
 

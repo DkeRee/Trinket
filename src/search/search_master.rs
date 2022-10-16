@@ -214,6 +214,7 @@ impl Engine {
 			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
+		let is_pv = beta > alpha + 1;
 		let mut legal_moves: Vec<SortedMove>;
 
 		//probe tt
@@ -255,14 +256,14 @@ impl Engine {
 				//Internal Iterative Deepening
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
 
-				//if sufficient depth
-				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& beta > alpha + 1 {
+				//IF sufficient depth
+				//IF PV node
+				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, eval) = self.search(&abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						let (best_mv, _) = self.search(&abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}
@@ -322,7 +323,17 @@ impl Engine {
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 		for mut sm in legal_moves {
+			//LMP
+			//We can skip quiet moves that are very late in the move list because they are most likely futile to search
+			//IF isn't PV
+			//IF move is high enough
+			//IF is quiet
+			if !is_pv && moves_searched > Self::LMP_MULTIPLIER * depth * depth && sm.movetype == MoveType::Quiet {
+				continue;
+			}
+
 			let mv = sm.mv;
+
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
@@ -465,6 +476,7 @@ impl Engine {
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
+	const LMP_MULTIPLIER: i32 = 3;
 }
 
 pub fn init_lmr_table() {

@@ -260,28 +260,14 @@ impl Engine {
 				if depth >= Self::IID_DEPTH_MIN	&& beta > alpha + 1 {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
-					let mut iid_alpha = alpha;
-					let mut iid_beta = beta;
 
 					while iid_depth <= iid_max_depth {
 						let result = self.search(&stop_abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions);
 
 						if result != None {
 							let (best_mv, eval) = result.unwrap();
-
-							//MANAGE IID ASPIRATION WINDOWS
-							if eval.score >= iid_beta {
-								iid_beta += Self::ASPIRATION_WINDOW * 4;
-								continue;						
-							} else if eval.score <= iid_alpha {
-								iid_alpha -= Self::ASPIRATION_WINDOW * 4;
-								continue;						
-							} else {
-								iid_alpha = eval.score - Self::ASPIRATION_WINDOW;
-								iid_beta = eval.score + Self::ASPIRATION_WINDOW;
-								iid_move = best_mv;
-								iid_depth += 1;
-							}
+							iid_move = best_mv;
+							iid_depth += 1;
 						} else {
 							break;
 						}

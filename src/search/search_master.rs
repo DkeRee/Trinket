@@ -11,8 +11,6 @@ use crate::movegen::movesorter::*;
 use crate::eval::score::*;
 use crate::uci::castle_parse::*;
 
-pub static mut THREADS: usize = 4;
-
 pub struct SharedTables {
 	pub tt: TT
 }
@@ -30,7 +28,8 @@ pub struct TimeControl {
 	pub winc: i64,
 	pub binc: i64,
 	pub movestogo: i64,
-	pub handler: Arc<AtomicBool>
+	pub handler: Arc<AtomicBool>,
+	pub threads: usize
 }
 
 impl SharedTables {
@@ -51,7 +50,7 @@ impl LocalTables {
 }
 
 impl TimeControl {
-	pub fn new(stop_abort: Arc<AtomicBool>) -> TimeControl {
+	pub fn new(stop_abort: Arc<AtomicBool>, threads: usize) -> TimeControl {
 		TimeControl {
 			depth: i32::MAX,
 			wtime: i64::MAX,
@@ -59,7 +58,8 @@ impl TimeControl {
 			winc: 0,
 			binc: 0,
 			movestogo: i64::MAX,
-			handler: stop_abort
+			handler: stop_abort,
+			threads: threads
 		}
 	}
 }
@@ -82,12 +82,6 @@ impl Engine {
 			nodes: 0,
 			shared_tables: SharedTables::new(),
 			local_tables: LocalTables::new()
-		}
-	}
-
-	fn get_thread_count(&self) -> i32 {
-		unsafe {
-			return THREADS as i32;
 		}
 	}
 
@@ -120,8 +114,7 @@ impl Engine {
 
 		let mut depth_index = 1;
 
-		let thread_count = self.get_thread_count();
-		let mut search_data = (0..thread_count).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
+		let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 
 		while depth_index <= self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;

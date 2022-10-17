@@ -33,6 +33,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 pub struct UCIMaster {
 	pub playing: bool,
 	engine_thread: Option<thread::JoinHandle<()>>,
+	threads: usize,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
 }
@@ -56,13 +57,9 @@ impl UCIMaster {
 		//init lmr table
 		init_lmr_table();
 
-		//init thread count
-		unsafe {
-			THREADS = num_cpus::get();
-		}
-
 		UCIMaster {
 			playing: continue_engine,
+			threads: num_cpus::get(),
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -136,30 +133,22 @@ impl UCIMaster {
 				sender.send(UCICmd::Uci).unwrap();
 			},
 			"setoption" => {
-				unsafe {
-					for i in 1..cmd_vec.len() {
-						match cmd_vec[i] {
-							"name" => {
-								for o in (i + 1)..cmd_vec.len() {
-									match cmd_vec[o] {
-										"Threads" => {
-											let new_thread = cmd_vec[o + 1].parse::<usize>().unwrap();
+				match cmd_vec[1] {
+					"name" => {
+						match cmd_vec[2] {
+							"Threads" => {
+								let thread_amount = cmd_vec[3].parse::<usize>().unwrap();
 
-											if THREAD_MIN <= new_thread && new_thread <= THREAD_MAX {
-												THREADS = new_thread;
-											} else {
-												println!("The thread count you provided is out of bounds");
-											}
-											break;
-										},
-										_ => println!("Unknown Field")
-									}
+								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
+									self.threads = thread_amount;
+								} else {
+									println!("Thread input is out of bounds.");
 								}
-								break;
 							},
-							_ => println!("Invalid Arguments")
+							_ => {}
 						}
-					}
+					},
+					_ => {}
 				}
 			}
 			"ucinewgame" => {
@@ -171,7 +160,7 @@ impl UCIMaster {
 			"go" => {
 				self.stop_abort = Arc::new(AtomicBool::new(false));
 
-				let mut time_control = TimeControl::new(self.stop_abort.clone());
+				let mut time_control = TimeControl::new(self.stop_abort.clone(), self.threads);
 
 				for i in 1..cmd_vec.len() {
 					match cmd_vec[i] {

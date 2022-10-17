@@ -39,10 +39,6 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
-    unsafe {
-        THREADS = 1; 
-    }
-
     let mut engine = Engine::new();
     let placeholder_abort = Arc::new(AtomicBool::new(false));
 
@@ -54,7 +50,7 @@ pub fn bench() {
 
         engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
 
-        let mut time_control = TimeControl::new(placeholder_abort.clone());
+        let mut time_control = TimeControl::new(placeholder_abort.clone(), 1);
         time_control.depth = DEPTH;
 
         let _ = engine.go(time_control);

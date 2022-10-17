@@ -134,7 +134,7 @@ impl Engine {
 				let terminate_workers = Arc::new(AtomicBool::new(false));
 				let result: Option<(Option<Move>, Eval, u64)> = std::thread::scope(|scope| {
 					//store workers
-					let (main_data, worker_data) = search_data.split_first_mut().unwrap();
+					let (_, worker_data) = search_data.split_first_mut().unwrap();
 
 					let mut workers = Vec::with_capacity(worker_data.len());
 
@@ -147,11 +147,11 @@ impl Engine {
 						let this_depth = self.searching_depth;
 						let pos = &board;
 
-						local_tables.sorter = MoveSorter::new();
 						workers.push(scope.spawn(move || {
 							Searcher::new(pos, shared_tables, local_tables, handler, this_depth, alpha, beta)
 						}));
 					}
+
 
 					let (best_mv, eval, nodes, result) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, alpha, beta);
 					terminate_workers.store(true, Ordering::Release);

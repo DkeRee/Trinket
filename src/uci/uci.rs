@@ -137,7 +137,7 @@ impl UCIMaster {
 					"name" => {
 						match cmd_vec[2] {
 							"Threads" => {
-								let thread_amount = cmd_vec[3].parse::<usize>().unwrap();
+								let thread_amount = cmd_vec[4].parse::<usize>().unwrap();
 
 								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
 									self.threads = thread_amount;

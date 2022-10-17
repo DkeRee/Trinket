@@ -51,3 +51,11 @@ impl Score {
 	//THE TOTAL PHASE FOR OUR TAPERED EVAL
 	const TOTAL_PHASE: i32 = 256;
 }
+
+pub fn eval_to_bytes(eval: i32) -> [u8; 4] {
+	eval.to_le_bytes()
+}
+
+pub fn bytes_to_eval(bytes: [u8; 4]) -> i32 {
+	i32::from_le_bytes(bytes)
+}

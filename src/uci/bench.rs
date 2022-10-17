@@ -46,13 +46,14 @@ pub fn bench() {
     let mut total_elapsed: f32 = 0.0;
 
     for i in 0..POSITIONS.len() {
-        //init engine search
-        engine.searching_depth = DEPTH;
-
         let now = Instant::now();
 
         engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
-        let _ = engine.go(DEPTH, i64::MAX, i64::MAX, 0, 0, i64::MAX, placeholder_abort.clone());
+
+        let mut time_control = TimeControl::new(placeholder_abort.clone());
+        time_control.depth = DEPTH;
+
+        let _ = engine.go(time_control);
 
         total_nodes += engine.nodes;
         total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;

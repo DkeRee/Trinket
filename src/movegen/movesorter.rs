@@ -8,64 +8,18 @@ pub enum MoveType {
 	Quiet
 }
 
+#[derive(Clone, PartialEq, Debug)]
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
-	history_table: [[i32; 64]; 64],
-	see: See
+	history_table: [[i32; 64]; 64]
 }
 
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
-			history_table: [[0; 64]; 64],
-			see: See::new()
+			history_table: [[0; 64]; 64]
 		}
-	}
-
-	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32) {
-		for i in 0..move_list.len() {
-			let mv_info = &mut move_list[i];
-
-			if tt_move != None {
-				if Some(mv_info.mv) == tt_move {
-					mv_info.importance += Self::HASHMOVE_SCORE;
-				}
-			}
-
-			if mv_info.movetype == MoveType::Quiet {
-				if self.is_castling(mv_info.mv, board) {
-					mv_info.importance += Self::CASTLING_SCORE;
-				}
-
-				if self.is_killer(mv_info.mv, board, ply) {
-					mv_info.importance += Self::KILLER_MOVE_SCORE;
-				}
-
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);
-			}
-
-			if mv_info.movetype == MoveType::Loud {
-				let capture_score = self.see.see(board, mv_info.mv);
-
-				if capture_score >= 0 {
-					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
-				} else {
-					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
-				}
-			}
-
-			mv_info.importance += match mv_info.mv.promotion {
-				Some(Piece::Queen) => Self::QUEEN_PROMO,
-				Some(Piece::Rook) => Self::ROOK_PROMO,
-				Some(Piece::Bishop) => Self::BISHOP_PROMO,
-				Some(Piece::Knight) => Self::KNIGHT_PROMO,
-				None => 0,
-				_ => unreachable!()
-			}
-		}
-
-		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
 	}
 
 	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {
@@ -136,4 +90,49 @@ impl MoveSorter {
 	const ROOK_PROMO: i32 = -7000;
 	const HISTORY_MOVE_OFFSET: i32 = -30000;
 	const LOSING_CAPTURE: i32 = -30001;
+}
+
+pub fn sort(sorter: &mut MoveSorter, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32) {
+	for i in 0..move_list.len() {
+		let mv_info = &mut move_list[i];
+
+		if tt_move != None {
+			if Some(mv_info.mv) == tt_move {
+				mv_info.importance += MoveSorter::HASHMOVE_SCORE;
+			}
+		}
+
+		if mv_info.movetype == MoveType::Quiet {
+			if sorter.is_castling(mv_info.mv, board) {
+				mv_info.importance += MoveSorter::CASTLING_SCORE;
+			}
+
+			if sorter.is_killer(mv_info.mv, board, ply) {
+				mv_info.importance += MoveSorter::KILLER_MOVE_SCORE;
+			}
+
+			mv_info.importance += MoveSorter::HISTORY_MOVE_OFFSET + sorter.get_history(mv_info.mv);
+		}
+
+		if mv_info.movetype == MoveType::Loud {
+			let capture_score = see(board, mv_info.mv);
+
+			if capture_score >= 0 {
+				mv_info.importance += capture_score + MoveSorter::WINNING_CAPTURE;
+			} else {
+				mv_info.importance += capture_score + MoveSorter::LOSING_CAPTURE;
+			}
+		}
+
+		mv_info.importance += match mv_info.mv.promotion {
+			Some(Piece::Queen) => MoveSorter::QUEEN_PROMO,
+			Some(Piece::Rook) => MoveSorter::ROOK_PROMO,
+			Some(Piece::Bishop) => MoveSorter::BISHOP_PROMO,
+			Some(Piece::Knight) => MoveSorter::KNIGHT_PROMO,
+			None => 0,
+			_ => unreachable!()
+		}
+	}
+
+	move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
 }

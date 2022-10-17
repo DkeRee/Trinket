@@ -39,6 +39,10 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
+    unsafe {
+        THREADS = 1; 
+    }
+
     let mut engine = Engine::new();
     let placeholder_abort = Arc::new(AtomicBool::new(false));
 

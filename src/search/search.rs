@@ -19,8 +19,14 @@ pub struct Searcher<'a> {
 	local_tables: &'a mut LocalTables
 }
 
+#[derive(PartialEq)]
+pub enum SearchResult {
+	Finished,
+	Aborted
+}
+
 impl Searcher<'_> {
-	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &Arc<AtomicBool>, depth: i32, alpha: i32, beta: i32) -> Option<(Option<Move>, Eval, u64)> {
+	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &Arc<AtomicBool>, depth: i32, alpha: i32, beta: i32) -> (Option<Move>, Eval, u64, SearchResult) {
 		let mut instance = Searcher {
 			nodes: 0,
 			searching_depth: depth,
@@ -29,9 +35,14 @@ impl Searcher<'_> {
 		};
 
 		let mut past_positions = instance.local_tables.my_past_positions.clone();
-		let (mv, eval) = instance.search(handler, board, depth, 0, alpha, beta, &mut past_positions)?;
+		let result = instance.search(handler, board, depth, 0, alpha, beta, &mut past_positions);
 
-		Some((mv, eval, instance.nodes))
+		if !result.is_none() {
+			let (mv, eval) = result.unwrap();
+			(mv, eval, instance.nodes, SearchResult::Finished)
+		} else {
+			(None, Eval::new(0, false), instance.nodes, SearchResult::Aborted)
+		}
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {

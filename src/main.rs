@@ -9,6 +9,8 @@ mod movegen;
 use crate::uci::uci::*;
 use std::io;
 
+extern crate num_cpus;
+
 fn main() {
 	let mut uci = UCIMaster::new();
 

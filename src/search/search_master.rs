@@ -11,7 +11,7 @@ use crate::movegen::movesorter::*;
 use crate::eval::score::*;
 use crate::uci::castle_parse::*;
 
-pub static mut THREADS: i32 = 1;
+pub static mut THREADS: usize = 4;
 
 pub struct SharedTables {
 	pub tt: TT
@@ -87,7 +87,7 @@ impl Engine {
 
 	fn get_thread_count(&self) -> i32 {
 		unsafe {
-			return THREADS;
+			return THREADS as i32;
 		}
 	}
 
@@ -158,15 +158,14 @@ impl Engine {
 						}));
 					}
 
-					let result = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, alpha, beta);
+					let (best_mv, eval, nodes, result) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, alpha, beta);
 					terminate_workers.store(true, Ordering::Release);
 
-					if !result.is_none() {
-						let (best_mv, eval, nodes) = result.unwrap();
+					if result == SearchResult::Finished {
 						total_nodes += nodes;
 
-						for worker in workers {
-							let (_, _, nodes) = worker.join().unwrap().unwrap();
+						for worker in workers {		
+							let (_, _, nodes, _) = worker.join().unwrap();
 							total_nodes += nodes;
 						}
 

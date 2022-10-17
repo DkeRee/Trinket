@@ -11,8 +11,8 @@ use crate::search::search::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
-const THREAD_MAX: i32 = 1024;
-const THREAD_MIN: i32 = 1;
+const THREAD_MAX: usize = 1024;
+const THREAD_MIN: usize = 1;
 
 enum UCICmd {
 	Uci,
@@ -55,6 +55,11 @@ impl UCIMaster {
 
 		//init lmr table
 		init_lmr_table();
+
+		//init thread count
+		unsafe {
+			THREADS = num_cpus::get();
+		}
 
 		UCIMaster {
 			playing: continue_engine,
@@ -138,7 +143,7 @@ impl UCIMaster {
 								for o in (i + 1)..cmd_vec.len() {
 									match cmd_vec[o] {
 										"Threads" => {
-											let new_thread = cmd_vec[o + 1].parse::<i32>().unwrap();
+											let new_thread = cmd_vec[o + 1].parse::<usize>().unwrap();
 
 											if THREAD_MIN <= new_thread && new_thread <= THREAD_MAX {
 												THREADS = new_thread;

@@ -11,6 +11,7 @@ https://www.chessprogramming.org/Transposition_Table
 */
 
 const MB: usize = 16;
+const TT_LENGTH: u64 = (MB * 1024 * 1024 / std::mem::size_of::<TTSlot>()) as u64;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum NodeKind {
@@ -129,8 +130,8 @@ pub struct TT {
 impl TT {
 	pub fn new() -> TT {
 		TT {
-			table: (0..(MB * 1024 * 1024 / std::mem::size_of::<TTSlot>()) as u64).map(|_| TTSlot::empty()).collect(),
-			length: (MB * 1024 * 1024 / std::mem::size_of::<TTSlot>()) as u64
+			table: (0..TT_LENGTH).map(|_| TTSlot::empty()).collect(),
+			length: TT_LENGTH
 		}
 	}
 

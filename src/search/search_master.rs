@@ -11,6 +11,16 @@ use crate::movegen::movesorter::*;
 use crate::eval::score::*;
 use crate::uci::castle_parse::*;
 
+pub struct WorkerHandler<'a> {
+	handler: &'a Arc<AtomicBool>
+}
+
+impl WorkerHandler<'_> {
+	pub fn is_abort(&self) -> bool {
+		self.handler.load(Ordering::Relaxed)
+	}
+}
+
 pub struct SharedTables {
 	pub tt: TT
 }
@@ -112,6 +122,7 @@ impl Engine {
 		let mut depth_index = 1;
 		let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 
+		let terminate_workers = Arc::new(AtomicBool::new(false));
 		while depth_index <= self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) {
@@ -127,8 +138,6 @@ impl Engine {
 				});
 
 				//LAZY SMP (MULTI-THREADING)
-				let terminate_workers = Arc::new(AtomicBool::new(false));
-
 				let result: Option<(Option<Move>, Eval, u64)> = std::thread::scope(|scope| {
 					//store workers
 					let (_, worker_data) = search_data.split_first_mut().unwrap();
@@ -139,18 +148,20 @@ impl Engine {
 					let mut total_nodes = 0;
 
 					for local_tables in worker_data {
-						let handler = terminate_workers.clone();
+						let mut handler = WorkerHandler {
+							handler: &terminate_workers
+						};
 						let shared_tables = &self.shared_tables;
 						let this_depth = self.searching_depth;
 						let pos = &board;
 						let this_best_eval = best_eval.clone();
 
 						workers.push(scope.spawn(move || {
-							Searcher::new(pos, shared_tables, local_tables, &handler, this_depth, this_best_eval)
+							Searcher::new(pos, shared_tables, local_tables, &mut handler, this_depth, this_best_eval)
 						}));
 					}
 
-					let (best_mv, eval, nodes) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, best_eval.clone())?;
+					let (best_mv, eval, nodes) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &mut WorkerHandler { handler: &time_control.handler }, self.searching_depth, best_eval.clone())?;
 					terminate_workers.store(true, Ordering::Release);
 
 					total_nodes += nodes;

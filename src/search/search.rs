@@ -1,8 +1,5 @@
 use cozy_chess::*;
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use crate::search::search_master::*;
 use crate::eval::evaluator::*;
 use crate::eval::score::*;
@@ -20,7 +17,7 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &Arc<AtomicBool>, depth: i32, eval: Option<Eval>) -> Option<(Option<Move>, Eval, u64)> {
+	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &mut WorkerHandler, depth: i32, eval: Option<Eval>) -> Option<(Option<Move>, Eval, u64)> {
 		let mut instance = Searcher {
 			nodes: 0,
 			searching_depth: depth,
@@ -81,9 +78,9 @@ impl Searcher<'_> {
 		}
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &mut WorkerHandler, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.searching_depth > 1 && abort.is_abort() {
 			return None;
 		}
 
@@ -110,7 +107,7 @@ impl Searcher<'_> {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -169,7 +166,7 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						let (best_mv, _) = self.search(abort, board, iid_depth, ply, alpha, beta, past_positions)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}
@@ -217,7 +214,7 @@ impl Searcher<'_> {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -239,7 +236,7 @@ impl Searcher<'_> {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -250,7 +247,7 @@ impl Searcher<'_> {
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
 					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-					let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -261,7 +258,7 @@ impl Searcher<'_> {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -294,9 +291,9 @@ impl Searcher<'_> {
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, abort: &mut WorkerHandler, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.searching_depth > 1 && abort.is_abort() {
 			return None;
 		}
 
@@ -343,7 +340,7 @@ impl Searcher<'_> {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
+			let (_, mut child_eval) = self.qsearch(abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
 
 			past_positions.pop();
 

@@ -114,8 +114,6 @@ impl Engine {
 
 		let mut depth_index = 1;
 
-		let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
-
 		while depth_index <= self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) {
@@ -131,7 +129,9 @@ impl Engine {
 				});
 
 				//LAZY SMP (MULTI-THREADING)
+				let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 				let terminate_workers = Arc::new(AtomicBool::new(false));
+
 				let result: Option<(Option<Move>, Eval, u64)> = std::thread::scope(|scope| {
 					//store workers
 					let (_, worker_data) = search_data.split_first_mut().unwrap();
@@ -151,7 +151,6 @@ impl Engine {
 							Searcher::new(pos, shared_tables, local_tables, handler, this_depth, alpha, beta)
 						}));
 					}
-
 
 					let (best_mv, eval, nodes, result) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, alpha, beta);
 					terminate_workers.store(true, Ordering::Release);

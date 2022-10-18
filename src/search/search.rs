@@ -258,8 +258,8 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.shared_tables.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-						sm.insert_killer(&mut self.local_tables.sorter, ply, board);
-						sm.insert_history(&mut self.local_tables.sorter, depth);
+						self.local_tables.sorter.add_killer(&sm, ply, board);
+						self.local_tables.sorter.add_history(&sm, depth);
 						break;
 					} else {
 						self.shared_tables.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);

@@ -16,18 +16,6 @@ impl SortedMove {
 			movetype: movetype
 		}
 	}
-
-	pub fn insert_killer(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.add_killer(self.mv, ply, board);
-		}
-	}
-
-	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.add_history(self.mv, depth);
-		}
-	}
 }
 
 pub fn move_gen(board: &Board) -> Vec<SortedMove> {

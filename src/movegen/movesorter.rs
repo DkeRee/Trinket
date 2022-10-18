@@ -10,7 +10,7 @@ pub enum MoveType {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 2]; 100]; 2],
+	pub killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64]
 }
 
@@ -22,26 +22,28 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {
-		if ply < 100 && !self.is_killer(mv, board, ply) {
+	pub fn add_killer(&mut self, sm: &SortedMove, ply: i32, board: &Board) {
+		if sm.movetype == MoveType::Quiet && ply < 100 && !self.is_killer(sm.mv, board, ply) {
 			let color = board.side_to_move();
-			let ply_slot = &mut self.killer_table[color as usize][ply as usize];
-
-			ply_slot.rotate_right(1);
-			ply_slot[0] = Some(mv);
+			self.killer_table[color as usize][ply as usize].rotate_right(1);
+			self.killer_table[color as usize][ply as usize][0] = Some(sm.mv);
 		}
 	}
 
-	pub fn add_history(&mut self, mv: Move, depth: i32) {
-		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
+	pub fn add_history(&mut self, sm: &SortedMove, depth: i32) {
+		if sm.movetype == MoveType::Quiet {
+			let mv = sm.mv;
 
-		//make sure it doesn't overflow
-		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
-			let bb = BitBoard::FULL;
+			self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
 
-			for s1 in bb {
-				for s2 in bb {
-					self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
+			//make sure it doesn't overflow
+			if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
+				let bb = BitBoard::FULL;
+
+				for s1 in bb {
+					for s2 in bb {
+						self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
+					}
 				}
 			}
 		}

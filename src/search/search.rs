@@ -19,14 +19,8 @@ pub struct Searcher<'a> {
 	local_tables: &'a mut LocalTables
 }
 
-#[derive(PartialEq)]
-pub enum SearchResult {
-	Finished,
-	Aborted
-}
-
 impl Searcher<'_> {
-	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &Arc<AtomicBool>, depth: i32, alpha: i32, beta: i32) -> (Option<Move>, Eval, u64, SearchResult) {
+	pub fn new(board: &Board, shared_tables: &SharedTables, local_tables: &mut LocalTables, handler: &Arc<AtomicBool>, depth: i32, eval: Option<Eval>) -> Option<(Option<Move>, Eval, u64)> {
 		let mut instance = Searcher {
 			nodes: 0,
 			searching_depth: depth,
@@ -35,13 +29,38 @@ impl Searcher<'_> {
 		};
 
 		let mut past_positions = instance.local_tables.my_past_positions.clone();
-		let result = instance.search(handler, board, depth, 0, alpha, beta, &mut past_positions);
 
-		if !result.is_none() {
-			let (mv, eval) = result.unwrap();
-			(mv, eval, instance.nodes, SearchResult::Finished)
-		} else {
-			(None, Eval::new(0, false), instance.nodes, SearchResult::Aborted)
+		//ASPIRATION WINDOWS ALPHA BETA
+		let mut alpha = -i32::MAX;
+		let mut beta = i32::MAX;
+
+		//Adjust alpha and beta params based off of previous eval
+		if !eval.is_none() {
+			let score = eval.unwrap().score;
+
+			alpha = score - Self::ASPIRATION_WINDOW;
+			beta = score + Self::ASPIRATION_WINDOW;
+		}
+
+		loop {
+			let result = instance.search(handler, board, depth, 0, alpha, beta, &mut past_positions);
+
+			if !result.is_none() {
+				let (mv, eval) = result.unwrap();
+
+				//MANAGE ASPIRATION WINDOWS
+				if eval.score >= beta {
+					beta += Self::ASPIRATION_WINDOW * 4;
+				} else if eval.score <= alpha {
+					alpha -= Self::ASPIRATION_WINDOW * 4;
+				} else {
+					//search is within aspiration window, safe to return
+					return Some((mv, eval, instance.nodes));
+				}
+			} else {
+				//aborted due to outside context
+				return None;
+			}
 		}
 	}
 
@@ -347,6 +366,7 @@ impl Searcher<'_> {
 }
 
 impl Searcher<'_> {
+	const ASPIRATION_WINDOW: i32 = 25;
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 100;
 	const LMR_DEPTH_LIMIT: i32 = 3;

@@ -89,6 +89,7 @@ impl Engine {
 		let now = Instant::now();
 
 		let mut best_move = None;
+		let mut best_eval = None;
 		let mut time: f32;
 		let mut timeinc: f32;
 
@@ -108,11 +109,8 @@ impl Engine {
 			}
 		}
 
-		//ASPIRATION WINDOWS ALPHA BETA
-		let mut alpha = -i32::MAX;
-		let mut beta = i32::MAX;
-
 		let mut depth_index = 1;
+		let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 
 		while depth_index <= self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
@@ -129,7 +127,6 @@ impl Engine {
 				});
 
 				//LAZY SMP (MULTI-THREADING)
-				let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 				let terminate_workers = Arc::new(AtomicBool::new(false));
 
 				let result: Option<(Option<Move>, Eval, u64)> = std::thread::scope(|scope| {
@@ -142,52 +139,44 @@ impl Engine {
 					let mut total_nodes = 0;
 
 					for local_tables in worker_data {
-						let handler = &terminate_workers;
+						let handler = terminate_workers.clone();
 						let shared_tables = &self.shared_tables;
 						let this_depth = self.searching_depth;
 						let pos = &board;
+						let this_best_eval = best_eval.clone();
 
 						workers.push(scope.spawn(move || {
-							Searcher::new(pos, shared_tables, local_tables, handler, this_depth, alpha, beta)
+							Searcher::new(pos, shared_tables, local_tables, &handler, this_depth, this_best_eval)
 						}));
 					}
 
-					let (best_mv, eval, nodes, result) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, alpha, beta);
+					let (best_mv, eval, nodes) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &time_control.handler, self.searching_depth, best_eval.clone())?;
 					terminate_workers.store(true, Ordering::Release);
 
-					if result == SearchResult::Finished {
-						total_nodes += nodes;
+					total_nodes += nodes;
 
-						for worker in workers {		
-							let (_, _, nodes, _) = worker.join().unwrap();
-							total_nodes += nodes;
+					for worker in workers {
+						let worker_thread = worker.join().unwrap();
+
+						if !worker_thread.is_none() {
+							let (_, _, nodes) = worker_thread.unwrap();
+							total_nodes += nodes;						
 						}
-
-						Some((best_mv, eval, total_nodes))
-					} else {
-						None
 					}
+
+
+					Some((best_mv, eval, total_nodes))
 				});
 
 				if result != None {
 					let (best_mv, eval, nodes) = result.unwrap();
 
+					best_move = best_mv.clone();
+					best_eval = Some(eval.clone());
+					depth_index += 1;
+
 					//UPDATE NODE COUNT TO MASTER
 					self.nodes += nodes;
-
-					//MANAGE ASPIRATION WINDOWS
-					if eval.score >= beta {
-						beta += Self::ASPIRATION_WINDOW * 4;
-						continue;						
-					} else if eval.score <= alpha {
-						alpha -= Self::ASPIRATION_WINDOW * 4;
-						continue;						
-					} else {
-						alpha = eval.score - Self::ASPIRATION_WINDOW;
-						beta = eval.score + Self::ASPIRATION_WINDOW;
-						best_move = best_mv.clone();
-						depth_index += 1;
-					}
 
 					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
@@ -246,8 +235,4 @@ impl Engine {
 
 		String::new()
 	}
-}
-
-impl Engine {
-	const ASPIRATION_WINDOW: i32 = 25;
 }

@@ -122,7 +122,6 @@ impl Engine {
 		let mut depth_index = 1;
 		let mut search_data = (0..time_control.threads).map(|_| self.local_tables.clone()).collect::<Vec<_>>();
 
-		let terminate_workers = Arc::new(AtomicBool::new(false));
 		while depth_index <= self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) {
@@ -130,7 +129,6 @@ impl Engine {
 
 				let board = &mut self.board.clone();
 
-				//set up multithread for search abort
 				let abort = time_control.handler.clone();
 				thread::spawn(move || {
 					thread::sleep(Duration::from_millis(time as u64 / 32));
@@ -149,7 +147,7 @@ impl Engine {
 
 					for local_tables in worker_data {
 						let mut handler = WorkerHandler {
-							handler: &terminate_workers
+							handler: &time_control.handler
 						};
 						let shared_tables = &self.shared_tables;
 						let this_depth = self.searching_depth;
@@ -162,7 +160,6 @@ impl Engine {
 					}
 
 					let (best_mv, eval, nodes) = Searcher::new(board, &self.shared_tables, &mut self.local_tables, &mut WorkerHandler { handler: &time_control.handler }, self.searching_depth, best_eval.clone())?;
-					terminate_workers.store(true, Ordering::Release);
 
 					total_nodes += nodes;
 
@@ -210,9 +207,6 @@ impl Engine {
 					} else {
 						format!("cp {}", eval.score)
 					};
-
-					//reset worker termination flag
-					terminate_workers.store(false, Ordering::Relaxed);
 
 					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 				} else {

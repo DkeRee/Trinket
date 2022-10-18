@@ -171,7 +171,7 @@ impl Engine {
 
 						if !worker_thread.is_none() {
 							let (_, _, nodes) = worker_thread.unwrap();
-							total_nodes += nodes;						
+							total_nodes += nodes;				
 						}
 					}
 
@@ -210,6 +210,9 @@ impl Engine {
 					} else {
 						format!("cp {}", eval.score)
 					};
+
+					//reset worker termination flag
+					terminate_workers.store(false, Ordering::Relaxed);
 
 					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 				} else {

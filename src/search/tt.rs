@@ -38,9 +38,8 @@ pub struct TTSlot {
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct EncodedEntry {
-	mv_byte_one: u8,
-	mv_byte_two: u8,
-	eval: [u8; 4],
+	eval: i32,
+	mv_byte: [u8; 2],
 	depth: u8,
 	node_kind: u8
 }
@@ -75,17 +74,14 @@ impl TTSlot {
 	}
 
 	fn store(&self, best_move: Option<Move>, eval: i32, position: u64, depth: i32, node_kind: NodeKind) {	
-		let best_move_from = best_move.unwrap().from as u8;
-		let best_move_to = best_move.unwrap().to as u8;
-		let best_move_promotion = best_move.unwrap().promotion.map_or(6, |p| p as u8);
-
-		let mv_byte_one = (best_move_from << 2) | (best_move_to >> 4);
-		let mv_byte_two = (best_move_to << 4) | (best_move_promotion << 1);
+		let mut move_bits = 0u16;
+		move_bits = (move_bits << 6) | best_move.unwrap().from as u16;
+		move_bits = (move_bits << 6) | best_move.unwrap().to as u16;
+		move_bits = (move_bits << 4) | best_move.unwrap().promotion.map_or(0b1111, |p| p as u16);
 
 		let data = bytemuck::cast(EncodedEntry {
-			mv_byte_one: mv_byte_one,
-			mv_byte_two: mv_byte_two,
-			eval: eval_to_bytes(eval),
+			eval: eval,
+			mv_byte: move_bits.to_le_bytes(),
 			depth: depth as u8,
 			node_kind: node_kind as u8
 		});
@@ -103,13 +99,22 @@ impl TTSlot {
 			return None;
 		} else {
 			let data: EncodedEntry = bytemuck::cast(data);
+
+			let mut move_bits = u16::from_le_bytes(data.mv_byte);
+			let promotion = move_bits & 0b1111;
+			move_bits >>= 4;
+			let to = move_bits & 0b111111;
+			move_bits >>= 6;
+			let from = move_bits & 0b111111;
+			move_bits >>= 6;
+
 			Some(TTEntry {
 				best_move: Some(Move {
-					from: Square::index(((data.mv_byte_one & 252) >> 2) as usize),
-					to: Square::index((((data.mv_byte_one & 3) << 4) | ((data.mv_byte_two & 240) >> 4)) as usize),
-					promotion: Piece::try_index(((data.mv_byte_two & 14) >> 1) as usize)
+					from: Square::index(from as usize),
+					to: Square::index(to as usize),
+					promotion: Piece::try_index(promotion as usize)
 				}),
-				eval: add_mate_score(bytes_to_eval(data.eval) as i32, ply),
+				eval: add_mate_score(data.eval, ply),
 				depth: data.depth as i32,
 				node_kind: match data.node_kind {
 					0 => NodeKind::Exact,

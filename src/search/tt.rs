@@ -39,7 +39,7 @@ pub struct TTSlot {
 #[repr(C)]
 struct EncodedEntry {
 	eval: i32,
-	mv_byte: [u8; 2],
+	mv_byte: u16,
 	depth: u8,
 	node_kind: u8
 }
@@ -81,7 +81,7 @@ impl TTSlot {
 
 		let data = bytemuck::cast(EncodedEntry {
 			eval: eval,
-			mv_byte: move_bits.to_le_bytes(),
+			mv_byte: move_bits,
 			depth: depth as u8,
 			node_kind: node_kind as u8
 		});
@@ -100,7 +100,7 @@ impl TTSlot {
 		} else {
 			let data: EncodedEntry = bytemuck::cast(data);
 
-			let mut move_bits = u16::from_le_bytes(data.mv_byte);
+			let mut move_bits = data.mv_byte;
 			let promotion = move_bits & 0b1111;
 			move_bits >>= 4;
 			let to = move_bits & 0b111111;

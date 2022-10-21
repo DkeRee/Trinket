@@ -12,6 +12,32 @@ use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
 
+pub struct TimeControl {
+	pub depth: i32,
+	pub wtime: i64,
+	pub btime: i64,
+	pub winc: i64,
+	pub binc: i64,
+	pub movestogo: i64,
+	pub handler: Arc<AtomicBool>,
+	pub threads: usize
+}
+
+impl TimeControl {
+	pub fn new(stop_abort: Arc<AtomicBool>, threads: usize) -> TimeControl {
+		TimeControl {
+			depth: i32::MAX,
+			wtime: i64::MAX,
+			btime: i64::MAX,
+			winc: 0,
+			binc: 0,
+			movestogo: i64::MAX,
+			handler: stop_abort,
+			threads: threads
+		}
+	}
+}
+
 pub static mut LMR_TABLE: [[f32; 64]; 64] = [[0.0; 64]; 64];
 
 pub struct Engine {
@@ -37,26 +63,26 @@ impl Engine {
 		}
 	}
 
-	pub fn go(&mut self, max_depth: i32, wtime: i64, btime: i64, winc: i64, binc: i64, movestogo: i64, stop_abort: Arc<AtomicBool>) -> String {
+	pub fn go(&mut self, time_control: TimeControl) -> String {
 		let now = Instant::now();
 
 		let mut best_move = None;
 		let mut time: f32;
 		let mut timeinc: f32;
 
-		self.max_depth = max_depth;
+		self.max_depth = time_control.depth;
 
 		self.nodes = 0;
 
 		//set time
 		match self.board.side_to_move() {
 			Color::White => {
-				time = wtime as f32;
-				timeinc = winc as f32;
+				time = time_control.wtime as f32;
+				timeinc = time_control.winc as f32;
 			},
 			Color::Black => {
-				time = btime as f32;
-				timeinc = binc as f32;	
+				time = time_control.btime as f32;
+				timeinc = time_control.binc as f32;	
 			}
 		}
 
@@ -68,22 +94,21 @@ impl Engine {
 
 		while depth_index < self.max_depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-			if search_elapsed < ((time + timeinc) / f32::min(40_f32, movestogo as f32)) {
+			if search_elapsed < ((time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) {
 				self.searching_depth = depth_index + 1;
 
 				let board = &mut self.board.clone();
 
 				//set up multithread for search abort
-				let search_abort = Arc::new(AtomicBool::new(false));
-				let counter_abort = search_abort.clone();
+				let abort = time_control.handler.clone();
 				thread::spawn(move || {
 					thread::sleep(Duration::from_millis(time as u64 / 32));
-					counter_abort.store(true, Ordering::Relaxed);
+					abort.store(true, Ordering::Relaxed);
 				});
 
 				let mut past_positions = self.my_past_positions.clone();
 
-				let result = self.search(&search_abort, &stop_abort, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
+				let result = self.search(&time_control.handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
 
 				if result != None {
 					let (best_mv, eval) = result.unwrap();
@@ -177,9 +202,9 @@ impl Engine {
 		}
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
-		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
 		}
 
@@ -206,7 +231,7 @@ impl Engine {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, &stop_abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -262,7 +287,7 @@ impl Engine {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, &stop_abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}
@@ -309,7 +334,7 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &stop_abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -331,7 +356,7 @@ impl Engine {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -342,7 +367,7 @@ impl Engine {
 				//IF this move is QUIET
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
 					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -353,7 +378,7 @@ impl Engine {
 
 				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
 				if value.score > alpha {
-					let (_, mut child_eval) = self.search(&abort, &stop_abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -386,9 +411,9 @@ impl Engine {
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, stop_abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
-		if self.searching_depth > 1 && (abort.load(Ordering::Relaxed) || stop_abort.load(Ordering::Relaxed)) {
+		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
 		}
 
@@ -434,7 +459,7 @@ impl Engine {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.qsearch(&abort, &stop_abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
 
 			past_positions.pop();
 

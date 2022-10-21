@@ -10,11 +10,14 @@ use crate::search::search_master::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
+const THREAD_MAX: usize = 1024;
+const THREAD_MIN: usize = 1;
+
 enum UCICmd {
 	Uci,
 	UciNewGame,
 	IsReady,
-	Go(i32, i64, i64, i64, i64, i64, Arc<AtomicBool>),
+	Go(TimeControl),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
 	Quit
@@ -28,6 +31,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 //uci command parser
 pub struct UCIMaster {
 	pub playing: bool,
+	threads: usize,
 	engine_thread: Option<thread::JoinHandle<()>>,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
@@ -54,6 +58,7 @@ impl UCIMaster {
 
 		UCIMaster {
 			playing: continue_engine,
+			threads: num_cpus::get(),
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -92,8 +97,8 @@ impl UCIMaster {
 									UCICmd::IsReady => {
 										println!("readyok");
 									},
-									UCICmd::Go(depth, wtime, btime, winc, binc, movestogo, stop_abort) => {
-										let best_move = engine.go(depth, wtime, btime, winc, binc, movestogo, stop_abort);
+									UCICmd::Go(time_control) => {
+										let best_move = engine.go(time_control);
 										println!("bestmove {}", best_move);
 									},
 									UCICmd::PositionFen(fen) => {
@@ -126,6 +131,25 @@ impl UCIMaster {
 
 				sender.send(UCICmd::Uci).unwrap();
 			},
+			"setoption" => {
+				match cmd_vec[1] {
+					"name" => {
+						match cmd_vec[2] {
+							"Threads" => {
+								let thread_amount = cmd_vec[4].parse::<usize>().unwrap();
+
+								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
+									self.threads = thread_amount;
+								} else {
+									println!("Thread input is out of bounds.");
+								}
+							},
+							_ => {}
+						}
+					},
+					_ => {}
+				}
+			},
 			"ucinewgame" => {
 				sender.send(UCICmd::UciNewGame).unwrap();
 			},
@@ -135,42 +159,37 @@ impl UCIMaster {
 			"go" => {
 				self.stop_abort = Arc::new(AtomicBool::new(false));
 
-				let mut depth = i32::MAX;
-				let mut wtime: i64 = i64::MAX;
-				let mut btime: i64 = i64::MAX;
-				let mut winc: i64 = 0;
-				let mut binc: i64 = 0;
-				let mut movestogo: i64 = i64::MAX;
+				let mut time_control = TimeControl::new(self.stop_abort.clone(), self.threads);
 
 				for i in 1..cmd_vec.len() {
 					match cmd_vec[i] {
 						"depth" => {
-							depth = cmd_vec[i + 1].parse::<i32>().unwrap();
+							time_control.depth = cmd_vec[i + 1].parse::<i32>().unwrap();
 						},
 						"movetime" => {
-							wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
-							btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.btime = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"wtime" => {
-							wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"btime" => {
-							btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.btime = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"winc" => {
-							winc = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.winc = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"binc" => {
-							binc = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.binc = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"movestogo" => {
-							movestogo = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.movestogo = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						_ => {}
 					}
 				}
 
-				sender.send(UCICmd::Go(depth, wtime, btime, winc, binc, movestogo, self.stop_abort.clone())).unwrap();
+				sender.send(UCICmd::Go(time_control)).unwrap();
 			},
 			"position" => {
 				if cmd_vec.len() > 1 {

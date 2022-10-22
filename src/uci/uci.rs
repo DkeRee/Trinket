@@ -7,6 +7,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 
 use crate::search::search_master::*;
+use crate::search::searcher::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
@@ -17,7 +18,8 @@ enum UCICmd {
 	Uci,
 	UciNewGame,
 	IsReady,
-	Go(TimeControl),
+	ResetThreads(usize),
+	Go(TimeControl, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
 	Quit
@@ -76,9 +78,10 @@ impl UCIMaster {
 				//init engine
 				if self.engine_thread.is_none() {
 					let thread_receiver = receiver.clone();
+					let thread_count = self.threads;
 
 					self.engine_thread = Some(thread::spawn(move || {
-						let mut engine = Engine::new();
+						let mut engine = Engine::new(thread_count);
 						let mut playing = true;
 
 						loop {
@@ -92,14 +95,17 @@ impl UCIMaster {
 										println!("uciok");
 									},
 									UCICmd::UciNewGame => {
-										engine = Engine::new();
+										engine = Engine::new(thread_count);
 									},
 									UCICmd::IsReady => {
 										println!("readyok");
 									},
-									UCICmd::Go(time_control) => {
-										let best_move = engine.go(time_control);
+									UCICmd::Go(time_control, handler) => {
+										let best_move = engine.go(time_control, handler);
 										println!("bestmove {}", best_move);
+									},
+									UCICmd::ResetThreads(thread_count) => {
+										engine.reset_threads(thread_count);
 									},
 									UCICmd::PositionFen(fen) => {
 										engine.board = Board::from_fen(&*fen.trim(), false).unwrap();
@@ -140,6 +146,7 @@ impl UCIMaster {
 
 								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
 									self.threads = thread_amount;
+									sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
 								} else {
 									println!("Thread input is out of bounds.");
 								}
@@ -159,7 +166,7 @@ impl UCIMaster {
 			"go" => {
 				self.stop_abort = Arc::new(AtomicBool::new(false));
 
-				let mut time_control = TimeControl::new(self.stop_abort.clone(), self.threads);
+				let mut time_control = TimeControl::new();
 
 				for i in 1..cmd_vec.len() {
 					match cmd_vec[i] {
@@ -189,7 +196,7 @@ impl UCIMaster {
 					}
 				}
 
-				sender.send(UCICmd::Go(time_control)).unwrap();
+				sender.send(UCICmd::Go(time_control, self.stop_abort.clone())).unwrap();
 			},
 			"position" => {
 				if cmd_vec.len() > 1 {

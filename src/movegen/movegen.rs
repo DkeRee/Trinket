@@ -30,6 +30,7 @@ impl SortedMove {
 	}
 }
 
+#[derive(Clone, Debug)]
 pub struct MoveGen {
 	pub sorter: MoveSorter
 }

@@ -67,6 +67,10 @@ impl Searcher<'_> {
 		while depth_index < self.time_control.depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, self.time_control.movestogo as f32)) {
+
+				//reseting this round's node count
+				self.nodes = 0;
+				
 				self.searching_depth = depth_index + 1;
 
 				let board = &mut self.board.clone();

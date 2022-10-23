@@ -127,6 +127,8 @@ impl TTSlot {
 	}
 }
 
+
+#[derive(Debug)]
 pub struct TT {
 	pub table: Box<[TTSlot]>,
 	length: u64

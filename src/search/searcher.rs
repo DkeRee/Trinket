@@ -1,10 +1,9 @@
 use cozy_chess::*;
 
 use std::thread;
-use std::mem;
 use std::time::{Instant, Duration};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::search::search_master::*;
 use crate::eval::evaluator::*;
@@ -19,6 +18,7 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
+	nodes: u64,
 	searching_depth: i32,
 	board: Board,
 	my_past_positions: Vec<u64>
@@ -30,6 +30,7 @@ impl Searcher<'_> {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
+			nodes: 0,
 			searching_depth: 0,
 			board: board,
 			my_past_positions: my_past_positions
@@ -80,6 +81,7 @@ impl Searcher<'_> {
 				let mut past_positions = self.my_past_positions.clone();
 
 				let search_handler = handler.clone();
+
 				let result = self.search(&search_handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
 
 				if result != None {
@@ -102,11 +104,16 @@ impl Searcher<'_> {
 						let mut best_move = self.shared_info.best_move.lock().unwrap();
 						let mut best_depth = self.shared_info.best_depth.lock().unwrap();
 
+						let mut nodes = self.shared_info.nodes.lock().unwrap();
+
+						let prev_nodes = *nodes;
+						*nodes = prev_nodes + self.nodes;
+
 						if self.searching_depth > *best_depth {
-							mem::replace(&mut *best_move, best_mv.clone());
+							*best_move = best_mv.clone();
 
 							let prev_depth = *best_depth;
-							mem::replace(&mut *best_depth, prev_depth + 1);
+							*best_depth = prev_depth + 1;
 						} else {
 							//do not print out anything if we are searching at a lower depth than the current shared best depth
 							continue;
@@ -193,10 +200,7 @@ impl Searcher<'_> {
 			return None;
 		}
 
-		let mut nodes = self.shared_info.nodes.lock().unwrap();
-
-		let prev_nodes = *nodes;
-		mem::replace(&mut *nodes, prev_nodes + 1);
+		self.nodes += 1;
 
 		//MATE DISTANCE PRUNING
 		//make sure that alpha is not defaulted to negative infinity
@@ -405,10 +409,7 @@ impl Searcher<'_> {
 			return None;
 		}
 
-		let mut nodes = self.shared_info.nodes.lock().unwrap();
-
-		let prev_nodes = *nodes;
-		mem::replace(&mut *nodes, prev_nodes + 1);
+		self.nodes += 1;
 
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),

@@ -13,8 +13,7 @@ use crate::uci::castle_parse::*;
 pub struct SharedInfo<'a> {
 	pub tt: &'a TT,
 	pub best_move: Arc<Mutex<Option<Move>>>,
-	pub best_depth: Arc<Mutex<i32>>,
-	pub nodes: Arc<Mutex<u64>>,
+	pub best_depth: Arc<Mutex<i32>>
 }
 
 impl SharedInfo<'_> {
@@ -22,8 +21,7 @@ impl SharedInfo<'_> {
 		SharedInfo {
 			tt: tt,
 			best_move: Arc::new(Mutex::new(None)),
-			best_depth: Arc::new(Mutex::new(0)),
-			nodes: Arc::new(Mutex::new(0))
+			best_depth: Arc::new(Mutex::new(0))
 		}
 	}
 }
@@ -112,13 +110,13 @@ impl Engine<'_> {
 			let mut i = 0;
 			for worker in worker_threads {
 				//fish out updated movegen tables for individual local use
-				self.threads[i].movegen = worker.join().unwrap();
+				let (movegen, nodes) = worker.join().unwrap();
+				self.threads[i].movegen = movegen;
+				self.total_nodes += nodes;
 				i += 1;
 			}
 
-			self.total_nodes = *(&shared_info).nodes.lock().unwrap();
 			let best_move = *(&shared_info).best_move.lock().unwrap();
-
 			_960_to_regular_(best_move, &self.board)
 		})
 	}

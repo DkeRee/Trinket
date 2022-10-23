@@ -25,7 +25,7 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> MoveGen {
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> (MoveGen, u64) {
 		let mut instance = Searcher {
 			time_control: time_control,
 			shared_info: shared_info,
@@ -37,7 +37,7 @@ impl Searcher<'_> {
 		};
 
 		instance.go(handler.unwrap());
-		instance.movegen.clone()
+		(instance.movegen, instance.nodes)
 	}
 
 	fn go(&mut self, handler: Arc<AtomicBool>) {
@@ -67,10 +67,6 @@ impl Searcher<'_> {
 		while depth_index < self.time_control.depth {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, self.time_control.movestogo as f32)) {
-
-				//reseting this round's node count
-				self.nodes = 0;
-				
 				self.searching_depth = depth_index + 1;
 
 				let board = &mut self.board.clone();
@@ -108,31 +104,24 @@ impl Searcher<'_> {
 						let mut best_move = self.shared_info.best_move.lock().unwrap();
 						let mut best_depth = self.shared_info.best_depth.lock().unwrap();
 
-						let mut nodes = self.shared_info.nodes.lock().unwrap();
-
-						let prev_nodes = *nodes;
-						*nodes = prev_nodes + self.nodes;
-
 						if self.searching_depth > *best_depth {
 							*best_move = best_mv.clone();
-
-							let prev_depth = *best_depth;
-							*best_depth = prev_depth + 1;
+							*best_depth += 1;
 						} else {
 							//do not print out anything if we are searching at a lower depth than the current shared best depth
 							continue;
 						}
 					}
 
-					let nodes = self.shared_info.nodes.lock().unwrap();
+					let nodes = self.nodes;
 					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
 					//get nps
 					let mut nps: u64;
 					if elapsed == 0_f32 {
-						nps = *nodes;
+						nps = nodes;
 					} else {
-						nps = ((*nodes as f32 * 1000_f32) / elapsed) as u64;
+						nps = ((nodes as f32 * 1000_f32) / elapsed) as u64;
 					}
 
 					let mut score_str = if eval.mate {

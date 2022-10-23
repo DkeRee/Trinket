@@ -106,20 +106,17 @@ impl Engine<'_> {
 				}));
 			}
 
-			let mut best_move = None;
-
 			//wait for all workers to finish their tasks
 			let mut i = 0;
 			for worker in worker_threads {
 				//fish out updated movegen tables for individual local use
-				let (movegen, nodes, best_mv) = worker.join().unwrap();
+				let (movegen, nodes) = worker.join().unwrap();
 				self.threads[i].movegen = movegen;
 				self.total_nodes += nodes;
-				best_move = best_mv;
 				i += 1;
 			}
 
-			//let best_move = *(&shared_info).best_move.lock().unwrap();
+			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)
 		})
 	}

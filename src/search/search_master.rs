@@ -86,8 +86,23 @@ impl Engine<'_> {
 		}
 	}
 
-	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
+	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) {
 		let shared_info = SharedInfo::new(&self.tt);
+
+		self.handler = Some(handler.clone());
+
+		thread::scope(|scope| {
+			let board = self.board.clone();
+			let positions = self.my_past_positions.clone();
+			let this_handler = &self.handler;
+			let e = scope.spawn(move || {
+				Searcher::create(time_control.clone(), TT::new(), MoveGen::new(), board, positions, this_handler.clone())
+			});
+
+			self.total_nodes = e.join().unwrap();
+		});
+
+		/*
 		thread::scope(|scope| {
 			self.handler = Some(handler.clone());
 			self.total_nodes = 0;
@@ -121,6 +136,7 @@ impl Engine<'_> {
 
 			_960_to_regular_(best_move, &self.board)
 		})
+		*/
 	}
 
 	pub fn reset_threads(&mut self, thread_count: usize) {

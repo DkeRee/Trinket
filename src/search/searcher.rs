@@ -14,9 +14,9 @@ use crate::movegen::movegen::*;
 
 pub static mut LMR_TABLE: [[f32; 64]; 64] = [[0.0; 64]; 64];
 
-pub struct Searcher<'a> {
+pub struct Searcher {
 	pub time_control: TimeControl,
-	pub shared_info: &'a SharedInfo<'a>,
+	pub tt: TT,
 	pub movegen: MoveGen,
 	nodes: u64,
 	searching_depth: i32,
@@ -24,11 +24,11 @@ pub struct Searcher<'a> {
 	my_past_positions: Vec<u64>
 }
 
-impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> MoveGen {
+impl Searcher {
+	pub fn create(time_control: TimeControl, tt: TT, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> u64 {
 		let mut instance = Searcher {
 			time_control: time_control,
-			shared_info: shared_info,
+			tt: tt,
 			movegen: movegen,
 			nodes: 0,
 			searching_depth: 0,
@@ -37,7 +37,7 @@ impl Searcher<'_> {
 		};
 
 		instance.go(handler.unwrap());
-		instance.movegen.clone()
+		instance.nodes
 	}
 
 	fn go(&mut self, handler: Arc<AtomicBool>) {
@@ -45,6 +45,8 @@ impl Searcher<'_> {
 
 		let mut time: f32;
 		let mut timeinc: f32;
+		
+		self.nodes = 0;
 
 		//set time
 		match self.board.side_to_move() {
@@ -68,9 +70,7 @@ impl Searcher<'_> {
 			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			if search_elapsed < ((time + timeinc) / f32::min(40_f32, self.time_control.movestogo as f32)) {
 
-				//reseting this round's node count
-				self.nodes = 0;
-				
+				//reseting this round's node count				
 				self.searching_depth = depth_index + 1;
 
 				let board = &mut self.board.clone();
@@ -105,6 +105,7 @@ impl Searcher<'_> {
 						depth_index += 1;
 
 						//aspiration windows pass! now check for whether this thread is the highest depth finished searching.
+						/*
 						let mut best_move = self.shared_info.best_move.lock().unwrap();
 						let mut best_depth = self.shared_info.best_depth.lock().unwrap();
 
@@ -122,17 +123,18 @@ impl Searcher<'_> {
 							//do not print out anything if we are searching at a lower depth than the current shared best depth
 							continue;
 						}
+						*/
 					}
 
-					let nodes = self.shared_info.nodes.lock().unwrap();
+					let nodes = self.nodes;
 					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
 					//get nps
 					let mut nps: u64;
 					if elapsed == 0_f32 {
-						nps = *nodes;
+						nps = nodes;
 					} else {
-						nps = ((*nodes as f32 * 1000_f32) / elapsed) as u64;
+						nps = ((nodes as f32 * 1000_f32) / elapsed) as u64;
 					}
 
 					let mut score_str = if eval.mate {
@@ -164,7 +166,7 @@ impl Searcher<'_> {
 		}
 
 		//probe TT
-		match self.shared_info.tt.find(board, ply) {
+		match self.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
 
@@ -238,7 +240,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove>;
 
 		//probe tt
-		let table_find = match self.shared_info.tt.find(board, ply) {
+		let table_find = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -389,15 +391,15 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.shared_info.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						break;
 					} else {
-						self.shared_info.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					self.shared_info.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
@@ -477,7 +479,7 @@ impl Searcher<'_> {
 	}
 }
 
-impl Searcher<'_> {
+impl Searcher {
 	const ASPIRATION_WINDOW: i32 = 25;
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 100;

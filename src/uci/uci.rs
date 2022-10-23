@@ -101,8 +101,9 @@ impl UCIMaster {
 										println!("readyok");
 									},
 									UCICmd::Go(time_control, handler) => {
-										let best_move = engine.go(time_control, handler);
-										println!("bestmove {}", best_move);
+										engine.go(time_control, handler);
+										//let best_move = engine.go(time_control, handler);
+										//println!("bestmove {}", best_move);
 									},
 									UCICmd::ResetThreads(thread_count) => {
 										engine.reset_threads(thread_count);

@@ -86,6 +86,16 @@ impl Engine<'_> {
 
 	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
 		let shared_info = SharedInfo::new(&self.tt);
+
+		let (movegen, nodes) = Searcher::create(time_control.clone(), &shared_info, self.threads[0].movegen.clone(), self.board.clone(), self.my_past_positions.clone(), Some(handler.clone()));
+
+		self.threads[0].movegen = movegen;
+		self.total_nodes = nodes;
+
+		let best_move = *(&shared_info).best_move.lock().unwrap();
+		_960_to_regular_(best_move, &self.board)
+
+		/*
 		thread::scope(|scope| {
 			self.handler = Some(handler.clone());
 			self.total_nodes = 0;
@@ -119,6 +129,7 @@ impl Engine<'_> {
 			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)
 		})
+		*/
 	}
 
 	pub fn reset_threads(&mut self, thread_count: usize) {

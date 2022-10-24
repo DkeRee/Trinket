@@ -87,6 +87,29 @@ impl Engine<'_> {
 	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
 		let shared_info = SharedInfo::new(&self.tt);
 
+		thread::scope(|scope| {			
+			self.handler = Some(handler.clone());
+			self.total_nodes = 0;
+
+			let thread_movegen = self.threads[0].movegen.clone();
+			let board = self.board.clone();
+			let positions = self.my_past_positions.clone();
+			let this_handler = &self.handler;
+			let this_shared_info = &shared_info;
+
+			let thread_result = scope.spawn(move || {
+				Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
+			});
+
+			let (movegen, nodes) = thread_result.join().unwrap();
+
+			self.threads[0].movegen = movegen;
+			self.total_nodes = nodes;
+
+			let best_move = *(&shared_info).best_move.lock().unwrap();
+			_960_to_regular_(best_move, &self.board)
+		})
+		/*
 		let (movegen, nodes) = Searcher::create(time_control.clone(), &shared_info, self.threads[0].movegen.clone(), self.board.clone(), self.my_past_positions.clone(), Some(handler.clone()));
 
 		self.threads[0].movegen = movegen;
@@ -94,6 +117,7 @@ impl Engine<'_> {
 
 		let best_move = *(&shared_info).best_move.lock().unwrap();
 		_960_to_regular_(best_move, &self.board)
+		*/
 
 		/*
 		thread::scope(|scope| {

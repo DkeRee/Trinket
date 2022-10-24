@@ -102,7 +102,7 @@ impl Engine<'_> {
 				let this_shared_info = &shared_info;
 
 				worker_threads.push(scope.spawn(move || {
-					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
+					Searcher::create(time_control.clone(), this_shared_info, MoveGen::new(), board, positions, this_handler.clone())
 				}));
 			}
 
@@ -111,7 +111,7 @@ impl Engine<'_> {
 			for worker in worker_threads {
 				//fish out updated movegen tables for individual local use
 				let (movegen, nodes) = worker.join().unwrap();
-				self.threads[i].movegen = movegen;
+				//self.threads[i].movegen = movegen;
 				self.total_nodes += nodes;
 				i += 1;
 			}

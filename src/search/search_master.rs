@@ -91,20 +91,27 @@ impl Engine<'_> {
 			self.handler = Some(handler.clone());
 			self.total_nodes = 0;
 
-			let thread_movegen = self.threads[0].movegen.clone();
-			let board = self.board.clone();
-			let positions = self.my_past_positions.clone();
-			let this_handler = &self.handler;
-			let this_shared_info = &shared_info;
+			let mut worker_threads = Vec::new();
 
-			let thread_result = scope.spawn(move || {
-				Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
-			});
+			for i in 0..1 {
+				let thread_movegen = self.threads[i].movegen.clone();
+				let board = self.board.clone();
+				let positions = self.my_past_positions.clone();
+				let this_handler = &self.handler;
+				let this_shared_info = &shared_info;
 
-			let (movegen, nodes) = thread_result.join().unwrap();
+				worker_threads.push(scope.spawn(move || {
+					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
+				}));
+			}
 
-			self.threads[0].movegen = movegen;
-			self.total_nodes = nodes;
+			let mut index = 0;
+			for worker in worker_threads {
+				let (movegen, nodes) = worker.join().unwrap();
+				self.threads[index].movegen = movegen.clone();
+				self.total_nodes += nodes;
+				index += 1;
+			}
 
 			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)

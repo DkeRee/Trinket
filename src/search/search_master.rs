@@ -2,7 +2,7 @@ use cozy_chess::*;
 
 use std::thread;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use crate::search::searcher::*;
 use crate::search::tt::*;
@@ -11,17 +11,13 @@ use crate::uci::castle_parse::*;
 
 #[derive(Debug)]
 pub struct SharedInfo<'a> {
-	pub tt: &'a TT,
-	pub best_move: Arc<Mutex<Option<Move>>>,
-	pub best_depth: Arc<Mutex<i32>>
+	pub tt: &'a TT
 }
 
 impl SharedInfo<'_> {
 	pub fn new(tt: &TT) -> SharedInfo {
 		SharedInfo {
-			tt: tt,
-			best_move: Arc::new(Mutex::new(None)),
-			best_depth: Arc::new(Mutex::new(0))
+			tt: tt
 		}
 	}
 }
@@ -95,6 +91,7 @@ impl Engine<'_> {
 
 			let mut worker_threads = Vec::new();
 
+			let mut main = true;
 			for i in 0..self.thread_count {
 				let thread_movegen = self.threads[i as usize].movegen.clone();
 				let board = self.board.clone();
@@ -103,19 +100,27 @@ impl Engine<'_> {
 				let this_shared_info = &shared_info;
 
 				worker_threads.push(scope.spawn(move || {
-					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
+					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone(), main)
 				}));
+
+				main = false;
 			}
 
+			let mut best_move = None;
 			let mut index = 0;
 			for worker in worker_threads {
-				let (movegen, nodes) = worker.join().unwrap();
+				let (best_mv, movegen, nodes) = worker.join().unwrap();
 				self.threads[index].movegen = movegen.clone();
 				self.total_nodes += nodes;
+
+				if index == 0 {
+					//is main thread
+					best_move = best_mv;
+				}
+
 				index += 1;
 			}
 
-			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)
 		})
 	}

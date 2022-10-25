@@ -18,6 +18,8 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
+	best_move: Option<Move>,
+	main: bool,
 	nodes: u64,
 	searching_depth: i32,
 	board: Board,
@@ -25,11 +27,13 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> (MoveGen, u64) {
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, board: Board, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, main: bool) -> (Option<Move>, MoveGen, u64) {
 		let mut instance = Searcher {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
+			best_move: None,
+			main: main,
 			nodes: 0,
 			searching_depth: 0,
 			board: board,
@@ -37,7 +41,7 @@ impl Searcher<'_> {
 		};
 
 		instance.go(handler.unwrap());
-		(instance.movegen, instance.nodes)
+		(instance.best_move, instance.movegen, instance.nodes)
 	}
 
 	fn go(&mut self, handler: Arc<AtomicBool>) {
@@ -98,7 +102,15 @@ impl Searcher<'_> {
 						alpha = eval.score - Self::ASPIRATION_WINDOW;
 						beta = eval.score + Self::ASPIRATION_WINDOW;
 
+						self.best_move = best_mv.clone();
 						depth_index += 1;
+
+						if !self.main {
+							//do not print if this isn't the main thread
+							continue;
+						}
+
+						/*
 
 						//aspiration windows pass! now check for whether this thread is the highest depth finished searching.
 						let mut best_move = self.shared_info.best_move.lock().unwrap();
@@ -111,6 +123,7 @@ impl Searcher<'_> {
 							//do not print out anything if we are searching at a lower depth than the current shared best depth
 							continue;
 						}
+						*/
 					}
 
 					let nodes = self.nodes;

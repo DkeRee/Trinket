@@ -93,7 +93,7 @@ impl Engine<'_> {
 
 			let mut worker_threads = Vec::new();
 
-			for i in 0..self.threads.len() {
+			for i in 0..4 {
 				let thread_movegen = self.threads[i].movegen.clone();
 				let board = self.board.clone();
 				let positions = self.my_past_positions.clone();

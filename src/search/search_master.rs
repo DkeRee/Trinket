@@ -91,7 +91,6 @@ impl Engine<'_> {
 
 			let mut worker_threads = Vec::new();
 
-			let mut main = true;
 			for i in 0..self.thread_count {
 				let thread_movegen = self.threads[i as usize].movegen.clone();
 				let board = self.board.clone();
@@ -99,11 +98,15 @@ impl Engine<'_> {
 				let this_handler = &self.handler;
 				let this_shared_info = &shared_info;
 
+				let mut main = if i as u32 == self.thread_count - 1 {
+					true
+				} else {
+					false
+				};
+
 				worker_threads.push(scope.spawn(move || {
 					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone(), main)
 				}));
-
-				main = false;
 			}
 
 			let mut best_move = None;
@@ -113,7 +116,7 @@ impl Engine<'_> {
 				self.threads[index].movegen = movegen.clone();
 				self.total_nodes += nodes;
 
-				if index == 0 {
+				if index as u32 == self.thread_count - 1 {
 					//is main thread
 					best_move = best_mv;
 				}

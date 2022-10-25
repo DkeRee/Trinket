@@ -60,7 +60,7 @@ impl UCIMaster {
 
 		UCIMaster {
 			playing: continue_engine,
-			threads: num_cpus::get(),
+			threads: 4,
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -145,8 +145,8 @@ impl UCIMaster {
 								let thread_amount = cmd_vec[4].parse::<usize>().unwrap();
 
 								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
-									self.threads = thread_amount;
-									sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
+									//self.threads = thread_amount;
+									//sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
 								} else {
 									println!("Thread input is out of bounds.");
 								}

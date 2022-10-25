@@ -60,7 +60,7 @@ impl UCIMaster {
 
 		UCIMaster {
 			playing: continue_engine,
-			threads: 4,
+			threads: 1,
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -91,7 +91,7 @@ impl UCIMaster {
 										println!("id name Trinket {}", env!("CARGO_PKG_VERSION"));
 										println!("id author DkeRee");
 										println!("option name Hash type spin default 16 min 0 max 64000");
-										println!("option name Threads type spin default 1 min 1 max 1");
+										println!("option name Threads type spin default 1 min {} max {}", THREAD_MIN, THREAD_MAX);
 										println!("uciok");
 									},
 									UCICmd::UciNewGame => {

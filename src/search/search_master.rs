@@ -67,17 +67,19 @@ pub struct Engine<'a> {
 	pub board: Board,
 	pub my_past_positions: Vec<u64>,
 	pub total_nodes: u64,
+	thread_count: u32,
 	handler: Option<Arc<AtomicBool>>,
 	threads: Vec<EngineThread<'a>>,
 	tt: TT
 }
 
 impl Engine<'_> {
-	pub fn new(thread_count: usize) -> Engine<'static> {
+	pub fn new(thread_count: u32) -> Engine<'static> {
 		Engine {
 			board: Board::default(),
 			my_past_positions: Vec::with_capacity(64),
 			total_nodes: 0,
+			thread_count: thread_count,
 			handler: None,
 			threads: (0..thread_count).map(|_| EngineThread::new(None)).collect(),
 			tt: TT::new()
@@ -93,8 +95,8 @@ impl Engine<'_> {
 
 			let mut worker_threads = Vec::new();
 
-			for i in 0..4 {
-				let thread_movegen = self.threads[i].movegen.clone();
+			for i in 0..self.thread_count {
+				let thread_movegen = self.threads[i as usize].movegen.clone();
 				let board = self.board.clone();
 				let positions = self.my_past_positions.clone();
 				let this_handler = &self.handler;
@@ -118,7 +120,7 @@ impl Engine<'_> {
 		})
 	}
 
-	pub fn reset_threads(&mut self, thread_count: usize) {
+	pub fn reset_threads(&mut self, thread_count: u32) {
 		self.threads = (0..thread_count).map(|_| EngineThread::new(None)).collect();
 	}
 }

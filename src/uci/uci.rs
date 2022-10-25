@@ -11,14 +11,14 @@ use crate::search::searcher::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
-const THREAD_MAX: usize = 1024;
-const THREAD_MIN: usize = 1;
+const THREAD_MAX: u32 = 1024;
+const THREAD_MIN: u32 = 1;
 
 enum UCICmd {
 	Uci,
 	UciNewGame,
 	IsReady,
-	ResetThreads(usize),
+	ResetThreads(u32),
 	Go(TimeControl, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
@@ -33,7 +33,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 //uci command parser
 pub struct UCIMaster {
 	pub playing: bool,
-	threads: usize,
+	threads: u32,
 	engine_thread: Option<thread::JoinHandle<()>>,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
@@ -142,11 +142,11 @@ impl UCIMaster {
 					"name" => {
 						match cmd_vec[2] {
 							"Threads" => {
-								let thread_amount = cmd_vec[4].parse::<usize>().unwrap();
+								let thread_amount = cmd_vec[4].parse::<u32>().unwrap();
 
 								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
-									//self.threads = thread_amount;
-									//sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
+									self.threads = thread_amount;
+									sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
 								} else {
 									println!("Thread input is out of bounds.");
 								}

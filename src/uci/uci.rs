@@ -105,7 +105,7 @@ impl UCIMaster {
 										println!("bestmove {}", best_move);
 									},
 									UCICmd::ResetThreads(thread_count) => {
-										engine.reset_threads(thread_count);
+										engine = Engine::new(thread_count);
 									},
 									UCICmd::PositionFen(fen) => {
 										engine.board = Board::from_fen(&*fen.trim(), false).unwrap();

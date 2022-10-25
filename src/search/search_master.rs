@@ -119,8 +119,4 @@ impl Engine<'_> {
 			_960_to_regular_(best_move, &self.board)
 		})
 	}
-
-	pub fn reset_threads(&mut self, thread_count: u32) {
-		self.threads = (0..thread_count).map(|_| EngineThread::new(None)).collect();
-	}
 }

@@ -93,7 +93,7 @@ impl Engine<'_> {
 
 			let mut worker_threads = Vec::new();
 
-			for i in 0..1 {
+			for i in 0..self.threads.len() {
 				let thread_movegen = self.threads[i].movegen.clone();
 				let board = self.board.clone();
 				let positions = self.my_past_positions.clone();
@@ -116,51 +116,6 @@ impl Engine<'_> {
 			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)
 		})
-		/*
-		let (movegen, nodes) = Searcher::create(time_control.clone(), &shared_info, self.threads[0].movegen.clone(), self.board.clone(), self.my_past_positions.clone(), Some(handler.clone()));
-
-		self.threads[0].movegen = movegen;
-		self.total_nodes = nodes;
-
-		let best_move = *(&shared_info).best_move.lock().unwrap();
-		_960_to_regular_(best_move, &self.board)
-		*/
-
-		/*
-		thread::scope(|scope| {
-			self.handler = Some(handler.clone());
-			self.total_nodes = 0;
-
-			let mut worker_threads = Vec::with_capacity(self.threads.len());
-
-			//start search on all threads
-			for i in 0..self.threads.len() {
-				//SEARCH
-				let thread_movegen = self.threads[i].movegen.clone();
-				let board = self.board.clone();
-				let positions = self.my_past_positions.clone();
-				let this_handler = &self.handler;
-				let this_shared_info = &shared_info;
-
-				worker_threads.push(scope.spawn(move || {
-					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
-				}));
-			}
-
-			//wait for all workers to finish their tasks
-			let mut i = 0;
-			for worker in worker_threads {
-				//fish out updated movegen tables for individual local use
-				let (movegen, nodes) = worker.join().unwrap();
-				self.threads[i].movegen = movegen;
-				self.total_nodes += nodes;
-				i += 1;
-			}
-
-			let best_move = *(&shared_info).best_move.lock().unwrap();
-			_960_to_regular_(best_move, &self.board)
-		})
-		*/
 	}
 
 	pub fn reset_threads(&mut self, thread_count: usize) {

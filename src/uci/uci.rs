@@ -16,9 +16,8 @@ const THREAD_MIN: u32 = 1;
 
 enum UCICmd {
 	Uci,
-	UciNewGame,
+	UciNewGame(u32),
 	IsReady,
-	ResetThreads(u32),
 	Go(TimeControl, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
@@ -78,10 +77,10 @@ impl UCIMaster {
 				//init engine
 				if self.engine_thread.is_none() {
 					let thread_receiver = receiver.clone();
-					let thread_count = self.threads;
 
+					let init_thread_count = self.threads;
 					self.engine_thread = Some(thread::spawn(move || {
-						let mut engine = Engine::new(thread_count);
+						let mut engine = Engine::new(init_thread_count);
 						let mut playing = true;
 
 						loop {
@@ -94,7 +93,7 @@ impl UCIMaster {
 										println!("option name Threads type spin default 1 min {} max {}", THREAD_MIN, THREAD_MAX);
 										println!("uciok");
 									},
-									UCICmd::UciNewGame => {
+									UCICmd::UciNewGame(thread_count) => {
 										engine = Engine::new(thread_count);
 									},
 									UCICmd::IsReady => {
@@ -103,9 +102,6 @@ impl UCIMaster {
 									UCICmd::Go(time_control, handler) => {
 										let best_move = engine.go(time_control, handler);
 										println!("bestmove {}", best_move);
-									},
-									UCICmd::ResetThreads(thread_count) => {
-										engine = Engine::new(thread_count);
 									},
 									UCICmd::PositionFen(fen) => {
 										engine.board = Board::from_fen(&*fen.trim(), false).unwrap();
@@ -146,7 +142,7 @@ impl UCIMaster {
 
 								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
 									self.threads = thread_amount;
-									sender.send(UCICmd::ResetThreads(self.threads)).unwrap();
+									sender.send(UCICmd::UciNewGame(self.threads)).unwrap();
 								} else {
 									println!("Thread input is out of bounds.");
 								}
@@ -158,7 +154,7 @@ impl UCIMaster {
 				}
 			},
 			"ucinewgame" => {
-				sender.send(UCICmd::UciNewGame).unwrap();
+				sender.send(UCICmd::UciNewGame(self.threads)).unwrap();
 			},
 			"isready" => {
 				sender.send(UCICmd::IsReady).unwrap();
@@ -203,7 +199,7 @@ impl UCIMaster {
 					match cmd_vec[1] {
 						"startpos" => {
 							if cmd_vec.len() == 2 {
-								sender.send(UCICmd::UciNewGame).unwrap();
+								sender.send(UCICmd::UciNewGame(self.threads)).unwrap();
 							} else {
 								let mut pgn_vec = Vec::with_capacity(64);
 								for i in 3..cmd_vec.len() {

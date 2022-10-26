@@ -1,7 +1,7 @@
 use cozy_chess::*;
 
 use std::thread;
-use std::time::Instant;
+use std::time::Duration;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -32,6 +32,7 @@ pub struct TimeControl {
 	pub depth: i32,
 	pub wtime: i64,
 	pub btime: i64,
+	pub movetime: Option<i64>,
 	pub winc: i64,
 	pub binc: i64,
 	pub movestogo: i64
@@ -43,6 +44,7 @@ impl TimeControl {
 			depth: i32::MAX,
 			wtime: i64::MAX,
 			btime: i64::MAX,
+			movetime: None,
 			winc: 0,
 			binc: 0,
 			movestogo: i64::MAX
@@ -118,33 +120,37 @@ impl Engine<'_> {
 
 			//manage time
 			let abort = handler.clone();
-			let side = self.board.side_to_move();
+
+			let movetime = time_control.movetime;
+			let movestogo = time_control.movestogo;
+
+			let mut time: u64;
+			let mut timeinc: u64;
+
+			//set time
+			match self.board.side_to_move() {
+				Color::White => {
+					time = time_control.wtime as u64;
+					timeinc = time_control.winc as u64;
+				},
+				Color::Black => {
+					time = time_control.btime as u64;
+					timeinc = time_control.binc as u64;	
+				}
+			}
 
 			thread::spawn(move || {
-				let mut time: f32;
-				let mut timeinc: f32;
+				let search_time = if movetime.is_none() {
+					(time + timeinc) / u64::min(40_u64, movestogo as u64)
+				} else {
+					movetime.unwrap() as u64
+				};
 
-				//set time
-				match side {
-					Color::White => {
-						time = time_control.wtime as f32;
-						timeinc = time_control.winc as f32;
-					},
-					Color::Black => {
-						time = time_control.btime as f32;
-						timeinc = time_control.binc as f32;	
-					}
-				}
-
-				//loop until allocated time is up
-				let now = Instant::now();
-				let mut elapsed = 0_f32;
-				while (elapsed < (time + timeinc) / 32_f32) && !abort.load(Ordering::Relaxed) {
-					elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-				}
+				thread::sleep(Duration::from_millis(search_time));
 				abort.store(true, Ordering::Relaxed);
 			});
 
+			//get total node count from all threads
 			let mut index = 0;
 			for worker in worker_threads {
 				let (movegen, nodes) = worker.join().unwrap();
@@ -153,6 +159,7 @@ impl Engine<'_> {
 				index += 1;
 			}
 
+			//output!
 			let best_move = *(&shared_info).best_move.lock().unwrap();
 			_960_to_regular_(best_move, &self.board)
 		})

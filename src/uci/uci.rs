@@ -170,8 +170,7 @@ impl UCIMaster {
 							time_control.depth = cmd_vec[i + 1].parse::<i32>().unwrap();
 						},
 						"movetime" => {
-							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
-							time_control.btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.movetime = Some(cmd_vec[i + 1].parse::<i64>().unwrap());
 						},
 						"wtime" => {
 							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();

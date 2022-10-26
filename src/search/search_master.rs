@@ -141,7 +141,7 @@ impl Engine<'_> {
 
 			thread::spawn(move || {
 				let search_time = if movetime.is_none() {
-					(time + timeinc) / u64::min(40_u64, movestogo as u64)
+					(time + timeinc) / u64::min(32_u64, movestogo as u64)
 				} else {
 					movetime.unwrap() as u64
 				};

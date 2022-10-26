@@ -53,9 +53,9 @@ pub fn bench() {
         let mut time_control = TimeControl::new();
         time_control.depth = DEPTH;
 
-        let _ = engine.go(time_control, Arc::new(AtomicBool::new(false)));
+        let nodes = engine.bench_go(time_control, Arc::new(AtomicBool::new(false)));
 
-        total_nodes += &engine.total_nodes;
+        total_nodes += nodes;
         total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;
 
         //clear engine

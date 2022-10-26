@@ -87,6 +87,14 @@ impl Engine<'_> {
 		}
 	}
 
+	pub fn bench_go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> u64 {
+		let shared_info = SharedInfo::new(&self.tt);
+
+		let (_, nodes) = Searcher::create(time_control.clone(), &shared_info, MoveGen::new(), self.board.clone(), Vec::with_capacity(64), Some(handler.clone()));
+
+		nodes
+	}
+
 	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
 		let shared_info = SharedInfo::new(&self.tt);
 
@@ -107,6 +115,32 @@ impl Engine<'_> {
 					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
 				}));
 			}
+
+			//manage time
+			let abort = handler.clone();
+
+			let mut time: f32;
+			let mut timeinc: f32;
+
+			//set time
+			match self.board.side_to_move() {
+				Color::White => {
+					time = time_control.wtime as f32;
+					timeinc = time_control.winc as f32;
+				},
+				Color::Black => {
+					time = time_control.btime as f32;
+					timeinc = time_control.binc as f32;	
+				}
+			}
+
+			//loop until allocated time is up
+			let now = Instant::now();
+			let mut elapsed = 0_f32;
+			while (elapsed < (time + timeinc) as u64 / 32) && !abort.load(Ordering::Relaxed) {
+				elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+			}
+			abort.store(true, Ordering::Relaxed);
 
 			let mut index = 0;
 			for worker in worker_threads {

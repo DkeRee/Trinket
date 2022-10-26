@@ -185,7 +185,7 @@ impl UCIMaster {
 							time_control.binc = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"movestogo" => {
-							time_control.movestogo = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.movestogo = Some(cmd_vec[i + 1].parse::<i64>().unwrap());
 						},
 						_ => {}
 					}

@@ -35,7 +35,7 @@ pub struct TimeControl {
 	pub movetime: Option<i64>,
 	pub winc: i64,
 	pub binc: i64,
-	pub movestogo: i64
+	pub movestogo: Option<i64>
 }
 
 impl TimeControl {
@@ -47,7 +47,7 @@ impl TimeControl {
 			movetime: None,
 			winc: 0,
 			binc: 0,
-			movestogo: i64::MAX
+			movestogo: None
 		}
 	}
 }
@@ -141,7 +141,7 @@ impl Engine<'_> {
 
 			thread::spawn(move || {
 				let search_time = if movetime.is_none() {
-					(time + timeinc) / u64::min(39_u64, movestogo as u64)
+					u64::min(time, time / movestogo.unwrap_or(40) as u64 + timeinc)
 				} else {
 					movetime.unwrap() as u64
 				};

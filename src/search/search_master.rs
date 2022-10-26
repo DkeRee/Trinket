@@ -111,23 +111,14 @@ impl Engine<'_> {
 			//set up multithread for search abort
 			let abort = handler.clone();
 
-			let mut time: u64;
-			let mut timeinc: u64;
-
-			//set time
-			match self.board.side_to_move() {
-				Color::White => {
-					time = time_control.wtime as u64;
-					timeinc = time_control.winc as u64;
-				},
-				Color::Black => {
-					time = time_control.btime as u64;
-					timeinc = time_control.binc as u64;	
-				}
-			}
+			let time = if self.board.side_to_move() == Color::White {
+				time_control.wtime
+			} else {
+				time_control.btime
+			};
 
 			thread::spawn(move || {
-				thread::sleep(Duration::from_millis((time + timeinc) / u64::min(40_u64, time_control.movestogo as u64)));
+				thread::sleep(Duration::from_millis(time as u64 / 32));
 				abort.store(true, Ordering::Relaxed);
 			});
 

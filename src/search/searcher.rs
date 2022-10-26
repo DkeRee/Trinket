@@ -1,6 +1,5 @@
 use cozy_chess::*;
 
-use std::thread;
 use std::time::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;

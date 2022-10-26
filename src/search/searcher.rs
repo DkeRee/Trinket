@@ -136,6 +136,8 @@ impl Searcher<'_> {
 				break;
 			}
 		}
+
+		handler.store(true, Ordering::Relaxed);
 	}
 
 	//fish PV from TT

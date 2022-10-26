@@ -41,7 +41,6 @@ const POSITIONS: &[&str] = &[
 //bench for engine identification for OpenBench support
 pub fn bench() {
     let mut engine = Engine::new(THREAD_COUNT);
-    let placeholder_abort = Arc::new(AtomicBool::new(false));
 
     let mut total_nodes = 0;
     let mut total_elapsed: f32 = 0.0;
@@ -54,7 +53,7 @@ pub fn bench() {
         let mut time_control = TimeControl::new();
         time_control.depth = DEPTH;
 
-        let _ = engine.go(time_control, placeholder_abort.clone());
+        let _ = engine.go(time_control, Arc::new(AtomicBool::new(false)));
 
         total_nodes += &engine.total_nodes;
         total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;

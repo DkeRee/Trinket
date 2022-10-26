@@ -137,7 +137,7 @@ impl Engine<'_> {
 			//loop until allocated time is up
 			let now = Instant::now();
 			let mut elapsed = 0_f32;
-			while (elapsed < (time + timeinc) as u64 / 32) && !abort.load(Ordering::Relaxed) {
+			while (elapsed < (time + timeinc) / 32_f32) && !abort.load(Ordering::Relaxed) {
 				elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 			}
 			abort.store(true, Ordering::Relaxed);

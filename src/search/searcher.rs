@@ -64,69 +64,74 @@ impl Searcher<'_> {
 		let mut depth_index = 0;
 
 		while depth_index < self.time_control.depth {
-			self.searching_depth = depth_index + 1;
+			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+			if search_elapsed < ((time + timeinc) / f32::min(40_f32, self.time_control.movestogo as f32)) {
+				self.searching_depth = depth_index + 1;
 
-			let board = &mut self.board.clone();
+				let board = &mut self.board.clone();
 
-			let mut past_positions = self.my_past_positions.clone();
+				let mut past_positions = self.my_past_positions.clone();
 
-			let search_handler = handler.clone();
+				let search_handler = handler.clone();
 
-			let result = self.search(&search_handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
+				let result = self.search(&search_handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
 
-			if result != None {
-				let (best_mv, eval) = result.unwrap();
+				if result != None {
+					let (best_mv, eval) = result.unwrap();
 
-				//MANAGE ASPIRATION WINDOWS
-				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW * 4;
-					continue;						
-				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW * 4;
-					continue;						
-				} else {
-					alpha = eval.score - Self::ASPIRATION_WINDOW;
-					beta = eval.score + Self::ASPIRATION_WINDOW;
-
-					depth_index += 1;
-
-					//aspiration windows pass! now check for whether this thread is the highest depth finished searching.
-					let mut best_move = self.shared_info.best_move.lock().unwrap();
-					let mut best_depth = self.shared_info.best_depth.lock().unwrap();
-
-					if self.searching_depth > *best_depth {
-						*best_move = best_mv.clone();
-						*best_depth += 1;
+					//MANAGE ASPIRATION WINDOWS
+					if eval.score >= beta {
+						beta += Self::ASPIRATION_WINDOW * 4;
+						continue;						
+					} else if eval.score <= alpha {
+						alpha -= Self::ASPIRATION_WINDOW * 4;
+						continue;						
 					} else {
-						//do not print out anything if we are searching at a lower depth than the current shared best depth
-						continue;
+						alpha = eval.score - Self::ASPIRATION_WINDOW;
+						beta = eval.score + Self::ASPIRATION_WINDOW;
+
+						depth_index += 1;
+
+						//aspiration windows pass! now check for whether this thread is the highest depth finished searching.
+						let mut best_move = self.shared_info.best_move.lock().unwrap();
+						let mut best_depth = self.shared_info.best_depth.lock().unwrap();
+
+						if self.searching_depth > *best_depth {
+							*best_move = best_mv.clone();
+							*best_depth += 1;
+						} else {
+							//do not print out anything if we are searching at a lower depth than the current shared best depth
+							continue;
+						}
 					}
-				}
 
-				let nodes = self.nodes;
-				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+					let nodes = self.nodes;
+					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
-				//get nps
-				let mut nps: u64;
-				if elapsed == 0_f32 {
-					nps = nodes;
-				} else {
-					nps = ((nodes as f32 * 1000_f32) / elapsed) as u64;
-				}
-
-				let mut score_str = if eval.mate {
-					let mut mate_score = if eval.score > 0 {
-						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
+					//get nps
+					let mut nps: u64;
+					if elapsed == 0_f32 {
+						nps = nodes;
 					} else {
-						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
+						nps = ((nodes as f32 * 1000_f32) / elapsed) as u64;
+					}
+
+					let mut score_str = if eval.mate {
+						let mut mate_score = if eval.score > 0 {
+							(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
+						} else {
+							((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
+						};
+
+						format!("mate {}", mate_score)
+					} else {
+						format!("cp {}", eval.score)
 					};
 
-					format!("mate {}", mate_score)
+					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, nodes, nps, self.get_pv(board, self.searching_depth, 0));
 				} else {
-					format!("cp {}", eval.score)
-				};
-
-				println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, nodes, nps, self.get_pv(board, self.searching_depth, 0));
+					break;
+				}
 			} else {
 				break;
 			}

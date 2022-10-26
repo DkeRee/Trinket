@@ -10,9 +10,6 @@ use crate::search::search_master::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
-const THREAD_MAX: usize = 1024;
-const THREAD_MIN: usize = 1;
-
 enum UCICmd {
 	Uci,
 	UciNewGame,
@@ -130,25 +127,6 @@ impl UCIMaster {
 				}
 
 				sender.send(UCICmd::Uci).unwrap();
-			},
-			"setoption" => {
-				match cmd_vec[1] {
-					"name" => {
-						match cmd_vec[2] {
-							"Threads" => {
-								let thread_amount = cmd_vec[4].parse::<usize>().unwrap();
-
-								if THREAD_MIN <= thread_amount && thread_amount <= THREAD_MAX {
-									self.threads = thread_amount;
-								} else {
-									println!("Thread input is out of bounds.");
-								}
-							},
-							_ => {}
-						}
-					},
-					_ => {}
-				}
 			},
 			"ucinewgame" => {
 				sender.send(UCICmd::UciNewGame).unwrap();

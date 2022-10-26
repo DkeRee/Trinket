@@ -1,7 +1,7 @@
 use cozy_chess::*;
 
 use std::thread;
-use std::time::Duration;
+use std::time::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -108,19 +108,31 @@ impl Engine<'_> {
 				}));
 			}
 
-			//set up multithread for search abort
+			//manage time
 			let abort = handler.clone();
 
-			let time = if self.board.side_to_move() == Color::White {
-				time_control.wtime
-			} else {
-				time_control.btime
-			};
+			let mut time: f32;
+			let mut timeinc: f32;
 
-			thread::spawn(move || {
-				thread::sleep(Duration::from_millis(time as u64 / 32));
-				abort.store(true, Ordering::Relaxed);
-			});
+			//set time
+			match self.board.side_to_move() {
+				Color::White => {
+					time = time_control.wtime as f32;
+					timeinc = time_control.winc as f32;
+				},
+				Color::Black => {
+					time = time_control.btime as f32;
+					timeinc = time_control.binc as f32;	
+				}
+			}
+
+			//loop until allocated time is up
+			let now = Instant::now();
+			let mut elapsed = 0_f32;
+			while (elapsed < (time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) && !abort.load(Ordering::Relaxed) {
+				elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+			}
+			abort.store(true, Ordering::Relaxed);
 
 			let mut index = 0;
 			for worker in worker_threads {

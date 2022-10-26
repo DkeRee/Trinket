@@ -1,7 +1,8 @@
 use cozy_chess::*;
 
 use std::thread;
-use std::sync::atomic::AtomicBool;
+use std::time::Duration;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use crate::search::searcher::*;
@@ -106,6 +107,29 @@ impl Engine<'_> {
 					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, board, positions, this_handler.clone())
 				}));
 			}
+
+			//set up multithread for search abort
+			let abort = handler.clone();
+
+			let mut time: u64;
+			let mut timeinc: u64;
+
+			//set time
+			match self.board.side_to_move() {
+				Color::White => {
+					time = time_control.wtime as u64;
+					timeinc = time_control.winc as u64;
+				},
+				Color::Black => {
+					time = time_control.btime as u64;
+					timeinc = time_control.binc as u64;	
+				}
+			}
+
+			thread::spawn(move || {
+				thread::sleep(Duration::from_millis((time + timeinc) / u64::min(40_u64, time_control.movestogo as u64)));
+				abort.store(true, Ordering::Relaxed);
+			});
 
 			let mut index = 0;
 			for worker in worker_threads {

@@ -1,7 +1,7 @@
 use cozy_chess::*;
 
 use std::thread;
-use std::time::{Instant, Duration};
+use std::time::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -70,13 +70,6 @@ impl Searcher<'_> {
 				self.searching_depth = depth_index + 1;
 
 				let board = &mut self.board.clone();
-
-				//set up multithread for search abort
-				let abort = handler.clone();
-				thread::spawn(move || {
-					thread::sleep(Duration::from_millis(time as u64 / 32));
-					abort.store(true, Ordering::Relaxed);
-				});
 
 				let mut past_positions = self.my_past_positions.clone();
 

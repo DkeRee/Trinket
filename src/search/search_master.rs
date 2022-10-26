@@ -118,29 +118,32 @@ impl Engine<'_> {
 
 			//manage time
 			let abort = handler.clone();
+			let side = self.board.side_to_move();
 
-			let mut time: f32;
-			let mut timeinc: f32;
+			thread::spawn(move || {
+				let mut time: f32;
+				let mut timeinc: f32;
 
-			//set time
-			match self.board.side_to_move() {
-				Color::White => {
-					time = time_control.wtime as f32;
-					timeinc = time_control.winc as f32;
-				},
-				Color::Black => {
-					time = time_control.btime as f32;
-					timeinc = time_control.binc as f32;	
+				//set time
+				match side {
+					Color::White => {
+						time = time_control.wtime as f32;
+						timeinc = time_control.winc as f32;
+					},
+					Color::Black => {
+						time = time_control.btime as f32;
+						timeinc = time_control.binc as f32;	
+					}
 				}
-			}
 
-			//loop until allocated time is up
-			let now = Instant::now();
-			let mut elapsed = 0_f32;
-			while (elapsed < (time + timeinc) / 32_f32) && !abort.load(Ordering::Relaxed) {
-				elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-			}
-			abort.store(true, Ordering::Relaxed);
+				//loop until allocated time is up
+				let now = Instant::now();
+				let mut elapsed = 0_f32;
+				while (elapsed < (time + timeinc) / 32_f32) && !abort.load(Ordering::Relaxed) {
+					elapsed = now.elapsed().as_secs_f32() * 1000_f32;
+				}
+				abort.store(true, Ordering::Relaxed);
+			});
 
 			let mut index = 0;
 			for worker in worker_threads {

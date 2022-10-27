@@ -42,21 +42,6 @@ impl Searcher<'_> {
 	fn go(&mut self, handler: Arc<AtomicBool>) {
 		let now = Instant::now();
 
-		let mut time: f32;
-		let mut timeinc: f32;
-
-		//set time
-		match self.board.side_to_move() {
-			Color::White => {
-				time = self.time_control.wtime as f32;
-				timeinc = self.time_control.winc as f32;
-			},
-			Color::Black => {
-				time = self.time_control.btime as f32;
-				timeinc = self.time_control.binc as f32;	
-			}
-		}
-
 		//ASPIRATION WINDOWS ALPHA BETA
 		let mut alpha = -i32::MAX;
 		let mut beta = i32::MAX;

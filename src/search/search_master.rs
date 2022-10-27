@@ -69,7 +69,6 @@ impl EngineThread<'_> {
 pub struct Engine<'a> {
 	pub board: Board,
 	pub my_past_positions: Vec<u64>,
-	pub total_nodes: u64,
 	thread_count: u32,
 	handler: Option<Arc<AtomicBool>>,
 	threads: Vec<EngineThread<'a>>,
@@ -81,7 +80,6 @@ impl Engine<'_> {
 		Engine {
 			board: Board::default(),
 			my_past_positions: Vec::with_capacity(64),
-			total_nodes: 0,
 			thread_count: thread_count,
 			handler: None,
 			threads: (0..thread_count).map(|_| EngineThread::new(None)).collect(),
@@ -102,7 +100,6 @@ impl Engine<'_> {
 
 		thread::scope(|scope| {			
 			self.handler = Some(handler.clone());
-			self.total_nodes = 0;
 
 			let mut worker_threads = Vec::new();
 
@@ -153,9 +150,8 @@ impl Engine<'_> {
 			//get total node count from all threads
 			let mut index = 0;
 			for worker in worker_threads {
-				let (movegen, nodes) = worker.join().unwrap();
+				let (movegen, _) = worker.join().unwrap();
 				self.threads[index].movegen = movegen.clone();
-				self.total_nodes += nodes;
 				index += 1;
 			}
 

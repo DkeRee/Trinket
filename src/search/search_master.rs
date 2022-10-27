@@ -118,38 +118,6 @@ impl Engine<'_> {
 				}));
 			}
 
-			//manage time
-			let abort = handler.clone();
-
-			let movetime = time_control.movetime;
-			let movestogo = time_control.movestogo;
-
-			let mut time: u64;
-			let mut timeinc: u64;
-
-			//set time
-			match self.board.side_to_move() {
-				Color::White => {
-					time = time_control.wtime as u64;
-					timeinc = time_control.winc as u64;
-				},
-				Color::Black => {
-					time = time_control.btime as u64;
-					timeinc = time_control.binc as u64;	
-				}
-			}
-
-			thread::spawn(move || {
-				let search_time = if movetime.is_none() {
-					u64::min(time, time / movestogo.unwrap_or(40) as u64 + timeinc)
-				} else {
-					movetime.unwrap() as u64
-				};
-
-				thread::sleep(Duration::from_millis(search_time));
-				abort.store(true, Ordering::Relaxed);
-			});
-
 			//get total node count from all threads
 			let mut index = 0;
 			for worker in worker_threads {

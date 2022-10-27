@@ -50,7 +50,7 @@ pub fn bench() {
 
         engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
 
-        let mut time_control = TimeControl::new(placeholder_abort.clone(), 1);
+        let mut time_control = TimeControl::new(placeholder_abort.clone());
         time_control.depth = DEPTH;
 
         let _ = engine.go(time_control);

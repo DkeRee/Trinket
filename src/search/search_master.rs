@@ -18,22 +18,22 @@ pub struct TimeControl {
 	pub btime: i64,
 	pub winc: i64,
 	pub binc: i64,
-	pub movestogo: i64,
-	pub handler: Arc<AtomicBool>,
-	pub threads: usize
+	pub movetime: Option<i64>,
+	pub movestogo: Option<i64>,
+	pub handler: Arc<AtomicBool>
 }
 
 impl TimeControl {
-	pub fn new(stop_abort: Arc<AtomicBool>, threads: usize) -> TimeControl {
+	pub fn new(stop_abort: Arc<AtomicBool>) -> TimeControl {
 		TimeControl {
 			depth: i32::MAX,
 			wtime: i64::MAX,
 			btime: i64::MAX,
 			winc: 0,
 			binc: 0,
-			movestogo: i64::MAX,
-			handler: stop_abort,
-			threads: threads
+			movetime: None,
+			movestogo: None,
+			handler: stop_abort
 		}
 	}
 }
@@ -67,24 +67,40 @@ impl Engine {
 		let now = Instant::now();
 
 		let mut best_move = None;
-		let mut time: f32;
-		let mut timeinc: f32;
+
+		//set time
+		let movetime = time_control.movetime;
+		let movestogo = time_control.movestogo;
+		let mut time: u64;
+		let mut timeinc: u64;
 
 		self.max_depth = time_control.depth;
 
 		self.nodes = 0;
 
-		//set time
 		match self.board.side_to_move() {
 			Color::White => {
-				time = time_control.wtime as f32;
-				timeinc = time_control.winc as f32;
+				time = time_control.wtime as u64;
+				timeinc = time_control.winc as u64;
 			},
 			Color::Black => {
-				time = time_control.btime as f32;
-				timeinc = time_control.binc as f32;	
+				time = time_control.btime as u64;
+				timeinc = time_control.binc as u64;	
 			}
 		}
+
+		//set up multithread for search abort
+		let abort = time_control.handler.clone();
+		thread::spawn(move || {
+			let search_time = if movetime.is_none() {
+				u64::min(time, time / movestogo.unwrap_or(40) as u64 + timeinc)
+			} else {
+				movetime.unwrap() as u64
+			};
+
+			thread::sleep(Duration::from_millis(search_time));
+			abort.store(true, Ordering::Relaxed);
+		});
 
 		//ASPIRATION WINDOWS ALPHA BETA
 		let mut alpha = -i32::MAX;
@@ -93,66 +109,51 @@ impl Engine {
 		let mut depth_index = 0;
 
 		while depth_index < self.max_depth {
-			let search_elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-			if search_elapsed < ((time + timeinc) / f32::min(40_f32, time_control.movestogo as f32)) {
-				self.searching_depth = depth_index + 1;
+			self.searching_depth = depth_index + 1;
+			let board = &mut self.board.clone();
+			let mut past_positions = self.my_past_positions.clone();
 
-				let board = &mut self.board.clone();
+			let result = self.search(&time_control.handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
+			if result != None {
+				let (best_mv, eval) = result.unwrap();
 
-				//set up multithread for search abort
-				let abort = time_control.handler.clone();
-				thread::spawn(move || {
-					thread::sleep(Duration::from_millis(time as u64 / 32));
-					abort.store(true, Ordering::Relaxed);
-				});
+				//MANAGE ASPIRATION WINDOWS
+				if eval.score >= beta {
+					beta += Self::ASPIRATION_WINDOW * 4;
+					continue;						
+				} else if eval.score <= alpha {
+					alpha -= Self::ASPIRATION_WINDOW * 4;
+					continue;						
+				} else {
+					alpha = eval.score - Self::ASPIRATION_WINDOW;
+					beta = eval.score + Self::ASPIRATION_WINDOW;
+					best_move = best_mv.clone();
+					depth_index += 1;
+				}
 
-				let mut past_positions = self.my_past_positions.clone();
+				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
-				let result = self.search(&time_control.handler, board, self.searching_depth, 0, alpha, beta, &mut past_positions);
+				//get nps
+				let mut nps: u64;
+				if elapsed == 0_f32 {
+					nps = self.nodes;
+				} else {
+					nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
+				}
 
-				if result != None {
-					let (best_mv, eval) = result.unwrap();
-
-					//MANAGE ASPIRATION WINDOWS
-					if eval.score >= beta {
-						beta += Self::ASPIRATION_WINDOW * 4;
-						continue;						
-					} else if eval.score <= alpha {
-						alpha -= Self::ASPIRATION_WINDOW * 4;
-						continue;						
+				let mut score_str = if eval.mate {
+					let mut mate_score = if eval.score > 0 {
+						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
 					} else {
-						alpha = eval.score - Self::ASPIRATION_WINDOW;
-						beta = eval.score + Self::ASPIRATION_WINDOW;
-						best_move = best_mv.clone();
-						depth_index += 1;
-					}
-
-					let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-
-					//get nps
-					let mut nps: u64;
-					if elapsed == 0_f32 {
-						nps = self.nodes;
-					} else {
-						nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
-					}
-
-					let mut score_str = if eval.mate {
-						let mut mate_score = if eval.score > 0 {
-							(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
-						} else {
-							((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
-						};
-
-						format!("mate {}", mate_score)
-					} else {
-						format!("cp {}", eval.score)
+						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
 					};
 
-					println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
+					format!("mate {}", mate_score)
 				} else {
-					break;
-				}
+					format!("cp {}", eval.score)
+				};
+
+				println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 			} else {
 				break;
 			}

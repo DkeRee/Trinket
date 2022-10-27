@@ -28,7 +28,6 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 //uci command parser
 pub struct UCIMaster {
 	pub playing: bool,
-	threads: usize,
 	engine_thread: Option<thread::JoinHandle<()>>,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
@@ -55,7 +54,6 @@ impl UCIMaster {
 
 		UCIMaster {
 			playing: continue_engine,
-			threads: num_cpus::get(),
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -137,7 +135,7 @@ impl UCIMaster {
 			"go" => {
 				self.stop_abort = Arc::new(AtomicBool::new(false));
 
-				let mut time_control = TimeControl::new(self.stop_abort.clone(), self.threads);
+				let mut time_control = TimeControl::new(self.stop_abort.clone());
 
 				for i in 1..cmd_vec.len() {
 					match cmd_vec[i] {
@@ -145,8 +143,7 @@ impl UCIMaster {
 							time_control.depth = cmd_vec[i + 1].parse::<i32>().unwrap();
 						},
 						"movetime" => {
-							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
-							time_control.btime = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.movetime = Some(cmd_vec[i + 1].parse::<i64>().unwrap());
 						},
 						"wtime" => {
 							time_control.wtime = cmd_vec[i + 1].parse::<i64>().unwrap();
@@ -161,7 +158,7 @@ impl UCIMaster {
 							time_control.binc = cmd_vec[i + 1].parse::<i64>().unwrap();
 						},
 						"movestogo" => {
-							time_control.movestogo = cmd_vec[i + 1].parse::<i64>().unwrap();
+							time_control.movestogo = Some(cmd_vec[i + 1].parse::<i64>().unwrap());
 						},
 						_ => {}
 					}

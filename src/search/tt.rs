@@ -6,12 +6,9 @@ use bytemuck::{Pod, Zeroable};
 use crate::eval::score::*;
 
 /*
-Special thanks to MinusKelvin from OpenBench!
+Special thanks to MinusKelvin!
 https://www.chessprogramming.org/Transposition_Table
 */
-
-const MB: usize = 16;
-const TT_LENGTH: u64 = (MB * 1024 * 1024 / std::mem::size_of::<TTSlot>()) as u64;
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum NodeKind {
@@ -133,10 +130,12 @@ pub struct TT {
 }
 
 impl TT {
-	pub fn new() -> TT {
+	pub fn new(hash: u32) -> TT {
+		let tt_length = (hash as usize * 1024 * 1024 / std::mem::size_of::<TTSlot>()) as u64;
+
 		TT {
-			table: (0..TT_LENGTH).map(|_| TTSlot::empty()).collect(),
-			length: TT_LENGTH
+			table: (0..tt_length).map(|_| TTSlot::empty()).collect(),
+			length: tt_length
 		}
 	}
 

@@ -7,6 +7,7 @@ use std::time::Instant;
 use crate::search::search_master::*;
 
 const DEPTH: i32 = 8;
+const HASH: u32 = 16;
 
 //Random positions provided by Analog Hors from Tantabus https://github.com/analog-hors/tantabus/blob/master/uci/src/bench.rs
 const POSITIONS: &[&str] = &[
@@ -39,7 +40,7 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
-    let mut engine = Engine::new();
+    let mut engine = Engine::new(HASH);
     let placeholder_abort = Arc::new(AtomicBool::new(false));
 
     let mut total_nodes = 0;
@@ -59,7 +60,7 @@ pub fn bench() {
         total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;
 
         //clear engine
-        engine = Engine::new();
+        engine = Engine::new(HASH);
     }
 
     let nps = ((total_nodes as f32 * 1000_f32) / total_elapsed) as u64;

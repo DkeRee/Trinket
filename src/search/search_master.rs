@@ -51,7 +51,7 @@ pub struct Engine {
 }
 
 impl Engine {
-	pub fn new() -> Engine {
+	pub fn new(hash: u32) -> Engine {
 		Engine {
 			board: Board::default(),
 			max_depth: 0,
@@ -59,7 +59,7 @@ impl Engine {
 			searching_depth: 0,
 			nodes: 0,
 			movegen: MoveGen::new(),
-			tt: TT::new()
+			tt: TT::new(hash)
 		}
 	}
 

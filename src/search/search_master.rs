@@ -211,6 +211,12 @@ impl Engine {
 
 		self.nodes += 1;
 
+		match board.status() {
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
+			GameStatus::Ongoing => {}
+		}
+
 		//MATE DISTANCE PRUNING
 		//make sure that alpha is not defaulted to negative infinity
 		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
@@ -225,14 +231,23 @@ impl Engine {
 			depth += 1;
 		}
 
-		match board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
-			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
-			GameStatus::Ongoing => {}
-		}
-
 		if depth <= 0 {
 			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
+		}
+
+		//static eval for add-ons
+		let static_eval = evaluate(board);
+
+		//MATE THREAT EXTENSION
+		if depth <= Self::MTE_DEPTH_LIMIT && static_eval >= beta && !in_check && ply < self.searching_depth / 2 {
+			let nulled_board = board.clone().null_move().unwrap();
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+
+			null_score.score *= -1;
+
+			if (null_score.score + Self::MTE_PADDING) <= alpha {
+				depth += 1;
+			}
 		}
 
 		//check for three move repetition
@@ -299,9 +314,6 @@ impl Engine {
 				None
 			}
 		};
-
-		//static eval for tuning methods
-		let static_eval = evaluate(board);
 
 		//Reverse Futility Pruning
 		/*
@@ -491,6 +503,8 @@ impl Engine {
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
+	const MTE_DEPTH_LIMIT: i32 = 3;
+	const MTE_PADDING: i32 = 325;
 }
 
 pub fn init_lmr_table() {

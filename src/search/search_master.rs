@@ -231,10 +231,6 @@ impl Engine {
 			depth += 1;
 		}
 
-		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
-		}
-
 		//static eval for add-ons
 		let static_eval = evaluate(board);
 
@@ -248,6 +244,10 @@ impl Engine {
 			if (null_score.score + Self::MTE_PADDING) <= alpha {
 				depth += 1;
 			}
+		}
+
+		if depth <= 0 {
+			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition

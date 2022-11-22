@@ -231,11 +231,15 @@ impl Engine {
 			depth += 1;
 		}
 
+		if depth <= 0 {
+			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
+		}
+
 		//static eval for add-ons
 		let static_eval = evaluate(board);
 
 		//MATE THREAT EXTENSION
-		if depth <= Self::MTE_DEPTH_LIMIT && static_eval >= beta && !in_check && ply < self.searching_depth / 2 {
+		if depth <= Self::MTE_DEPTH_LIMIT && static_eval >= beta && !in_check {
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 
@@ -246,9 +250,6 @@ impl Engine {
 			}
 		}
 
-		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
-		}
 
 		//check for three move repetition
 		if self.is_repetition(board, past_positions) && ply > 0 {

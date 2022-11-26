@@ -371,9 +371,9 @@ impl Engine {
 				let reduction_amount = if apply_lmr {
 					depth - self.get_lmr_reduction_amount(depth, moves_searched)
 				} else {
-					0
+					depth
 				};
-				
+
 				let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;
 

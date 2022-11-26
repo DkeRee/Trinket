@@ -334,12 +334,22 @@ impl Engine {
 			};
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?;
 
 			null_score.score *= -1;
 		
 			if null_score.score >= beta {
 				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+			} else {
+				//MATE THREAT EXTENSION
+
+				//check with bounds around mate threshold to check if there is a threat of a mate
+				let mate_threshold = Score::CHECKMATE_BASE / 2;
+				let (_, mut mate_threat) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, mate_threshold - 1, mate_threshold, past_positions)?;
+
+				if mate_threat.score > mate_threshold && depth <= Self::MTE_DEPTH_LIMIT {
+					depth += 1;
+				}
 			}
 		}
 
@@ -490,6 +500,7 @@ impl Engine {
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
+	const MTE_DEPTH_LIMIT: i32 = 3;
 }
 
 pub fn init_lmr_table() {

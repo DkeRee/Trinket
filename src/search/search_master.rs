@@ -196,9 +196,13 @@ impl Engine {
 		return false;
 	}
 
-	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
-		unsafe { 
-			return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32, apply_lmr: bool) -> i32 {
+		if apply_lmr {
+			unsafe { 
+				return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+			}
+		} else {
+			return 0;
 		}
 	}
 
@@ -368,7 +372,7 @@ impl Engine {
 				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet;
 
 				//get initial value with reduction and pv-search null window
-				let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+				let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched, apply_lmr);
 				let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;
 

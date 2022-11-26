@@ -365,23 +365,24 @@ impl Engine {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				//IF this move is QUIET
-				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet;
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
+					//LMR: search with reduction and null window
+					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+					let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+					child_eval.score *= -1;		
 
-				//get initial value with reduction and pv-search null window
-				let reduction_amount = if apply_lmr {
-					depth - self.get_lmr_reduction_amount(depth, moves_searched)
+					value = child_eval;	
+
+					//check if lmr should be removed
+					//search with full depth and null window
+					if value.score > alpha {
+						let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+						child_eval.score *= -1;		
+
+						value = child_eval;	
+					}
 				} else {
-					depth
-				};
-
-				let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
-				child_eval.score *= -1;
-
-				value = child_eval;
-
-				//check if lmr should be removed
-				//search with full depth and null window
-				if value.score > alpha && apply_lmr {
+					//no reduction: search with full depth and null window
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
@@ -394,7 +395,7 @@ impl Engine {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
-					value = child_eval;	
+					value = child_eval;
 				}
 			}
 

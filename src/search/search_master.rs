@@ -366,19 +366,27 @@ impl Engine {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				//IF this move is QUIET
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet {
-					let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-					let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet;
+
+				//get initial value with reduction and pv-search null window
+				let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+				let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+				child_eval.score *= -1;
+
+				value = child_eval;
+
+				//check if lmr should be removed
+				//search with full depth and null window
+				if value.score > alpha && apply_lmr {
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
-				} else {
-					//make sure it searches at full depth in the next step
-					value = Eval::new(alpha + 1, false);
 				}
 
-				//if a value ever surprises us in the future with a score that ACTUALLY changes the lowerbound...we have to search at full depth, for this move may possibly be good
-				if value.score > alpha {
+				//if PV
+				//search with full depth and full window
+				if value.score > alpha && value.score < beta {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
 					child_eval.score *= -1;		
 

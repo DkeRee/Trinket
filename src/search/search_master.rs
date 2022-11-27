@@ -505,7 +505,7 @@ impl Engine {
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
 	const MTE_DEPTH_LIMIT: i32 = 4;
-	const MTE_MARGIN: i32 = 300;
+	const MTE_MARGIN: i32 = 1000;
 }
 
 pub fn init_lmr_table() {

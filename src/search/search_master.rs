@@ -197,6 +197,14 @@ impl Engine {
 		return false;
 	}
 
+	fn get_nmp_reduction_amount(&self, depth: i32) -> i32 {
+		//calculate nmp reduction amount
+		//x = depth
+		//y = reduction
+		//y = base + (x - a) / b
+		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
+	}
+
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
 		unsafe { 
 			return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
@@ -328,11 +336,7 @@ impl Engine {
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
-			let r = if depth > 6 {
-				3
-			} else {
-				2
-			};
+			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
@@ -494,6 +498,9 @@ impl Engine {
 	const ASPIRATION_WINDOW: i32 = 25;
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 100;
+	const NMP_REDUCTION_BASE: i32 = 3;
+	const NMP_XSHIFT: i32 = 2;
+	const NMP_YSTRETCH: i32 = 4;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
 	const LMR_REDUCTION_BASE: f32 = 0.75;

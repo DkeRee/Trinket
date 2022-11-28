@@ -449,7 +449,45 @@ impl Engine {
 			alpha = stand_pat.score;
 		}
 
-		let move_list = self.movegen.qmove_gen(board, ply);
+		let mut move_list: Vec<SortedMove>;
+
+		//probe TT
+		let table_find = match self.tt.find(board, ply) {
+			Some(table_find) => {
+				//check if position from TT is a mate
+				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
+					true
+				} else {
+					false
+				};
+
+				match table_find.node_kind {
+					NodeKind::Exact => {
+						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+					},
+					NodeKind::UpperBound => {
+						if table_find.eval <= alpha {
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+						}	
+					},
+					NodeKind::LowerBound => {
+						if table_find.eval >= beta {
+							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+						}
+					},
+					NodeKind::Null => {}
+				}
+
+				move_list = self.movegen.qmove_gen(board, table_find.best_move, ply);
+
+				Some(table_find)
+			},
+			None => {
+				move_list = self.movegen.qmove_gen(board, None, ply);
+
+				None
+			}
+		};
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {
@@ -484,8 +522,13 @@ impl Engine {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
 						return Some((None, Eval::new(beta, false)));
+					} else {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 					}
+				} else {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 				}
 			}
 		}

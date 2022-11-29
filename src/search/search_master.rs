@@ -153,7 +153,7 @@ impl Engine {
 					format!("cp {}", eval.score)
 				};
 
-				println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board.clone(), self.searching_depth, 0));
+				println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 			} else {
 				break;
 			}
@@ -163,20 +163,18 @@ impl Engine {
 	}
 
 	//fish PV from TT
-	fn get_pv(&self, board: Board, depth: i32, ply: i32) -> String {
-		if depth == 0 {
+	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
+		if depth == 0 || depth > 40 {
 			return String::new();
 		}
 
 		//probe TT
-		match self.tt.find(&board, ply) {
+		match self.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
 				if board.is_legal(table_find.best_move.unwrap()) {
-					let mut new_board = board.clone();
-					new_board.play_unchecked(table_find.best_move.unwrap());
-
-					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(new_board, depth - 1, ply + 1));
+					board.play_unchecked(table_find.best_move.unwrap());
+					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
 				}
 
 				return pv;

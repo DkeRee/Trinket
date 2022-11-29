@@ -164,7 +164,7 @@ impl Engine {
 
 	//fish PV from TT
 	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
-		if depth == 0 || ply > 30 {
+		if depth == 0 || ply > 15 {
 			return String::new();
 		}
 

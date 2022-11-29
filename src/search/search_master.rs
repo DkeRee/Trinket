@@ -164,7 +164,7 @@ impl Engine {
 
 	//fish PV from TT
 	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
-		if depth == 0 || ply > 0 {
+		if depth == 0 {
 			return String::new();
 		}
 
@@ -172,8 +172,7 @@ impl Engine {
 		match self.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
-
-				if board.is_legal(table_find.best_move.unwrap()) {
+				if board.is_legal(table_find.best_move.unwrap()) && ply < 30 {
 					board.play_unchecked(table_find.best_move.unwrap());
 					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
 				}

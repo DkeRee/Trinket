@@ -91,16 +91,18 @@ impl Engine {
 
 		//set up multithread for search abort
 		let abort = time_control.handler.clone();
-		thread::spawn(move || {
-			let search_time = if movetime.is_none() {
-				u64::min(time, time / movestogo.unwrap_or(40) as u64 + timeinc)
-			} else {
-				movetime.unwrap() as u64
-			};
+		if time != u64::MAX {
+			thread::spawn(move || {
+				let search_time = if movetime.is_none() {
+					time / movestogo.unwrap_or(40) as u64 + timeinc
+				} else {
+					movetime.unwrap() as u64
+				};
 
-			thread::sleep(Duration::from_millis(search_time));
-			abort.store(true, Ordering::Relaxed);
-		});
+				thread::sleep(Duration::from_millis(search_time));
+				abort.store(true, Ordering::Relaxed);
+			});
+		}
 
 		//ASPIRATION WINDOWS ALPHA BETA
 		let mut alpha = -i32::MAX;

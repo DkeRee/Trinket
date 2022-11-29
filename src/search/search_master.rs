@@ -164,6 +164,8 @@ impl Engine {
 
 	//fish PV from TT
 	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
+		return String::new();
+		/*
 		if depth == 0 || depth > 0 {
 			return String::new();
 		}
@@ -183,6 +185,7 @@ impl Engine {
 		}
 
 		String::new()
+		*/
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {

@@ -91,16 +91,18 @@ impl Engine {
 
 		//set up multithread for search abort
 		let abort = time_control.handler.clone();
-		thread::spawn(move || {
-			let search_time = if movetime.is_none() {
-				u64::min(time, time / movestogo.unwrap_or(40) as u64 + timeinc)
-			} else {
-				movetime.unwrap() as u64
-			};
+		if time != u64::MAX {
+			thread::spawn(move || {
+				let search_time = if movetime.is_none() {
+					(time + timeinc / 2) / movestogo.unwrap_or(40) as u64
+				} else {
+					movetime.unwrap() as u64
+				};
 
-			thread::sleep(Duration::from_millis(search_time));
-			abort.store(true, Ordering::Relaxed);
-		});
+				thread::sleep(Duration::from_millis(search_time));
+				abort.store(true, Ordering::Relaxed);
+			});
+		}
 
 		//ASPIRATION WINDOWS ALPHA BETA
 		let mut alpha = -i32::MAX;
@@ -164,7 +166,7 @@ impl Engine {
 
 	//fish PV from TT
 	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
-		if depth == 0 || ply > 15 {
+		if depth == 0 || depth > 50 {
 			return String::new();
 		}
 
@@ -172,7 +174,6 @@ impl Engine {
 		match self.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
-
 				if board.is_legal(table_find.best_move.unwrap()) {
 					board.play_unchecked(table_find.best_move.unwrap());
 					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));

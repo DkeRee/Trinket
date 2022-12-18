@@ -60,6 +60,7 @@ impl Evaluator<'_> {
 
 		//load in extra calculations
 		sum += self.get_mobility(phase);
+		sum += self.get_king_shield(phase);
 		sum += self.bishop_pair(phase);
 		sum += self.passed_pawns(phase);
 		sum += self.pawn_island(phase);
@@ -232,6 +233,49 @@ impl Evaluator<'_> {
 		}
 
 		score
+	}
+
+	fn get_king_shield(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+		let my_pieces = self.board.colors(self.color);
+		let my_king_square = (my_pieces & self.board.pieces(Piece::King)).next_square().unwrap();
+
+		//if it's possible for the king to have a shield
+		let start_rank = Rank::First.relative_to(self.color);
+		let promo_rank = Rank::Eighth.relative_to(self.color);
+		let shield_possible = my_king_square.rank() != promo_rank;
+
+		let king_pawn_diag = get_pawn_attacks(my_king_square, self.color);
+		if shield_possible {
+			let king_bitboard_forward = if self.color == Color::White {
+				my_king_square.offset(0, 1).bitboard()
+			} else {
+				my_king_square.offset(0, -1).bitboard()
+			};
+
+			let pawn_places = king_pawn_diag | king_bitboard_forward;
+
+			//check if any pawns are missing from searching spots
+			if !((my_pieces & pawn_places) ^ pawn_places).is_empty() {
+				//there is an incomplete pawn shield
+				penalty += PAWN_SHIELD_PENALTY.eval(phase);
+			}
+		}
+
+        let all_pawns = self.board.pieces(Piece::Pawn);
+        for attack_location in king_pawn_diag {
+            let start = Square::new(attack_location.file(), start_rank);
+            let end = Square::new(attack_location.file(), promo_rank);
+
+            let side_files_mask = get_between_rays(start, end);
+
+            //if the files next to the king is an open file, penalty!
+            if (side_files_mask & all_pawns).is_empty() {
+                penalty += OPEN_FILE_KING_PENALTY.eval(phase);
+            }
+        }
+
+		penalty
 	}
 
 	fn calculate_phase(&self) -> i32 {

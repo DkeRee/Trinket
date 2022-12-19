@@ -85,7 +85,7 @@ impl Evaluator<'_> {
 		let occupied = self.board.occupied();
 		let my_king = self.board.king(self.color);
 
-		let virtual_queen_moves = (get_bishop_moves(my_king, occupied) | get_rook_moves(my_king, occupied)) & !self.board.king(self.color).bitboard();
+		let virtual_queen_moves = (get_bishop_moves(my_king, occupied) | get_rook_moves(my_king, occupied)) & !self.board.colors(self.color);
 		let mobility = virtual_queen_moves.len();
 
 		VIRTUAL_MOBILITY[mobility as usize].eval(phase)

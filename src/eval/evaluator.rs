@@ -60,6 +60,7 @@ impl Evaluator<'_> {
 
 		//load in extra calculations
 		sum += self.get_mobility(phase);
+		sum += self.virtual_mobility(phase);
 		sum += self.bishop_pair(phase);
 		sum += self.passed_pawns(phase);
 		sum += self.pawn_island(phase);
@@ -78,6 +79,16 @@ impl Evaluator<'_> {
 			Piece::Queen => &QUEEN_MOBILITY,
 			Piece::King => &KING_MOBILITY
 		}
+	}
+
+	fn virtual_mobility(&self, phase: i32) -> i32 {
+		let occupied = self.board.occupied();
+		let my_king = self.board.king(self.color);
+
+		let virtual_queen_moves = (get_bishop_moves(my_king, occupied) | get_rook_moves(my_king, occupied)) & !self.board.colors(self.color);
+		let mobility = virtual_queen_moves.len();
+
+		VIRTUAL_MOBILITY[mobility as usize].eval(phase)
 	}
 
 	fn get_mobility(&self, phase: i32) -> i32 {

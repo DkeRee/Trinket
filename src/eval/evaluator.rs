@@ -94,36 +94,34 @@ impl Evaluator<'_> {
 	fn get_mobility(&self, phase: i32) -> i32 {
 		let mut score = 0;
 		let our_pieces = self.board.colors(self.color);
-		let enemy_pieces = self.board.colors(!self.color);
 		let occupied = self.board.occupied();
 
 		for &piece in &Piece::ALL {
 			let our_this_piece = our_pieces & self.board.pieces(piece);
 			let mobility_weight = self.get_mobility_weight(piece);
 
-			//Sum up number of moves that our pieces have that can take an enemy piece. Pawn quiets are counted too though. 
-			//We do not check for collisions with our own pieces when we get legal moves for a piece in a position because that would be a bonus for defending.
+			//Sum up number of moves that our pieces have that can have, including loud moves.
 			for square in our_this_piece {
 				let mut feasible_moves = BitBoard::EMPTY;
 
 				match piece {
 					Piece::Pawn => {
-						feasible_moves |= get_pawn_quiets(square, self.color, occupied) | (get_pawn_attacks(square, self.color) & enemy_pieces);
+						feasible_moves |= get_pawn_quiets(square, self.color, occupied) | (get_pawn_attacks(square, self.color) & !our_pieces);
 					},
 					Piece::Knight => {
-						feasible_moves |= get_knight_moves(square) & enemy_pieces;
+						feasible_moves |= get_knight_moves(square) & !our_pieces;
 					},
 					Piece::Bishop => {
-						feasible_moves |= get_bishop_moves(square, BitBoard::EMPTY) & enemy_pieces;
+						feasible_moves |= get_bishop_moves(square, BitBoard::EMPTY) & !our_pieces;
 					},
 					Piece::Rook => {
-						feasible_moves |= get_rook_moves(square, BitBoard::EMPTY) & enemy_pieces;
+						feasible_moves |= get_rook_moves(square, BitBoard::EMPTY) & !our_pieces;
 					},
 					Piece::Queen => {
-						feasible_moves |= (get_bishop_moves(square, BitBoard::EMPTY) | get_rook_moves(square, BitBoard::EMPTY)) & enemy_pieces;
+						feasible_moves |= (get_bishop_moves(square, BitBoard::EMPTY) | get_rook_moves(square, BitBoard::EMPTY)) & !our_pieces;
 					},
 					Piece::King => {
-						feasible_moves |= get_king_moves(square) & enemy_pieces;
+						feasible_moves |= get_king_moves(square) & !our_pieces;
 					}
 				}
 

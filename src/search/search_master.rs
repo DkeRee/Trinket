@@ -374,7 +374,9 @@ impl Engine {
 				//IF low depth
 				//IF move is quiet
 				//IF alpha is NOT a losing mate
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha < -Score::CHECKMATE_DEFINITE {
+				//IF IS late move
+				//IF is NOT a check
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
 					continue;
 				}
@@ -563,6 +565,7 @@ impl Engine {
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
+	const LMP_MULTIPLIER: i32 = 15;
 }
 
 pub fn init_lmr_table() {

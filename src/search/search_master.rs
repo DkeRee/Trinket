@@ -562,7 +562,7 @@ impl Engine {
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 8;
+	const LMP_DEPTH_MAX: i32 = 5;
 }
 
 pub fn init_lmr_table() {

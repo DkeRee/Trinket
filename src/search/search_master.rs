@@ -227,6 +227,7 @@ impl Engine {
 		}
 
 		let in_check = !board.checkers().is_empty();
+		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
 		if in_check {
@@ -353,6 +354,17 @@ impl Engine {
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 		for mut sm in legal_moves {
+			//LMP
+			//We can skip specific quiet moves that are very late in a node
+			//IF isn't PV
+			//IF low depth
+			//IF move is quiet
+			//IF alpha is NOT a losing mate
+
+			if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha < -Score::CHECKMATE_DEFINITE {
+				continue;
+			}
+
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -550,6 +562,7 @@ impl Engine {
 	const LMR_REDUCTION_BASE: f32 = 0.75;
 	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
+	const LMP_DEPTH_MAX: i32 = 4;
 }
 
 pub fn init_lmr_table() {

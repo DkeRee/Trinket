@@ -354,17 +354,6 @@ impl Engine {
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 		for mut sm in legal_moves {
-			//LMP
-			//We can skip specific quiet moves that are very late in a node
-			//IF isn't PV
-			//IF low depth
-			//IF move is quiet
-			//IF alpha is NOT a losing mate
-
-			if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha < -Score::CHECKMATE_DEFINITE {
-				continue;
-			}
-
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -379,6 +368,16 @@ impl Engine {
 
 				value = child_eval;
 			} else {
+				//LMP
+				//We can skip specific quiet moves that are very late in a node
+				//IF isn't PV
+				//IF low depth
+				//IF move is quiet
+				//IF alpha is NOT a losing mate
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha < -Score::CHECKMATE_DEFINITE {
+					continue;
+				}
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched

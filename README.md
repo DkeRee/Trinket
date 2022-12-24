@@ -21,6 +21,7 @@ I aspire to get Trinket to 3000 elo one day, but only time will tell for that ;)
   - NMP (Null Move Pruning)
   - RFP (Reverse Futility Pruning)
   - Negative loud moves in QSearch found with SEE
+  - LMP (Late Move Pruning)
 
 ### Move Ordering
 - Hash Move

@@ -5,7 +5,8 @@ use crate::movegen::movesorter::*;
 pub struct SortedMove {
 	pub mv: Move,
 	pub importance: i32,
-	pub movetype: MoveType
+	pub movetype: MoveType,
+	pub is_killer: bool
 }
 
 impl SortedMove {
@@ -13,7 +14,8 @@ impl SortedMove {
 		SortedMove {
 			mv: mv,
 			importance: importance,
-			movetype: movetype
+			movetype: movetype,
+			is_killer: false
 		}
 	}
 

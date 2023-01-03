@@ -385,7 +385,12 @@ impl Engine {
 				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet;
 
 				//get initial value with reduction and pv-search null window
-				let new_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+				//reduce only if ISNT in check and ISNT a killer move
+				let new_depth = if !in_check && !sm.is_killer {
+					depth - self.get_lmr_reduction_amount(depth, moves_searched)
+				} else {
+					depth
+				};
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;

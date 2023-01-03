@@ -11,6 +11,7 @@ use crate::search::tt::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
+ use crate::search::lmr_table::*;
 
 pub struct TimeControl {
 	pub depth: i32,
@@ -37,8 +38,6 @@ impl TimeControl {
 		}
 	}
 }
-
-pub static mut LMR_TABLE: [[f32; 64]; 64] = [[0.0; 64]; 64];
 
 pub struct Engine {
 	pub board: Board,
@@ -207,9 +206,7 @@ impl Engine {
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
-		unsafe { 
-			return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
-		}
+		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
 	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
@@ -388,8 +385,9 @@ impl Engine {
 				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && sm.movetype == MoveType::Quiet;
 
 				//get initial value with reduction and pv-search null window
-				let reduction_amount = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-				let (_, mut child_eval) = self.search(&abort, &board_cache, reduction_amount - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+				let new_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -398,7 +396,7 @@ impl Engine {
 				//search with full depth and null window
 				if value.score > alpha && apply_lmr {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
-					child_eval.score *= -1;		
+					child_eval.score *= -1;
 
 					value = child_eval;	
 				}
@@ -561,19 +559,7 @@ impl Engine {
 	const NMP_YSTRETCH: i32 = 4;
 	const LMR_DEPTH_LIMIT: i32 = 3;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
-	const LMR_REDUCTION_BASE: f32 = 0.75;
-	const LMR_MOVE_DIVIDER: f32 = 2.25;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-}
-
-pub fn init_lmr_table() {
-	for depth in 1..64 {
-		for played_move in 1..64 {
-			unsafe {
-				LMR_TABLE[depth][played_move] = Engine::LMR_REDUCTION_BASE + f32::ln(depth as f32) * f32::ln(played_move as f32) / Engine::LMR_MOVE_DIVIDER;
-			}
-		}
-	}
 }

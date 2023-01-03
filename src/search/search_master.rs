@@ -396,7 +396,7 @@ impl Engine {
 				//search with full depth and null window
 				if value.score > alpha && apply_lmr {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
-					child_eval.score *= -1;		
+					child_eval.score *= -1;
 
 					value = child_eval;	
 				}

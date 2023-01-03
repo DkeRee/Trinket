@@ -40,10 +40,9 @@ impl MoveSorter {
 
 				if self.is_killer(mv_info.mv, board, ply) {
 					mv_info.importance += Self::KILLER_MOVE_SCORE;
-					mv_info.is_killer = true;
 				}
 
-				mv_info.importance += self.get_history(mv_info.mv);
+				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);
 			}
 
 			if mv_info.movetype == MoveType::Loud {
@@ -83,7 +82,7 @@ impl MoveSorter {
 		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
 
 		//make sure it doesn't overflow
-		if self.history_table[mv.from as usize][mv.to as usize] >= 30000 {
+		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
 			let bb = BitBoard::FULL;
 
 			for s1 in bb {
@@ -126,15 +125,15 @@ impl MoveSorter {
 	}
 }
 
-//Hash -> Winning Capture -> Queen Promo -> Killer -> Castling -> Neutral Quiets -> Losing Capture -> Under Promotion
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 25000;
 	const WINNING_CAPTURE: i32 = 10000;
-	const QUEEN_PROMO: i32 = 4000;
-    const KILLER_MOVE_SCORE: i32 = 3000;
+	const QUEEN_PROMO: i32 = 8000;
+    const KILLER_MOVE_SCORE: i32 = 2000;
 	const CASTLING_SCORE: i32 = 1000;
-	const LOSING_CAPTURE: i32 = -5000;
-   	const KNIGHT_PROMO: i32 = -10000;
-	const BISHOP_PROMO: i32 = -11000;
-	const ROOK_PROMO: i32 = -12000;
+   	const KNIGHT_PROMO: i32 = -5000;
+	const BISHOP_PROMO: i32 = -6000;
+	const ROOK_PROMO: i32 = -7000;
+	const HISTORY_MOVE_OFFSET: i32 = -30000;
+	const LOSING_CAPTURE: i32 = -30001;
 }

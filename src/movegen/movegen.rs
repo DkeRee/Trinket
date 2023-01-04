@@ -6,7 +6,8 @@ pub struct SortedMove {
 	pub mv: Move,
 	pub importance: i32,
 	pub movetype: MoveType,
-	pub is_killer: bool
+	pub is_killer: bool,
+	pub history: i32
 }
 
 impl SortedMove {
@@ -15,7 +16,8 @@ impl SortedMove {
 			mv: mv,
 			importance: importance,
 			movetype: movetype,
-			is_killer: false
+			is_killer: false,
+			history: 0
 		}
 	}
 

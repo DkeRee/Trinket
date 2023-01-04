@@ -43,7 +43,9 @@ impl MoveSorter {
 					mv_info.is_killer = true;
 				}
 
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);
+				let history = self.get_history(mv_info.mv);
+				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
+				mv_info.history = history;
 			}
 
 			if mv_info.movetype == MoveType::Loud {

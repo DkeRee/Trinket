@@ -378,6 +378,18 @@ impl Engine {
 					continue;
 				}
 
+				//See Pruning
+				//IF move is loud (we do not do SEE with quiets)
+				//IF depth is low
+				//IF SEE is below 0
+				//IF moves searched is above a limit
+				//IF is NOT a check
+				//IF is NOT a PV
+				if sm.movetype == MoveType::Loud && depth <= Self::SEE_PRUNE_DEPTH && sm.see_score < 0 && moves_searched > Self::SEE_PRUNE_MULTIPLIER * depth && !in_check && !is_pv {
+					past_positions.pop();
+					continue;
+				}
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
@@ -567,4 +579,6 @@ impl Engine {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
+	const SEE_PRUNE_DEPTH: i32 = 3;
+	const SEE_PRUNE_MULTIPLIER: i32 = 10;
 }

@@ -40,6 +40,7 @@ impl MoveSorter {
 
 				if self.is_killer(mv_info.mv, board, ply) {
 					mv_info.importance += Self::KILLER_MOVE_SCORE;
+					mv_info.is_killer = true;
 				}
 
 				mv_info.importance += Self::HISTORY_MOVE_OFFSET + self.get_history(mv_info.mv);

@@ -389,7 +389,7 @@ impl Engine {
 
 				//LMR
 				//reduce only if ISNT in check and ISNT a killer move
-				if !in_check && !sm.is_killer {
+				if !in_check && !sm.is_killer && apply_lmr {
 					new_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
@@ -568,5 +568,4 @@ impl Engine {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_REDUC: i32 = 800;
 }

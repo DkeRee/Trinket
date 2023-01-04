@@ -391,16 +391,6 @@ impl Engine {
 				//reduce only if ISNT in check and ISNT a killer move
 				if !in_check && !sm.is_killer {
 					new_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
-
-					//history anti-reduction
-					//if history anti-reduction exceeds depth, set it back to default depth amount. This is not an extension.
-					let history_anti = sm.history / Self::HISTORY_REDUC;
-
-					if new_depth + history_anti < depth {
-						new_depth += history_anti;
-					} else {
-						new_depth = depth;
-					}
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;

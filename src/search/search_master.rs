@@ -385,7 +385,7 @@ impl Engine {
 				//IF moves searched is above a limit
 				//IF is NOT a check
 				//IF is NOT a PV
-				if sm.movetype == MoveType::Loud && depth <= Self::SEE_PRUNE_DEPTH && sm.see_score < 0 && moves_searched > Self::SEE_PRUNE_MULTIPLIER * depth && !in_check && !is_pv {
+				if sm.movetype == MoveType::Loud && depth <= Self::SEE_PRUNE_DEPTH && sm.see_score < Self::SEE_PRUNE_THRESHOLD * depth && moves_searched > Self::SEE_PRUNE_MOVE_MULTIPLIER * depth && !in_check && !is_pv {
 					past_positions.pop();
 					continue;
 				}
@@ -580,5 +580,6 @@ impl Engine {
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 	const SEE_PRUNE_DEPTH: i32 = 3;
-	const SEE_PRUNE_MULTIPLIER: i32 = 10;
+	const SEE_PRUNE_MOVE_MULTIPLIER: i32 = 10;
+	const SEE_PRUNE_THRESHOLD: i32 = -300;
 }

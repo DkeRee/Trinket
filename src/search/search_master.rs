@@ -581,6 +581,6 @@ impl Engine {
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 	const SEE_PRUNE_DEPTH: i32 = 3;
-	const SEE_PRUNE_MOVE_MULTIPLIER: i32 = 5;
-	const SEE_PRUNE_THRESHOLD: i32 = -600;
+	const SEE_PRUNE_MOVE_MULTIPLIER: i32 = 10;
+	const SEE_PRUNE_THRESHOLD: i32 = -800;
 }

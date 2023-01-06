@@ -385,7 +385,8 @@ impl Engine {
 				//IF moves searched is above a limit
 				//IF is NOT a check
 				//IF is NOT a PV
-				if sm.movetype == MoveType::Loud && depth <= Self::SEE_PRUNE_DEPTH && sm.see_score < Self::SEE_PRUNE_THRESHOLD * depth && moves_searched > Self::SEE_PRUNE_MOVE_MULTIPLIER * depth && !in_check && !is_pv {
+				//IF is NOT a promotion
+				if sm.movetype == MoveType::Loud && depth <= Self::SEE_PRUNE_DEPTH && sm.see_score < Self::SEE_PRUNE_THRESHOLD * depth && moves_searched > Self::SEE_PRUNE_MOVE_MULTIPLIER * depth && !in_check && !is_pv && sm.mv.promotion.is_none() {
 					past_positions.pop();
 					continue;
 				}
@@ -580,6 +581,6 @@ impl Engine {
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 	const SEE_PRUNE_DEPTH: i32 = 3;
-	const SEE_PRUNE_MOVE_MULTIPLIER: i32 = 13;
-	const SEE_PRUNE_THRESHOLD: i32 = -300;
+	const SEE_PRUNE_MOVE_MULTIPLIER: i32 = 5;
+	const SEE_PRUNE_THRESHOLD: i32 = -600;
 }

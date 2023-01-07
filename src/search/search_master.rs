@@ -290,7 +290,7 @@ impl Engine {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& beta > alpha + 1 {
+				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 
@@ -302,6 +302,13 @@ impl Engine {
 				}
 
 				legal_moves = self.movegen.move_gen(board, iid_move, ply);
+
+				//Internal Iterative Reduction
+				//IF sufficient depth
+				//There is NO Hash Move
+				if depth >= Self::IIR_DEPTH_MIN {
+					depth -= 1;
+				}
 
 				None
 			}
@@ -565,6 +572,7 @@ impl Engine {
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 3;
 	const IID_DEPTH_MIN: i32 = 6;
+	const IIR_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 }

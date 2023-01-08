@@ -305,10 +305,14 @@ impl Engine {
 
 				//Internal Iterative Reduction
 				//IF sufficient depth
-				//IF NOT PV
+				//Reduce more if not PV
 				//There is NO Hash Move
-				if depth >= Self::IIR_DEPTH_MIN && !is_pv {
-					depth -= 1;
+				if depth >= Self::IIR_DEPTH_MIN {
+					if is_pv {
+						depth -= 1;
+					} else {
+						depth -= 2;
+					}
 				}
 
 				None

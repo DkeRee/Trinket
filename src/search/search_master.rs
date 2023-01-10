@@ -306,8 +306,8 @@ impl Engine {
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
-				if depth >= Self::IIR_DEPTH_MIN {
-					depth -= 1;
+				if depth >= ply / 2 + 2 {
+					depth -= Self::IIR_MARGIN;
 				}
 
 				None
@@ -572,7 +572,7 @@ impl Engine {
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 3;
 	const IID_DEPTH_MIN: i32 = 6;
-	const IIR_DEPTH_MIN: i32 = 6;
+	const IIR_MARGIN: i32 = 1;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 }

@@ -309,9 +309,9 @@ impl Engine {
 				//There is NO Hash Move
 				if depth >= Self::IIR_DEPTH_MIN {
 					if is_pv {
-						depth -= 1;
+						depth -= Self::IIR_MARGIN;
 					} else {
-						depth -= 2;
+						depth -= Self::IIR_MARGIN + 1;
 					}
 				}
 
@@ -578,6 +578,7 @@ impl Engine {
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 3;
 	const IID_DEPTH_MIN: i32 = 6;
 	const IIR_DEPTH_MIN: i32 = 6;
+	const IIR_MARGIN: i32 = 3;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
 }

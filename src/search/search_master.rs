@@ -109,7 +109,7 @@ impl Engine {
 
 		let mut depth_index = 0;
 
-		while depth_index < self.max_depth {
+		while depth_index < self.max_depth && depth_index < 250 {
 			self.searching_depth = depth_index + 1;
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
@@ -307,7 +307,7 @@ impl Engine {
 				//IF sufficient depth
 				//There is NO Hash Move
 				if depth >= ply / 2 + 2 {
-					depth -= depth / 5 + 1;
+					depth -= depth / 10 + 1;
 				}
 
 				None

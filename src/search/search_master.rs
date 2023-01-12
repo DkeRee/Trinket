@@ -564,8 +564,8 @@ impl Engine {
 
 impl Engine {
 	const ASPIRATION_WINDOW: i32 = 25;
-	const MAX_DEPTH_RFP: i32 = 8;
-	const MULTIPLIER_RFP: i32 = 50;
+	const MAX_DEPTH_RFP: i32 = 6;
+	const MULTIPLIER_RFP: i32 = 70;
 	const NMP_REDUCTION_BASE: i32 = 3;
 	const NMP_XSHIFT: i32 = 2;
 	const NMP_YSTRETCH: i32 = 4;

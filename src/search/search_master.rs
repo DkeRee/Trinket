@@ -223,12 +223,14 @@ impl Engine {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
+		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
+			extended = true;
 			depth += 1;
 		}
 
@@ -393,10 +395,24 @@ impl Engine {
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
+				//History Leaf Reduction/Pruning
+				//IF sufficient depth
+				//IF ISNT PV
+				//IF ISNT in check
+				//IF ISNT extended
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+					let history_value = sm.history;
+
+					//History Leaf Reduction
+					if history_value < Self::HISTORY_THRESHOLD {
+						new_depth -= Self::HISTORY_REDUCTION;
+					}
+				}
+
 				//LMR
 				//reduce only if ISNT in check and ISNT a killer move
 				if !in_check && !sm.is_killer && apply_lmr {
-					new_depth = depth - self.get_lmr_reduction_amount(depth, moves_searched);
+					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
@@ -574,4 +590,8 @@ impl Engine {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
+	const HISTORY_DEPTH_MIN: i32 = 5;
+	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
+	const HISTORY_THRESHOLD: i32 = 100;
+	const HISTORY_REDUCTION: i32 = 1;
 }

@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use crate::search::search_master::*;
 
-const DEPTH: i32 = 8;
+const DEPTH: i32 = 12;
 const HASH: u32 = 16;
 
 //Random positions provided by Analog Hors from Tantabus https://github.com/analog-hors/tantabus/blob/master/uci/src/bench.rs

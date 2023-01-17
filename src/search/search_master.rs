@@ -223,6 +223,8 @@ impl Engine {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
+		let mut outer_reductions = 0;
+		let mut outer_extensions = 0;
 		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
@@ -231,7 +233,7 @@ impl Engine {
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
 			extended = true;
-			depth += 1;
+			outer_extensions += 1;
 		}
 
 		match board.status() {
@@ -308,8 +310,8 @@ impl Engine {
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
-				if depth >= ply / 2 + 2 {
-					depth -= depth / 10 + 1;
+				if depth >= ply / 2 + 2 && !extended {
+					outer_reductions += depth / 10 + 1;
 				}
 
 				None
@@ -369,7 +371,7 @@ impl Engine {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1 + outer_extensions, ply + 1, -beta, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -388,7 +390,8 @@ impl Engine {
 				}
 
 				//get initial value with reduction and pv-search null window
-				let mut new_depth = depth;
+				//reductions only occur if extensions do not exist
+				let mut new_depth = depth - outer_reductions + outer_extensions;
 
 				//History Leaf Reduction
 				//IF sufficient depth
@@ -407,13 +410,13 @@ impl Engine {
 				//Late Move Reduction
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && !extended {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
 				//cancel all reductions if some certain factors are true
 				if in_check || sm.is_killer {
-					new_depth = depth;
+					new_depth = depth + outer_extensions;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
@@ -423,7 +426,7 @@ impl Engine {
 
 				//check if reductions should be removed if reduced score is higher than alpha
 				//search with full depth and null window
-				if value.score > alpha && new_depth != depth {
+				if value.score > alpha && new_depth < depth {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;
 

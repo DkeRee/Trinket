@@ -390,12 +390,12 @@ impl Engine {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT;
+				let mut apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT;
 
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
-				//History Leaf Reduction/Pruning
+				//History Leaf Reduction
 				//IF sufficient depth
 				//IF ISNT PV
 				//IF ISNT in check
@@ -410,9 +410,14 @@ impl Engine {
 				}
 
 				//LMR
-				//reduce only if ISNT in check and ISNT a killer move
-				if !in_check && !sm.is_killer && apply_lmr {
+				if apply_lmr {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+				}
+
+				//reduce only if ISNT in check and ISNT a killer move
+				if in_check && sm.is_killer {
+					new_depth = depth;
+					apply_lmr = false;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;

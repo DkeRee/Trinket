@@ -45,6 +45,7 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
 	pub searching_depth: i32,
+	seldepth: i32,
 	movegen: MoveGen,
 	tt: TT
 }
@@ -57,6 +58,7 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			searching_depth: 0,
 			nodes: 0,
+			seldepth: 0,
 			movegen: MoveGen::new(),
 			tt: TT::new(hash)
 		}
@@ -110,6 +112,7 @@ impl Engine {
 		let mut depth_index = 0;
 
 		while depth_index < self.max_depth && depth_index < 250 {
+			self.seldepth = 0;
 			self.searching_depth = depth_index + 1;
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
@@ -154,7 +157,7 @@ impl Engine {
 					format!("cp {}", eval.score)
 				};
 
-				println!("info depth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
+				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", self.searching_depth, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, self.searching_depth, 0));
 			} else {
 				break;
 			}
@@ -471,6 +474,7 @@ impl Engine {
 			return None;
 		}
 
+		self.seldepth = i32::max(self.seldepth, ply);
 		self.nodes += 1;
 
 		match board.status() {

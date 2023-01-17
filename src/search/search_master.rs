@@ -311,7 +311,7 @@ impl Engine {
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
-				if depth >= ply / 2 + 2 {
+				if depth >= ply / 2 + 2 && !extended {
 					depth -= depth / 10 + 1;
 				}
 
@@ -414,7 +414,7 @@ impl Engine {
 
 				//LMR
 				//reduce only if ISNT in check and ISNT a killer move
-				if !in_check && !sm.is_killer && apply_lmr {
+				if !in_check && !sm.is_killer && apply_lmr && !extended {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 

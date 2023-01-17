@@ -374,7 +374,7 @@ impl Engine {
 
 				value = child_eval;
 			} else {
-				//LMP
+				//Late Move Pruning
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV
 				//IF low depth
@@ -386,11 +386,6 @@ impl Engine {
 					past_positions.pop();
 					continue;
 				}
-
-				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
-				let mut apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT;
 
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
@@ -409,15 +404,16 @@ impl Engine {
 					}
 				}
 
-				//LMR
-				if apply_lmr {
+				//Late Move Reduction
+				//IF depth is above sufficient depth
+				//IF the first X searched are searched
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				//reduce only if ISNT in check and ISNT a killer move
+				//cancel all reductions if some certain factors are true
 				if in_check || sm.is_killer {
 					new_depth = depth;
-					apply_lmr = false;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
@@ -425,9 +421,9 @@ impl Engine {
 
 				value = child_eval;
 
-				//check if lmr should be removed
+				//check if reductions should be removed if reduced score is higher than alpha
 				//search with full depth and null window
-				if value.score > alpha && apply_lmr {
+				if value.score > alpha && new_depth != depth {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;
 

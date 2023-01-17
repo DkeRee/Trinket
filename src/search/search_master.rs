@@ -415,7 +415,7 @@ impl Engine {
 				}
 
 				//reduce only if ISNT in check and ISNT a killer move
-				if in_check && sm.is_killer {
+				if in_check || sm.is_killer {
 					new_depth = depth;
 					apply_lmr = false;
 				}

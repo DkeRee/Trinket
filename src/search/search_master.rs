@@ -230,11 +230,14 @@ impl Engine {
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
+		let mut outer_extensions = 0;
+		let mut outer_reductions = 0;
+
 		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
 			extended = true;
-			depth += 1;
+			outer_extensions += 1;
 		}
 
 		match board.status() {
@@ -312,7 +315,7 @@ impl Engine {
 				//IF sufficient depth
 				//There is NO Hash Move
 				if depth >= ply / 2 + 2 {
-					depth -= depth / 10 + 1;
+					outer_reductions += depth / 10 + 1;
 				}
 
 				None
@@ -390,13 +393,8 @@ impl Engine {
 					continue;
 				}
 
-				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
-				let apply_lmr = depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT;
-
-				//get initial value with reduction and pv-search null window
-				let mut new_depth = depth;
+				let mut extensions = outer_extensions;
+				let mut reductions = outer_reductions;
 
 				//History Leaf Reduction/Pruning
 				//IF sufficient depth
@@ -408,24 +406,32 @@ impl Engine {
 
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
+						reductions += Self::HISTORY_REDUCTION;
 					}
 				}
 
 				//LMR
-				//reduce only if ISNT in check and ISNT a killer move
-				if !in_check && !sm.is_killer && apply_lmr {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+				//IF depth is above sufficient depth
+				//IF the first X searched are searched
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+					reductions += self.get_lmr_reduction_amount(depth, moves_searched);
 				}
+
+				//Cancel all reductions in moves that satisfy some requirements
+				if in_check || sm.is_killer {
+					reductions = 0;
+				}
+
+				let new_depth = depth + extensions - reductions;
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
-				//check if lmr should be removed
+				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && apply_lmr {
+				if value.score > alpha && reductions > 0 {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;
 

@@ -226,14 +226,12 @@ impl Engine {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
-		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
 		if in_check {
 			// https://www.chessprogramming.org/Check_Extensions
-			extended = true;
 			depth += 1;
 		}
 
@@ -403,7 +401,7 @@ impl Engine {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT {
 					let history_value = sm.history;
 
 					//History Leaf Reduction

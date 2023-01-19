@@ -7,6 +7,7 @@ use std::sync::mpsc::Receiver;
 use std::thread;
 
 use crate::search::search_master::*;
+use crate::search::search_options::*;
 use crate::uci::bench::*;
 use crate::uci::castle_parse::*;
 
@@ -17,6 +18,7 @@ enum UCICmd {
 	Uci,
 	UciNewGame(u32),
 	IsReady,
+	SetOption(Options),
 	Go(TimeControl),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
@@ -95,6 +97,9 @@ impl UCIMaster {
 									UCICmd::IsReady => {
 										println!("readyok");
 									},
+									UCICmd::SetOption(option) => {
+										engine.options.change(option);
+									}
 									UCICmd::Go(time_control) => {
 										let best_move = engine.go(time_control);
 										println!("bestmove {}", best_move);
@@ -143,7 +148,10 @@ impl UCIMaster {
 									println!("Thread input is out of bounds.");
 								}
 							},
-							_ => {}
+							_ => {
+								let value = cmd_vec[4].parse::<i32>().unwrap();
+								sender.send(UCICmd::SetOption(SearchOptions::get(cmd_vec[2], value))).unwrap();
+							}
 						}
 					},
 					_ => {}

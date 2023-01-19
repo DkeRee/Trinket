@@ -11,7 +11,8 @@ use crate::search::tt::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::uci::castle_parse::*;
- use crate::search::lmr_table::*;
+use crate::search::lmr_table::*;
+use crate::search::search_options::*;
 
 pub struct TimeControl {
 	pub depth: i32,
@@ -40,6 +41,7 @@ impl TimeControl {
 }
 
 pub struct Engine {
+	pub options: SearchOptions,
 	pub board: Board,
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
@@ -53,6 +55,7 @@ pub struct Engine {
 impl Engine {
 	pub fn new(hash: u32) -> Engine {
 		Engine {
+			options: SearchOptions::new(),
 			board: Board::default(),
 			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
@@ -123,14 +126,14 @@ impl Engine {
 
 				//MANAGE ASPIRATION WINDOWS
 				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW * 4;
+					beta += self.options.aspiration_window * 4;
 					continue;						
 				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW * 4;
+					alpha -= self.options.aspiration_window * 4;
 					continue;						
 				} else {
-					alpha = eval.score - Self::ASPIRATION_WINDOW;
-					beta = eval.score + Self::ASPIRATION_WINDOW;
+					alpha = eval.score - self.options.aspiration_window;
+					beta = eval.score + self.options.aspiration_window;
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}
@@ -205,7 +208,7 @@ impl Engine {
 		//x = depth
 		//y = reduction
 		//y = base + (x - a) / b
-		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
+		return self.options.nmp_reduction_base + (depth - self.options.nmp_xshift) / self.options.nmp_ystretch;
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
@@ -298,7 +301,7 @@ impl Engine {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if depth >= self.options.iid_depth_min && is_pv {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 
@@ -332,8 +335,8 @@ impl Engine {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
+		if depth <= self.options.max_depth_rfp && !in_check {
+			if static_eval - (self.options.multiplier_rfp * depth) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}
@@ -388,7 +391,7 @@ impl Engine {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
+				if !is_pv && depth <= self.options.lmp_depth_max && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > self.options.lmp_multiplier * depth && !in_check {
 					past_positions.pop();
 					continue;
 				}
@@ -401,19 +404,19 @@ impl Engine {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				if depth >= self.options.history_depth_min && !is_pv && !in_check && moves_searched >= self.options.history_prune_move_limit && !extended {
 					let history_value = sm.history;
 
 					//History Leaf Reduction
-					if history_value < Self::HISTORY_THRESHOLD {
-						reductions += Self::HISTORY_REDUCTION;
+					if history_value < self.options.history_threshold {
+						reductions += self.options.history_reduction;
 					}
 				}
 
 				//LMR
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+				if depth >= self.options.lmr_depth_limit && moves_searched >= self.options.lmr_full_searched_move_limit {
 					reductions += self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
@@ -586,22 +589,4 @@ impl Engine {
 
 		return Some((best_move, eval));
 	}
-}
-
-impl Engine {
-	const ASPIRATION_WINDOW: i32 = 25;
-	const MAX_DEPTH_RFP: i32 = 6;
-	const MULTIPLIER_RFP: i32 = 100;
-	const NMP_REDUCTION_BASE: i32 = 3;
-	const NMP_XSHIFT: i32 = 2;
-	const NMP_YSTRETCH: i32 = 4;
-	const LMR_DEPTH_LIMIT: i32 = 2;
-	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
-	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 3;
-	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_DEPTH_MIN: i32 = 5;
-	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
-	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUCTION: i32 = 1;
 }

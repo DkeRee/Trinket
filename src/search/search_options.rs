@@ -98,19 +98,19 @@ impl SearchOptions {
 }
 
 impl SearchOptions {
-	const ASPIRATION_WINDOW: i32 = 25;
-	const MAX_DEPTH_RFP: i32 = 6;
-	const MULTIPLIER_RFP: i32 = 100;
-	const NMP_REDUCTION_BASE: i32 = 3;
-	const NMP_XSHIFT: i32 = 2;
-	const NMP_YSTRETCH: i32 = 4;
-	const LMR_DEPTH_LIMIT: i32 = 2;
-	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
-	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 3;
-	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_DEPTH_MIN: i32 = 5;
-	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
-	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUCTION: i32 = 1;
+	pub const ASPIRATION_WINDOW: i32 = 25;
+	pub const MAX_DEPTH_RFP: i32 = 6;
+	pub const MULTIPLIER_RFP: i32 = 100;
+	pub const NMP_REDUCTION_BASE: i32 = 3;
+	pub const NMP_XSHIFT: i32 = 2;
+	pub const NMP_YSTRETCH: i32 = 4;
+	pub const LMR_DEPTH_LIMIT: i32 = 2;
+	pub const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
+	pub const IID_DEPTH_MIN: i32 = 6;
+	pub const LMP_DEPTH_MAX: i32 = 3;
+	pub const LMP_MULTIPLIER: i32 = 10;
+	pub const HISTORY_DEPTH_MIN: i32 = 5;
+	pub const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
+	pub const HISTORY_THRESHOLD: i32 = 100;
+	pub const HISTORY_REDUCTION: i32 = 1;
 }

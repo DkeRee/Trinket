@@ -89,6 +89,20 @@ impl UCIMaster {
 										println!("id author DkeRee");
 										println!("option name Hash type spin default 16 min 0 max 64000");
 										println!("option name Threads type spin default 1 min 1 max 1");
+										println!("option name AspirationWindow type spin default {} min 1 max 100", SearchOptions::ASPIRATION_WINDOW);
+										println!("option name MaxDepthRfp type spin default {} min 1 max 15", SearchOptions::MAX_DEPTH_RFP);
+										println!("option name MultiplierRfp type spin default {} min 10 max 200", SearchOptions::MULTIPLIER_RFP);
+										println!("option name NmpReductionBase type spin default {} min 1 max 50", SearchOptions::NMP_REDUCTION_BASE);
+										println!("option name NmpXShift type spin default {} min 1 max 30", SearchOptions::NMP_XSHIFT);
+										println!("option name NmpYStretch type spin default {} min 1 max 40", SearchOptions::NMP_YSTRETCH);
+										println!("option name LmrDepthLimit type spin default {} min 1 max 5", SearchOptions::LMR_FULL_SEARCHED_MOVE_LIMIT);
+										println!("option name IidDepthMin type spin default {} min 1 max 15", SearchOptions::IID_DEPTH_MIN);
+										println!("option name LmpDepthMax type spin default {} min 1 max 10", SearchOptions::LMP_DEPTH_MAX);
+										println!("option name LmpMultiplier type spin default {} min 5 max 30", SearchOptions::LMP_MULTIPLIER);
+										println!("option name HistoryDepthMin type spin default {} min 1 max 10", SearchOptions::HISTORY_DEPTH_MIN);
+										println!("option name HistoryPruneMoveLimit type spin default {} min 1 max 10", SearchOptions::HISTORY_PRUNE_MOVE_LIMIT);
+										println!("option name HistoryThreshold type spin default {} min 20 max 200", SearchOptions::HISTORY_THRESHOLD);
+										println!("option name HistoryReduction type spin default {} min 1 max 2", SearchOptions::HISTORY_REDUCTION);
 										println!("uciok");
 									},
 									UCICmd::UciNewGame(hash_count) => {

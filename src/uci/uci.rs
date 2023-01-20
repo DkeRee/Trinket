@@ -95,7 +95,8 @@ impl UCIMaster {
 										println!("option name NmpReductionBase type spin default {} min 1 max 50", SearchOptions::NMP_REDUCTION_BASE);
 										println!("option name NmpXShift type spin default {} min 1 max 30", SearchOptions::NMP_XSHIFT);
 										println!("option name NmpYStretch type spin default {} min 1 max 40", SearchOptions::NMP_YSTRETCH);
-										println!("option name LmrDepthLimit type spin default {} min 1 max 5", SearchOptions::LMR_FULL_SEARCHED_MOVE_LIMIT);
+										println!("option name LmrDepthLimit type spin default {} min 1 max 5", SearchOptions::LMR_DEPTH_LIMIT);
+										println!("option name LmrFullSearchedMoveLimit type spin default {} min 1 max 5", SearchOptions::LMR_FULL_SEARCHED_MOVE_LIMIT);
 										println!("option name IidDepthMin type spin default {} min 1 max 15", SearchOptions::IID_DEPTH_MIN);
 										println!("option name LmpDepthMax type spin default {} min 1 max 10", SearchOptions::LMP_DEPTH_MAX);
 										println!("option name LmpMultiplier type spin default {} min 5 max 30", SearchOptions::LMP_MULTIPLIER);

@@ -102,7 +102,7 @@ impl UCIMaster {
 										println!("option name LmpMultiplier type spin default {} min 5 max 30", SearchOptions::LMP_MULTIPLIER);
 										println!("option name HistoryDepthMin type spin default {} min 1 max 10", SearchOptions::HISTORY_DEPTH_MIN);
 										println!("option name HistoryPruneMoveLimit type spin default {} min 1 max 10", SearchOptions::HISTORY_PRUNE_MOVE_LIMIT);
-										println!("option name HistoryThreshold type spin default {} min 20 max 200", SearchOptions::HISTORY_THRESHOLD);
+										println!("option name HistoryThreshold type spin default {} min 1 max 200", SearchOptions::HISTORY_THRESHOLD);
 										println!("option name HistoryReduction type spin default {} min 1 max 2", SearchOptions::HISTORY_REDUCTION);
 										println!("uciok");
 									},

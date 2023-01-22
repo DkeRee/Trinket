@@ -163,6 +163,7 @@ impl UCIMaster {
 									println!("Thread input is out of bounds.");
 								}
 							},
+							"Threads" => {},
 							_ => {
 								let value = cmd_vec[4].parse::<i32>().unwrap();
 								sender.send(UCICmd::SetOption(SearchOptions::get(cmd_vec[2], value))).unwrap();

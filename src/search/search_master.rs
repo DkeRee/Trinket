@@ -398,7 +398,7 @@ impl Engine {
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
-				//History Leaf Reduction/Pruning
+				//History Leaf Reduction
 				//IF sufficient depth
 				//IF ISNT PV
 				//IF ISNT in check
@@ -594,7 +594,7 @@ impl Engine {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_DEPTH_MIN: i32 = 5;
+	const HISTORY_DEPTH_MIN: i32 = 6;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;

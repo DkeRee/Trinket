@@ -98,19 +98,19 @@ impl SearchOptions {
 }
 
 impl SearchOptions {
-	pub const ASPIRATION_WINDOW: i32 = 38;
-	pub const MAX_DEPTH_RFP: i32 = 5;
-	pub const MULTIPLIER_RFP: i32 = 141;
+	pub const ASPIRATION_WINDOW: i32 = 50;
+	pub const MAX_DEPTH_RFP: i32 = 6;
+	pub const MULTIPLIER_RFP: i32 = 150;
 	pub const NMP_REDUCTION_BASE: i32 = 2;
-	pub const NMP_XSHIFT: i32 = 8;
-	pub const NMP_YSTRETCH: i32 = 7;
+	pub const NMP_XSHIFT: i32 = 10;
+	pub const NMP_YSTRETCH: i32 = 9;
 	pub const LMR_DEPTH_LIMIT: i32 = 2;
 	pub const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
 	pub const IID_DEPTH_MIN: i32 = 2;
-	pub const LMP_DEPTH_MAX: i32 = 10;
-	pub const LMP_MULTIPLIER: i32 = 9;
+	pub const LMP_DEPTH_MAX: i32 = 11;
+	pub const LMP_MULTIPLIER: i32 = 10;
 	pub const HISTORY_DEPTH_MIN: i32 = 4;
 	pub const HISTORY_PRUNE_MOVE_LIMIT: i32 = 3;
-	pub const HISTORY_THRESHOLD: i32 = 37;
+	pub const HISTORY_THRESHOLD: i32 = 35;
 	pub const HISTORY_REDUCTION: i32 = 1;
 }

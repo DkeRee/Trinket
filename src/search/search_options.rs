@@ -72,6 +72,7 @@ impl SearchOptions {
 			"HistoryPruneMoveLimit" => Options::HistoryPruneMoveLimit(v),
 			"HistoryThreshold" => Options::HistoryThreshold(v),
 			"HistoryReduction" => Options::HistoryReduction(v),
+			"Threads" => {},
 			_ => panic!()
 		}
 	}

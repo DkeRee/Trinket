@@ -423,9 +423,9 @@ impl Engine {
 
 				value = child_eval;
 
-				//check if lmr should be removed
+				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && apply_lmr {
+				if value.score > alpha && new_depth < depth {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 					child_eval.score *= -1;
 

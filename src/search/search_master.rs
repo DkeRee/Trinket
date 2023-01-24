@@ -596,6 +596,6 @@ impl Engine {
 	const LMP_MULTIPLIER: i32 = 10;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
-	const HISTORY_THRESHOLD: i32 = 50;
+	const HISTORY_THRESHOLD: i32 = 120;
 	const HISTORY_REDUCTION: i32 = 1;
 }

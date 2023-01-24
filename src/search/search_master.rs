@@ -294,8 +294,7 @@ impl Engine {
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
 
 				//if sufficient depth
-				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if depth >= Self::IID_DEPTH_MIN {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 

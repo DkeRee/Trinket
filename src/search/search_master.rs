@@ -590,7 +590,7 @@ impl Engine {
 	const NMP_XSHIFT: i32 = 2;
 	const NMP_YSTRETCH: i32 = 4;
 	const LMR_DEPTH_LIMIT: i32 = 2;
-	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 1;
+	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 3;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;

@@ -220,12 +220,6 @@ impl Engine {
 
 		self.nodes += 1;
 
-		//MATE DISTANCE PRUNING
-		//make sure that alpha is not defaulted to negative infinity
-		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
-			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
-		}
-
 		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;

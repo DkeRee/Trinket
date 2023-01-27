@@ -358,26 +358,54 @@ impl Engine {
 			}
 		}
 
+		let mut moves_searched = 0;
+		let mut best_move = None;
+		let mut eval = Eval::new(i32::MIN, false);
+
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut is_staged = false;
 		if table_find.is_some() {
-			is_staged = true;
+			moves_searched += 1;
+
 			let mv = table_find.clone().unwrap().best_move.unwrap();
+			let mut board_cache = board.clone();
+			board_cache.play_unchecked(mv);
+
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+			child_eval.score *= -1;
+
+			past_positions.pop();
+
+			eval = child_eval;
+			best_move = Some(mv);
 
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet
 			} else {
 				MoveType::Loud
 			};
-			legal_moves = vec![SortedMove::new(mv, 0, movetype)]; //create dummy sorted move score
+			let mut sm = SortedMove::new(mv, 0, movetype);
+
+			if eval.score > alpha {
+				alpha = eval.score;
+				if alpha >= beta {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+					sm.insert_killer(&mut self.movegen.sorter, ply, board);
+					sm.insert_history(&mut self.movegen.sorter, depth);
+					return Some((best_move, eval));
+				} else {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+				}
+			} else {
+				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+			}
+
+			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
 		}
 
-		let mut moves_searched: i32 = 0;
-		let mut best_move = None;
-		let mut eval = Eval::new(i32::MIN, false);
-		while (moves_searched as usize) < legal_moves.len() {
-			let mut sm = legal_moves[moves_searched as usize].clone();
+		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -402,7 +430,6 @@ impl Engine {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
-					moves_searched += 1;
 					continue;
 				}
 
@@ -479,11 +506,6 @@ impl Engine {
 			}
 
 			moves_searched += 1;
-
-			if is_staged {
-				is_staged = false;
-				legal_moves = self.movegen.move_gen(board, table_find.clone().unwrap().best_move, ply, true);
-			}
 		}
 
 		return Some((best_move, eval));

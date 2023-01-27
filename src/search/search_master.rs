@@ -474,7 +474,6 @@ impl Engine {
 			moves_searched += 1;
 
 			if is_staged {
-				moves_searched -= 1;
 				is_staged = false;
 				legal_moves = self.movegen.move_gen(board, table_find.clone().unwrap().best_move, ply, true);
 			}

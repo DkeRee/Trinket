@@ -18,7 +18,7 @@ pub enum NodeKind {
 	Null
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TTEntry {
 	pub best_move: Option<Move>,
 	pub eval: i32,

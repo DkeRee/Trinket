@@ -252,7 +252,7 @@ impl Engine {
 			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
-		let mut legal_moves: Vec<SortedMove>;
+		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
 		let table_find = match self.tt.find(board, ply) {
@@ -283,7 +283,6 @@ impl Engine {
 						NodeKind::Null => {}
 					}
 				}
-				legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
 
 				Some(table_find)
 			},
@@ -306,7 +305,7 @@ impl Engine {
 					}
 				}
 
-				legal_moves = self.movegen.move_gen(board, iid_move, ply);
+				legal_moves = self.movegen.move_gen(board, iid_move, ply, false);
 
 				//Internal Iterative Reduction
 				//IF sufficient depth
@@ -359,10 +358,19 @@ impl Engine {
 			}
 		}
 
-		let mut moves_searched = 0;
+		//STAGED MOVEGEN
+		//Check if TT moves produce a cutoff before generating moves to same time
+		let mut is_staged = false;
+		if table_find.is_some() {
+			is_staged = true;
+			legal_moves.push(SortedMove::new(table_find.clone().unwrap().best_move.unwrap(), 2000, MoveType::Quiet)); //create dummy sorted move
+		}
+
+		let mut moves_searched: i32 = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
-		for mut sm in legal_moves {
+		while (moves_searched as usize) < legal_moves.len() {
+			let mut sm = legal_moves[moves_searched as usize].clone();
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -387,6 +395,7 @@ impl Engine {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
+					moves_searched += 1;
 					continue;
 				}
 
@@ -463,6 +472,12 @@ impl Engine {
 			}
 
 			moves_searched += 1;
+
+			if is_staged {
+				moves_searched -= 1;
+				is_staged = false;
+				legal_moves = self.movegen.move_gen(board, table_find.clone().unwrap().best_move, ply, true);
+			}
 		}
 
 		return Some((best_move, eval));

@@ -255,7 +255,7 @@ impl Engine {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let table_find = match self.tt.find(board, ply) {
+		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -284,7 +284,7 @@ impl Engine {
 					}
 				}
 
-				Some(table_find)
+				(Some(table_find), None)
 			},
 			None => {
 				let mut iid_move = None;
@@ -305,8 +305,6 @@ impl Engine {
 					}
 				}
 
-				legal_moves = self.movegen.move_gen(board, iid_move, ply, false);
-
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
@@ -314,7 +312,7 @@ impl Engine {
 					depth -= depth / 10 + 1;
 				}
 
-				None
+				(None, iid_move)
 			}
 		};
 
@@ -364,10 +362,15 @@ impl Engine {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		if table_find.is_some() {
+		if table_find_move.is_some() || iid_find_move.is_some() {
 			moves_searched += 1;
 
-			let mv = table_find.clone().unwrap().best_move.unwrap();
+			let mv = if table_find_move.is_some() {
+				table_find_move.clone().unwrap().best_move.unwrap()
+			} else {
+				iid_find_move.clone().unwrap()
+			};
+
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
@@ -403,6 +406,8 @@ impl Engine {
 			}
 
 			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
+		} else {
+			legal_moves = self.movegen.move_gen(board, None, ply, false);
 		}
 
 		for mut sm in legal_moves {

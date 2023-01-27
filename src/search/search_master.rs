@@ -361,7 +361,7 @@ impl Engine {
 		let mut eval = Eval::new(i32::MIN, false);
 
 		//STAGED MOVEGEN
-		//Check if TT moves produce a cutoff before generating moves to same time
+		//Check if TT moves produce a cutoff before generating moves to savee time
 		if table_find_move.is_some() || iid_find_move.is_some() {
 			moves_searched += 1;
 
@@ -542,7 +542,7 @@ impl Engine {
 			alpha = stand_pat.score;
 		}
 
-		let mut move_list: Vec<SortedMove>;
+		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe TT
 		let table_find = match self.tt.find(board, ply) {
@@ -571,24 +571,57 @@ impl Engine {
 					NodeKind::Null => {}
 				}
 
-				move_list = self.movegen.qmove_gen(board, table_find.best_move, ply);
-
 				Some(table_find)
 			},
 			None => {
-				move_list = self.movegen.qmove_gen(board, None, ply);
+				move_list = self.movegen.qmove_gen(board, None, ply, false);
 
 				None
 			}
 		};
 
-		//no more loud moves to be checked anymore, it can be returned safely
-		if move_list.len() == 0 {
-			return Some((None, stand_pat));
-		}
-
 		let mut best_move = None;
 		let mut eval = stand_pat;
+
+		//STAGED MOVEGEN
+		//Check if TT moves produce a cutoff before generating moves to savee time
+		if table_find.is_some() {
+			let mv = table_find.clone().unwrap().best_move.unwrap();
+
+			let mut board_cache = board.clone();
+			board_cache.play_unchecked(mv);
+
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
+			child_eval.score *= -1;
+
+			past_positions.pop();
+
+			eval = child_eval;
+			best_move = Some(mv);
+
+			let mut sm = SortedMove::new(mv, 0, MoveType::Loud);
+
+			if eval.score > alpha {
+				alpha = eval.score;
+				if alpha >= beta {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
+					return Some((best_move, eval));
+				} else {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
+				}
+			} else {
+				self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
+			}
+
+			move_list = self.movegen.qmove_gen(board, Some(mv), ply, true);
+		}
+
+		//no more loud moves to be checked anymore, it can be returned safely
+		if move_list.len() == 0 {
+			return Some((None, eval));
+		}
 
 		for sm in move_list {
 

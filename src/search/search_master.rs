@@ -365,7 +365,7 @@ impl Engine {
 			is_staged = true;
 			let mv = table_find.clone().unwrap().best_move.unwrap();
 
-			let movetype = if (mv.to.bitboard() | board.colors(!board.side_to_move())).is_empty() {
+			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet
 			} else {
 				MoveType::Loud

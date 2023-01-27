@@ -252,7 +252,7 @@ impl Engine {
 			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
-		let mut legal_moves: Vec<SortedMove>;
+		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
 		let table_find = match self.tt.find(board, ply) {
@@ -283,7 +283,6 @@ impl Engine {
 						NodeKind::Null => {}
 					}
 				}
-				legal_moves = self.movegen.move_gen(board, table_find.best_move, ply);
 
 				Some(table_find)
 			},
@@ -306,7 +305,7 @@ impl Engine {
 					}
 				}
 
-				legal_moves = self.movegen.move_gen(board, iid_move, ply);
+				legal_moves = self.movegen.move_gen(board, iid_move, ply, false);
 
 				//Internal Iterative Reduction
 				//IF sufficient depth
@@ -362,6 +361,50 @@ impl Engine {
 		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
+
+		//STAGED MOVEGEN
+		//Check if TT moves produce a cutoff before generating moves to same time
+		if table_find.is_some() {
+			moves_searched += 1;
+
+			let mv = table_find.clone().unwrap().best_move.unwrap();
+			let mut board_cache = board.clone();
+			board_cache.play_unchecked(mv);
+
+			past_positions.push(board_cache.hash());
+
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+			child_eval.score *= -1;
+
+			past_positions.pop();
+
+			eval = child_eval;
+			best_move = Some(mv);
+
+			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
+				MoveType::Quiet
+			} else {
+				MoveType::Loud
+			};
+			let mut sm = SortedMove::new(mv, 0, movetype);
+
+			if eval.score > alpha {
+				alpha = eval.score;
+				if alpha >= beta {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+					sm.insert_killer(&mut self.movegen.sorter, ply, board);
+					sm.insert_history(&mut self.movegen.sorter, depth);
+					return Some((best_move, eval));
+				} else {
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+				}
+			} else {
+				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+			}
+
+			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
+		}
+
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();

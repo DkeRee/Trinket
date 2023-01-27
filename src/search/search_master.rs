@@ -363,7 +363,14 @@ impl Engine {
 		let mut is_staged = false;
 		if table_find.is_some() {
 			is_staged = true;
-			legal_moves.push(SortedMove::new(table_find.clone().unwrap().best_move.unwrap(), 2000, MoveType::Quiet)); //create dummy sorted move
+			let mv = table_find.clone().unwrap().best_move.unwrap();
+
+			let movetype = if (mv.to.bitboard() | board.colors(!board.side_to_move())).is_empty() {
+				MoveType::Quiet
+			} else {
+				MoveType::Loud
+			};
+			legal_moves = vec![SortedMove::new(mv, 0, movetype)]; //create dummy sorted move score
 		}
 
 		let mut moves_searched: i32 = 0;

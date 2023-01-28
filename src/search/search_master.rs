@@ -244,7 +244,7 @@ impl Engine {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply, past_positions); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -516,7 +516,7 @@ impl Engine {
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -601,11 +601,7 @@ impl Engine {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			past_positions.push(board_cache.hash());
-
-			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1, past_positions)?;
-
-			past_positions.pop();
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1)?;
 
 			child_eval.score *= -1;
 

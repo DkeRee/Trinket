@@ -123,6 +123,9 @@ impl Engine {
 			if result != None {
 				let (best_mv, eval, nodes, seldepth) = result.unwrap();
 
+				self.nodes += nodes;
+				self.seldepth += seldepth;
+
 				//MANAGE ASPIRATION WINDOWS
 				if eval.score >= beta {
 					beta += Self::ASPIRATION_WINDOW * 4;
@@ -136,9 +139,6 @@ impl Engine {
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}
-
-				self.nodes += nodes;
-				self.seldepth += seldepth;
 
 				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 

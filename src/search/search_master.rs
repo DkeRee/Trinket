@@ -162,7 +162,7 @@ impl Engine {
 					format!("cp {}", eval.score)
 				};
 
-				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index + 1, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, depth_index + 1, 0));
+				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, depth_index, 0));
 			} else {
 				break;
 			}

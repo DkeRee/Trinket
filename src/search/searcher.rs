@@ -256,6 +256,8 @@ impl Searcher<'_> {
 				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
 
+			sm.decay_history(&mut self.movegen.sorter, depth);
+
 			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false);
@@ -360,6 +362,8 @@ impl Searcher<'_> {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
+
+			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			moves_searched += 1;
 		}

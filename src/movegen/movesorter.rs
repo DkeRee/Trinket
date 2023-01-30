@@ -81,9 +81,7 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn add_history(&mut self, mv: Move, depth: i32) {
-		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
-
+	pub fn scale_history_down(&mut self, mv: Move) {
 		//make sure it doesn't overflow
 		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
 			let bb = BitBoard::FULL;
@@ -94,6 +92,16 @@ impl MoveSorter {
 				}
 			}
 		}
+	}
+
+	pub fn add_history(&mut self, mv: Move, depth: i32) {
+		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
+		self.scale_history_down(mv);
+	}
+
+	pub fn decay_history(&mut self, mv: Move, depth: i32) {
+		self.history_table[mv.from as usize][mv.to as usize] -= depth * depth;
+		self.scale_history_down(mv);
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {

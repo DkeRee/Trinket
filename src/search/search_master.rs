@@ -113,7 +113,7 @@ impl Engine {
 			let mut past_positions = self.my_past_positions.clone();
 
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
-				board: board,
+				board: board.clone(),
 				depth: depth_index + 1,
 				alpha,
 				beta,

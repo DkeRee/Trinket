@@ -10,8 +10,8 @@ use crate::search::tt::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 
-pub struct SearchInfo<'a> {
-	pub board: &'a Board,
+pub struct SearchInfo {
+	pub board: Board,
 	pub depth: i32,
 	pub alpha: i32,
 	pub beta: i32,
@@ -35,7 +35,7 @@ impl Searcher<'_> {
 			movegen: movegen,
 			searching_depth: search_info.depth
 		};
-		let (mv, eval) = searcher.search(&abort, search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
+		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
 	
 		return Some((mv, eval, searcher.nodes, searcher.seldepth));
 	}

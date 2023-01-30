@@ -3,6 +3,7 @@ use cozy_chess::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use crate::search::window::*;
 use crate::search::lmr_table::*;
 use crate::eval::evaluator::*;
 use crate::eval::score::*;
@@ -10,11 +11,10 @@ use crate::search::tt::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 
-pub struct SearchInfo<'a> {
-	pub board: &'a Board,
+pub struct SearchInfo {
+	pub board: Board,
 	pub depth: i32,
-	pub alpha: i32,
-	pub beta: i32,
+	pub window: Window,
 	pub past_positions: Vec<u64>
 }
 
@@ -35,7 +35,7 @@ impl Searcher<'_> {
 			movegen: movegen,
 			searching_depth: search_info.depth
 		};
-		let (mv, eval) = searcher.search(&abort, search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
+		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.window.clone(), &mut search_info.past_positions)?;
 	
 		return Some((mv, eval, searcher.nodes, searcher.seldepth));
 	}
@@ -63,7 +63,7 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut window: Window, past_positions: &mut Vec<u64>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -73,13 +73,13 @@ impl Searcher<'_> {
 
 		//MATE DISTANCE PRUNING
 		//make sure that alpha is not defaulted to negative infinity
-		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
+		if window.alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= window.alpha {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
 		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
-		let is_pv = beta > alpha + 1;
+		let is_pv = window.is_pv();
 
 		//CHECK EXTENSION
 		if in_check {
@@ -95,7 +95,7 @@ impl Searcher<'_> {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(&abort, board, window.clone(), ply); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -122,12 +122,12 @@ impl Searcher<'_> {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						},
 						NodeKind::UpperBound => {
-							if table_find.eval <= alpha {
+							if table_find.eval <= window.alpha {
 								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 							}	
 						},
 						NodeKind::LowerBound => {
-							if table_find.eval >= beta {
+							if table_find.eval >= window.beta {
 								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 							}
 						},
@@ -150,7 +150,7 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions)?;
+						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, window.clone(), past_positions)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}
@@ -178,7 +178,7 @@ impl Searcher<'_> {
 		*/
 
 		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
+			if static_eval - (Self::MULTIPLIER_RFP * depth) >= window.beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}
@@ -194,16 +194,16 @@ impl Searcher<'_> {
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= window.beta {
 			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, window.create_null(-window.beta), past_positions)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
-			if null_score.score >= beta {
-				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+			if null_score.score >= window.beta {
+				return Some((None, Eval::new(window.beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
 			}
 		}
 
@@ -227,7 +227,7 @@ impl Searcher<'_> {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, window.flip(), past_positions)?;
 			child_eval.score *= -1;
 
 			past_positions.pop();
@@ -242,9 +242,9 @@ impl Searcher<'_> {
 			};
 			let mut sm = SortedMove::new(mv, 0, movetype);
 
-			if eval.score > alpha {
-				alpha = eval.score;
-				if alpha >= beta {
+			if eval.score > window.alpha {
+				window.set_alpha(eval.score);
+				if window.cutoff() {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 					sm.insert_killer(&mut self.movegen.sorter, ply, board);
 					sm.insert_history(&mut self.movegen.sorter, depth);
@@ -271,7 +271,7 @@ impl Searcher<'_> {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, window.flip(), past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -284,7 +284,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && window.alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
 					continue;
 				}
@@ -317,15 +317,15 @@ impl Searcher<'_> {
 					new_depth = depth;
 				} 
 
-				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, window.create_null(-window.alpha), past_positions)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && new_depth < depth {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
+				if window.can_raise_alpha(value.score) && new_depth < depth {
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, window.create_null(-window.alpha), past_positions)?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -333,8 +333,8 @@ impl Searcher<'_> {
 
 				//if PV
 				//search with full depth and full window
-				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions)?;
+				if window.is_pv_children(value.score) {
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, window.flip(), past_positions)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -346,9 +346,9 @@ impl Searcher<'_> {
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
-				if eval.score > alpha {
-					alpha = eval.score;
-					if alpha >= beta {
+				if window.can_raise_alpha(eval.score) {
+					window.set_alpha(eval.score);
+					if window.cutoff() {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
@@ -367,7 +367,7 @@ impl Searcher<'_> {
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut window: Window, mut ply: i32) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -385,12 +385,12 @@ impl Searcher<'_> {
 		let stand_pat = Eval::new(evaluate(board), false);
 
 		//beta cutoff
-		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false)));
+		if stand_pat.score >= window.beta {
+			return Some((None, Eval::new(window.beta, false)));
 		}
 
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
+		if window.can_raise_alpha(stand_pat.score) {
+			window.set_alpha(stand_pat.score);
 		}
 
 		let mut move_list: Vec<SortedMove>;
@@ -410,12 +410,12 @@ impl Searcher<'_> {
 						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 					},
 					NodeKind::UpperBound => {
-						if table_find.eval <= alpha {
+						if table_find.eval <= window.alpha {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						}	
 					},
 					NodeKind::LowerBound => {
-						if table_find.eval >= beta {
+						if table_find.eval >= window.beta {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						}
 					},
@@ -452,18 +452,18 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1)?;
+			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, window.flip(), ply + 1)?;
 
 			child_eval.score *= -1;
 
 			if child_eval.score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
-				if eval.score > alpha {
-					alpha = eval.score;
-					if alpha >= beta {
+				if window.can_raise_alpha(eval.score) {
+					window.set_alpha(eval.score);
+					if window.cutoff() {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
-						return Some((None, Eval::new(beta, false)));
+						return Some((None, Eval::new(window.beta, false)));
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 					}

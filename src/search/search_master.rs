@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 
+use crate::search::window::*;
 use crate::search::tt::*;
 use crate::eval::score::*;
 use crate::search::searcher::*;
@@ -102,8 +103,7 @@ impl Engine {
 		}
 
 		//ASPIRATION WINDOWS ALPHA BETA
-		let mut alpha = -i32::MAX;
-		let mut beta = i32::MAX;
+		let mut window = Window::new();
 
 		let mut depth_index = 0;
 
@@ -113,10 +113,9 @@ impl Engine {
 			let mut past_positions = self.my_past_positions.clone();
 
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
-				board: board,
+				board: board.clone(),
 				depth: depth_index + 1,
-				alpha,
-				beta,
+				window: window.clone(),
 				past_positions
 			});
 
@@ -127,15 +126,15 @@ impl Engine {
 				self.seldepth += seldepth;
 
 				//MANAGE ASPIRATION WINDOWS
-				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW * 4;
+				if eval.score >= window.beta {
+					window.set_beta(window.beta + Self::ASPIRATION_WINDOW * 4);
 					continue;						
-				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW * 4;
+				} else if eval.score <= window.alpha {
+					window.set_alpha(window.alpha - Self::ASPIRATION_WINDOW * 4);
 					continue;						
 				} else {
-					alpha = eval.score - Self::ASPIRATION_WINDOW;
-					beta = eval.score + Self::ASPIRATION_WINDOW;
+					window.set_alpha(eval.score - Self::ASPIRATION_WINDOW);
+					window.set_beta(eval.score + Self::ASPIRATION_WINDOW);
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}

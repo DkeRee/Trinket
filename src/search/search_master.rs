@@ -196,5 +196,5 @@ impl Engine {
 }
 
 impl Engine {
-	const ASPIRATION_WINDOW: i32 = 15;
+	const ASPIRATION_WINDOW: i32 = 10;
 }

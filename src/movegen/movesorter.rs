@@ -81,27 +81,31 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn scale_history_down(&mut self, mv: Move) {
+	pub fn scale_history_down(&mut self) {
 		//make sure it doesn't overflow
-		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
-			let bb = BitBoard::FULL;
+		let bb = BitBoard::FULL;
 
-			for s1 in bb {
-				for s2 in bb {
-					self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
-				}
+		for s1 in bb {
+			for s2 in bb {
+				self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
 			}
 		}
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
-		self.scale_history_down(mv);
+		
+		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
+			self.scale_history_down();
+		}
 	}
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] -= depth * depth;
-		self.scale_history_down(mv);
+
+		if self.history_table[mv.from as usize][mv.to as usize] <= Self::HISTORY_MOVE_OFFSET {
+			self.scale_history_down();
+		}
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {

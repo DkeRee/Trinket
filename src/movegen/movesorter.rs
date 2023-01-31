@@ -95,7 +95,7 @@ impl MoveSorter {
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
 		
-		if self.history_table[mv.from as usize][mv.to as usize] >= -Self::HISTORY_MOVE_OFFSET {
+		if self.history_table[mv.from as usize][mv.to as usize] >= 4000 {
 			self.scale_history_down();
 		}
 	}
@@ -103,7 +103,7 @@ impl MoveSorter {
 	pub fn decay_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] -= depth * depth;
 
-		if self.history_table[mv.from as usize][mv.to as usize] <= Self::HISTORY_MOVE_OFFSET {
+		if self.history_table[mv.from as usize][mv.to as usize] <= -4000 {
 			self.scale_history_down();
 		}
 	}

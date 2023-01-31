@@ -308,6 +308,9 @@ impl Searcher<'_> {
 					}
 				}
 
+				//History Flexible Reduction
+				new_depth += sm.history / Self::HISTORY_FLEXIBLE_MARGIN;
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
@@ -315,7 +318,7 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				if in_check || sm.is_killer {
+				if new_depth > depth || in_check || sm.is_killer {
 					new_depth = depth;
 				} 
 
@@ -496,4 +499,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const HISTORY_FLEXIBLE_MARGIN: i32 = 300;
 }

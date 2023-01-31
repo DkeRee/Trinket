@@ -318,6 +318,10 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
+				if new_depth <= 0 {
+					new_depth = 0;
+				}
+
 				if new_depth > depth || in_check || sm.is_killer {
 					new_depth = depth;
 				} 

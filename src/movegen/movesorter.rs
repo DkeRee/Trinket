@@ -149,6 +149,6 @@ impl MoveSorter {
    	const KNIGHT_PROMO: i32 = -5000;
 	const BISHOP_PROMO: i32 = -6000;
 	const ROOK_PROMO: i32 = -7000;
-	const HISTORY_MOVE_OFFSET: i32 = -30000;
-	const LOSING_CAPTURE: i32 = -30001;
+	const HISTORY_MOVE_OFFSET: i32 = -10000;
+	const LOSING_CAPTURE: i32 = -30000;
 }

@@ -485,5 +485,5 @@ impl Searcher<'_> {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_FLEXIBLE_MARGIN: i32 = 1000;
+	const HISTORY_FLEXIBLE_MARGIN: i32 = 1600;
 }

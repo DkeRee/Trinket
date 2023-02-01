@@ -34,12 +34,6 @@ impl SortedMove {
 			move_sorter.add_history(self.mv, depth);
 		}
 	}
-
-	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_history(self.mv, depth);
-		}
-	}
 }
 
 pub struct MoveGen {

@@ -509,6 +509,6 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const SEE_REDUCTION_DEPTH: i32 = 5;
+	const SEE_REDUCTION_DEPTH: i32 = 8;
 	const SEE_REDUCTION_THRESHOLD: i32 = 0;
 }

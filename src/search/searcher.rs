@@ -256,6 +256,8 @@ impl Searcher<'_> {
 				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
 
+			sm.decay_history(&mut self.movegen.sorter, depth);
+
 			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false);
@@ -303,18 +305,6 @@ impl Searcher<'_> {
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
 						new_depth -= Self::HISTORY_REDUCTION;
-					}
-				}
-
-				//SEE Reduction
-				//IF depth is sufficient
-				//IF ISNT PV
-				//IF ISNT IN CHECK
-				if depth >= Self::SEE_REDUCTION_DEPTH && !is_pv && !in_check && sm.movetype == MoveType::Loud {
-					let see_value = sm.see;
-
-					if see_value < Self::SEE_REDUCTION_THRESHOLD {
-						new_depth -= 1;
 					}
 				}
 
@@ -372,6 +362,8 @@ impl Searcher<'_> {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
+
+			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			moves_searched += 1;
 		}
@@ -504,6 +496,4 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const SEE_REDUCTION_DEPTH: i32 = 5;
-	const SEE_REDUCTION_THRESHOLD: i32 = 0;
 }

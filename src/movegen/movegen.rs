@@ -4,7 +4,6 @@ use crate::movegen::movesorter::*;
 #[derive(Clone, Debug)]
 pub struct SortedMove {
 	pub mv: Move,
-	pub see: i32,
 	pub importance: i32,
 	pub movetype: MoveType,
 	pub is_killer: bool,
@@ -15,7 +14,6 @@ impl SortedMove {
 	pub fn new(mv: Move, importance: i32, movetype: MoveType) -> SortedMove {
 		SortedMove {
 			mv: mv,
-			see: 0,
 			importance: importance,
 			movetype: movetype,
 			is_killer: false,
@@ -32,6 +30,12 @@ impl SortedMove {
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.add_history(self.mv, depth);
+		}
+	}
+
+	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
+		if self.movetype == MoveType::Quiet {
+			move_sorter.decay_history(self.mv, depth);
 		}
 	}
 }

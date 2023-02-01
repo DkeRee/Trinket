@@ -56,6 +56,8 @@ impl MoveSorter {
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
 				}
+
+				mv_info.see = capture_score;
 			}
 
 			mv_info.importance += match mv_info.mv.promotion {

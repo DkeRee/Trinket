@@ -308,6 +308,19 @@ impl Searcher<'_> {
 					}
 				}
 
+
+				//SEE Reduction
+				//IF depth is sufficient
+				//IF ISNT PV
+				//IF ISNT IN CHECK
+				if depth >= Self::SEE_REDUCTION_DEPTH && !is_pv && !in_check && sm.movetype == MoveType::Loud {
+					let see_value = sm.see;
+
+					if see_value < Self::SEE_REDUCTION_THRESHOLD {
+						new_depth -= 1;
+					}
+				}
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
@@ -496,4 +509,6 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const SEE_REDUCTION_DEPTH: i32 = 5;
+	const SEE_REDUCTION_THRESHOLD: i32 = 0;
 }

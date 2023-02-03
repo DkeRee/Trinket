@@ -23,6 +23,7 @@ pub struct Searcher<'a> {
 	nodes: u64,
 	seldepth: i32,
 	movegen: &'a mut MoveGen,
+	evals: [i32; 250],
 	searching_depth: i32
 }
 
@@ -33,6 +34,7 @@ impl Searcher<'_> {
 			nodes: 0,
 			seldepth: 0,
 			movegen: movegen,
+			evals: [0; 250],
 			searching_depth: search_info.depth
 		};
 		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
@@ -169,6 +171,21 @@ impl Searcher<'_> {
 
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
+		self.evals[ply as usize] = static_eval;
+
+		let improving_margin = if ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2] {
+			Some(self.evals[ply as usize] - self.evals[ply as usize - 2])
+		} else {
+			None
+		};
+
+		//Improving Extension
+		//IF IS PV
+		//IF improvement is of enough margin
+		//IF depth is low
+		if is_pv && improving_margin > Some(Self::IMPROVING_EXTENSION_MARGIN) && depth < Self::IMPROVING_EXTENSION_DEPTH {
+			depth += 1;
+		}
 
 		//Reverse Futility Pruning
 		/*
@@ -496,4 +513,6 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const IMPROVING_EXTENSION_MARGIN: i32 = 500;
+	const IMPROVING_EXTENSION_DEPTH: i32 = 4;
 }

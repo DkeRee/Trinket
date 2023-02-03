@@ -183,8 +183,8 @@ impl Searcher<'_> {
 		//IF IS PV
 		//IF improvement is of enough margin
 		//IF depth is low
-		//IF not in check to avoid stacking on check extension
-		if is_pv && improving_margin > Some(Self::IMPROVING_EXTENSION_MARGIN) && depth < Self::IMPROVING_EXTENSION_DEPTH && !in_check {
+		//IF in check
+		if is_pv && improving_margin > Some(Self::IMPROVING_EXTENSION_MARGIN) && depth < Self::IMPROVING_EXTENSION_DEPTH && in_check {
 			depth += 1;
 		}
 

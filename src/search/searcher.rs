@@ -179,15 +179,6 @@ impl Searcher<'_> {
 			None
 		};
 
-		//Improving Extension
-		//IF IS PV
-		//IF improvement is of enough margin
-		//IF depth is low
-		//IF not in check to avoid stacking on check extension
-		if is_pv && improving_margin > Some(Self::IMPROVING_EXTENSION_MARGIN) && depth < Self::IMPROVING_EXTENSION_DEPTH && !in_check {
-			depth += 1;
-		}
-
 		//Reverse Futility Pruning
 		/*
 		// if depth isn't too deep
@@ -304,7 +295,8 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
+				//IF is NOT improving
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check && improving_margin.is_none() {
 					past_positions.pop();
 					continue;
 				}
@@ -514,6 +506,4 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const IMPROVING_EXTENSION_MARGIN: i32 = 500;
-	const IMPROVING_EXTENSION_DEPTH: i32 = 2;
 }

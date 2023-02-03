@@ -295,7 +295,7 @@ impl Searcher<'_> {
 				let mut new_depth = depth;
 
 				//History Flexible Reduction
-				new_depth += sm.history / Self::HISTORY_FLEXIBLE_MARGIN;
+				new_depth -= sm.history / Self::HISTORY_FLEXIBLE_MARGIN;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth
@@ -485,5 +485,5 @@ impl Searcher<'_> {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-	const HISTORY_FLEXIBLE_MARGIN: i32 = 300;
+	const HISTORY_FLEXIBLE_MARGIN: i32 = 3000;
 }

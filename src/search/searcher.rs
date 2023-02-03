@@ -313,7 +313,7 @@ impl Searcher<'_> {
 				//IF depth is sufficient
 				//IF ISNT PV
 				//IF ISNT IN CHECK
-				if depth >= Self::SEE_REDUCTION_DEPTH && !is_pv && !in_check && sm.movetype == MoveType::Loud {
+				if depth >= Self::SEE_REDUCTION_DEPTH && !is_pv && !in_check && sm.movetype == MoveType::Loud && moves_searched >= Self::SEE_REDUC_MOVE_LIMIT {
 					let see_value = sm.see;
 
 					if see_value < Self::SEE_REDUCTION_THRESHOLD {
@@ -511,4 +511,5 @@ impl Searcher<'_> {
 	const HISTORY_REDUCTION: i32 = 1;
 	const SEE_REDUCTION_DEPTH: i32 = 8;
 	const SEE_REDUCTION_THRESHOLD: i32 = -300;
+	const SEE_REDUC_MOVE_LIMIT: i32 = 5;
 }

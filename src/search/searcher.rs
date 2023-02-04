@@ -23,6 +23,7 @@ pub struct Searcher<'a> {
 	nodes: u64,
 	seldepth: i32,
 	movegen: &'a mut MoveGen,
+	evals: [i32; 250],
 	searching_depth: i32
 }
 
@@ -33,6 +34,7 @@ impl Searcher<'_> {
 			nodes: 0,
 			seldepth: 0,
 			movegen: movegen,
+			evals: [0; 250],
 			searching_depth: search_info.depth
 		};
 		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
@@ -51,12 +53,13 @@ impl Searcher<'_> {
 		return false;
 	}
 
-	fn get_nmp_reduction_amount(&self, depth: i32) -> i32 {
+	fn get_nmp_reduction_amount(&self, depth: i32, improving_margin: Option<i32>) -> i32 {
 		//calculate nmp reduction amount
 		//x = depth
 		//y = reduction
 		//y = base + (x - a) / b
-		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
+		let improving = improving_margin.unwrap_or(0);
+		return (Self::NMP_REDUCTION_BASE - improving / Self::NMP_IMPROVING_DIVISOR) + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
@@ -169,6 +172,13 @@ impl Searcher<'_> {
 
 		//static eval for tuning methods
 		let static_eval = evaluate(board);
+		self.evals[ply as usize] = static_eval;
+
+		let improving_margin = if ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2] {
+			Some(self.evals[ply as usize] - self.evals[ply as usize - 2])
+		} else {
+			None
+		};
 
 		//Reverse Futility Pruning
 		/*
@@ -195,7 +205,7 @@ impl Searcher<'_> {
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
-			let r = self.get_nmp_reduction_amount(depth);
+			let r = self.get_nmp_reduction_amount(depth, improving_margin);
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
@@ -286,6 +296,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
+				//IF is NOT improving
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
 					continue;
@@ -496,4 +507,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const NMP_IMPROVING_DIVISOR: i32 = 200;
 }

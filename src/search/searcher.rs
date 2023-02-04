@@ -53,13 +53,12 @@ impl Searcher<'_> {
 		return false;
 	}
 
-	fn get_nmp_reduction_amount(&self, depth: i32, improving_margin: Option<i32>) -> i32 {
+	fn get_nmp_reduction_amount(&self, depth: i32) -> i32 {
 		//calculate nmp reduction amount
 		//x = depth
 		//y = reduction
 		//y = base + (x - a) / b
-		let improving = improving_margin.unwrap_or(0);
-		return (Self::NMP_REDUCTION_BASE - improving / Self::NMP_IMPROVING_DIVISOR) + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
+		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
@@ -188,7 +187,7 @@ impl Searcher<'_> {
 		*/
 
 		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
+			if (static_eval - (Self::MULTIPLIER_RFP * depth)) + improving_margin.unwrap_or(0) / Self::RFP_IMPROVING_DIVISOR >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}
@@ -205,7 +204,7 @@ impl Searcher<'_> {
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
-			let r = self.get_nmp_reduction_amount(depth, improving_margin);
+			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions)?; //perform a ZW search
@@ -507,5 +506,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const NMP_IMPROVING_DIVISOR: i32 = 200;
+	const RFP_IMPROVING_DIVISOR: i32 = 300;
 }

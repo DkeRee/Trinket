@@ -354,6 +354,7 @@ impl Searcher<'_> {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_capture(&mut self.movegen.sorter, depth);
 						break;
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);

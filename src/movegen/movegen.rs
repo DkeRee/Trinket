@@ -33,6 +33,12 @@ impl SortedMove {
 		}
 	}
 
+	pub fn insert_capture(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
+		if self.movetype == MoveType::Loud {
+			move_sorter.add_cap_history(self.mv, depth);
+		}
+	}
+
 	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.decay_history(self.mv, depth);

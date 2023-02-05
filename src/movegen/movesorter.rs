@@ -11,6 +11,7 @@ pub enum MoveType {
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
+	capture_table: [[i32; 64]; 64],
 	see: See
 }
 
@@ -19,6 +20,7 @@ impl MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
+			capture_table: [[0; 64]; 64],
 			see: See::new()
 		}
 	}
@@ -56,6 +58,8 @@ impl MoveSorter {
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
 				}
+
+				mv_info.importance += self.get_capture(mv_info.mv);
 			}
 
 			mv_info.importance += match mv_info.mv.promotion {
@@ -92,6 +96,25 @@ impl MoveSorter {
 		}
 	}
 
+	pub fn scale_capture_down(&mut self) {
+		//make sure it doesn't overflow
+		let bb = BitBoard::FULL;
+
+		for s1 in bb {
+			for s2 in bb {
+				self.capture_table[s1 as usize][s2 as usize] /= 2; //divide by two
+			}
+		}
+	}
+
+	pub fn add_cap_history(&mut self, mv: Move, depth: i32) {
+		self.capture_table[mv.from as usize][mv.to as usize] += depth * depth;
+
+		if self.capture_table[mv.from as usize][mv.to as usize] >= 4000 {
+			self.scale_capture_down();
+		}
+	}
+
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		self.history_table[mv.from as usize][mv.to as usize] += depth * depth; //add quiet score into history table based on from and to squares
 		
@@ -123,6 +146,10 @@ impl MoveSorter {
 		}
 
 		return false;
+	}
+
+	fn get_capture(&self, mv: Move) -> i32 {
+		return self.capture_table[mv.from as usize][mv.to as usize];
 	}
 
 	fn get_history(&self, mv: Move) -> i32 {

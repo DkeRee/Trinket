@@ -187,7 +187,16 @@ impl Searcher<'_> {
 		*/
 
 		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if (static_eval - (Self::MULTIPLIER_RFP * depth)) + improving_margin.unwrap_or(0) / Self::RFP_IMPROVING_DIVISOR >= beta {
+			let improving = if !improving_margin.is_none() {
+				if improving_margin.unwrap() > 1000 && depth < Self::RFP_IMPROVING_DEPTH_LIM {
+					improving_margin.unwrap()
+				} else {
+					0
+				}
+			} else {
+				0
+			};
+			if (static_eval - (Self::MULTIPLIER_RFP * depth)) + improving / Self::RFP_IMPROVING_DIVISOR >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}
@@ -506,5 +515,6 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const RFP_IMPROVING_DIVISOR: i32 = 300;
+	const RFP_IMPROVING_DIVISOR: i32 = 2000;
+	const RFP_IMPROVING_DEPTH_LIM: i32 = 4;
 }

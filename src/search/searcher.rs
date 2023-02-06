@@ -308,6 +308,10 @@ impl Searcher<'_> {
 					}
 				}
 
+				if sm.history < 0 {
+					new_depth -= sm.history / 1000;
+				}
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
@@ -315,7 +319,7 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				if in_check || sm.is_killer {
+				if new_depth > depth || in_check || sm.is_killer {
 					new_depth = depth;
 				} 
 

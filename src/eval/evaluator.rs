@@ -59,6 +59,7 @@ impl Evaluator<'_> {
 		}
 
 		//load in extra calculations
+		sum += self.get_king_shield(phase);
 		sum += self.get_mobility(phase);
 		sum += self.virtual_mobility(phase);
 		sum += self.bishop_pair(phase);
@@ -228,6 +229,36 @@ impl Evaluator<'_> {
 			let is_isolated = (our_pawns & block_mask).is_empty();
 			if is_isolated {
 				penalty += PAWN_ISOLATION_PENALTY.eval(phase);
+			}
+		}
+
+		penalty
+	}
+
+	fn get_king_shield(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+		let my_pieces = self.board.colors(self.color);
+		let my_king_square = (my_pieces & self.board.pieces(Piece::King)).next_square().unwrap();
+
+		//if it's possible for the king to have a shield
+		let start_rank = Rank::First.relative_to(self.color);
+		let promo_rank = Rank::Eighth.relative_to(self.color);
+		let shield_possible = my_king_square.rank() != promo_rank;
+
+		let king_pawn_diag = get_pawn_attacks(my_king_square, self.color);
+		if shield_possible {
+			let king_bitboard_forward = if self.color == Color::White {
+				my_king_square.offset(0, 1).bitboard()
+			} else {
+				my_king_square.offset(0, -1).bitboard()
+			};
+
+			let pawn_places = king_pawn_diag | king_bitboard_forward;
+
+			//check if any pawns are missing from searching spots
+			if !((my_pieces & pawn_places) ^ pawn_places).is_empty() {
+				//there is an incomplete pawn shield
+				penalty += PAWN_SHIELD_PENALTY.eval(phase);
 			}
 		}
 

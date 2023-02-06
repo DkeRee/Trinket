@@ -308,8 +308,8 @@ impl Searcher<'_> {
 					}
 				}
 
-				if sm.history < 0 {
-					new_depth -= sm.history / 1000;
+				if sm.history > 0 {
+					new_depth += sm.history / 1000;
 				}
 
 				//LMR can be applied

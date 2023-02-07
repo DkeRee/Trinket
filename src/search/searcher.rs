@@ -156,13 +156,6 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Internal Iterative Reduction
-				//IF sufficient depth
-				//There is NO Hash Move
-				if depth >= ply / 2 + 2 {
-					depth -= depth / 10 + 1;
-				}
-
 				(None, iid_move)
 			}
 		};
@@ -293,6 +286,13 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
+
+				//Internal Iterative Reduction
+				//IF sufficient depth
+				//There is NO Hash Move
+				if table_find_move.is_none() && depth >= ply / 2 + 2 {
+					new_depth -= depth / 10 + 1;
+				}
 
 				//History Leaf Reduction
 				//IF sufficient depth

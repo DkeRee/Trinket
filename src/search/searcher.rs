@@ -315,9 +315,39 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
+				//Passed Pawn Extension
+				let all_pawns = board.pieces(Piece::Pawn);
+				let my_pawns = all_pawns & board.colors(board.side_to_move());
+				let enemy_pawns = all_pawns & board.colors(!board.side_to_move());
+				let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard() | Rank::Sixth.relative_to(board.side_to_move()).bitboard();
+				let pawn_on_ranks = my_pawns & ranks;
+				let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
+				if exists && is_pv {
+					//pawn exists, check if it's a passer
+					let promo_rank = Rank::Eighth.relative_to(board.side_to_move());
+					let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
+					let mut checking_file = get_between_rays(mv.from, pawn_goal);
+					let mut block_mask = checking_file;
+
+					//use this handy dandy attack function to add files to the right and left of pawn
+					for attack_location in get_pawn_attacks(mv.from, board.side_to_move()) {
+						pawn_goal = Square::new(attack_location.file(), promo_rank);
+						checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
+
+						//add file to the BB block mask
+						block_mask |= checking_file | attack_location.bitboard();
+					}
+
+					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
+					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
+					if passed {
+						new_depth += 1;
+					}
+				}
+
 				if in_check || sm.is_killer {
 					new_depth = depth;
-				} 
+				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;
 				child_eval.score *= -1;

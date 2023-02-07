@@ -515,5 +515,5 @@ impl Searcher<'_> {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 10;
-	const FLEXIBLE_HISTORY_REDUC: i32 = 300;
+	const FLEXIBLE_HISTORY_REDUC: i32 = 1000;
 }

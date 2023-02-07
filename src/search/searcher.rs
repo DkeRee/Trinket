@@ -309,7 +309,7 @@ impl Searcher<'_> {
 				}
 
 				if sm.history > 0 {
-					new_depth += sm.history / 1000;
+					new_depth += sm.history / Self::HISTORY_ANTI_REDUC_MARGIN;
 				}
 
 				//LMR can be applied
@@ -500,4 +500,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const HISTORY_ANTI_REDUC_MARGIN: i32 = 200;
 }

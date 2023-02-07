@@ -315,10 +315,6 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				if in_check || sm.is_killer {
-					new_depth = depth;
-				}
-
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());
@@ -326,7 +322,7 @@ impl Searcher<'_> {
 				let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard() | Rank::Sixth.relative_to(board.side_to_move()).bitboard();
 				let pawn_on_ranks = my_pawns & ranks;
 				let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
-				if exists {
+				if exists && is_pv {
 					//pawn exists, check if it's a passer
 					let promo_rank = Rank::Eighth.relative_to(board.side_to_move());
 					let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
@@ -347,6 +343,10 @@ impl Searcher<'_> {
 					if passed {
 						new_depth += 1;
 					}
+				}
+
+				if in_check || sm.is_killer {
+					new_depth = depth;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;

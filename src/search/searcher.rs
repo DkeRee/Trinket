@@ -319,7 +319,7 @@ impl Searcher<'_> {
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());
 				let enemy_pawns = all_pawns & board.colors(!board.side_to_move());
-				let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard() | Rank::Sixth.relative_to(board.side_to_move()).bitboard();
+				let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard();
 				let pawn_on_ranks = my_pawns & ranks;
 				let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
 				if exists && is_pv {

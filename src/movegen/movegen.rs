@@ -40,6 +40,7 @@ impl SortedMove {
 	}
 }
 
+#[derive(Clone, PartialEq)]
 pub struct MoveGen {
 	pub sorter: MoveSorter
 }

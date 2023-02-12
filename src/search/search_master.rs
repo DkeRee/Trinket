@@ -112,7 +112,7 @@ impl Engine {
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
-			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
+			let result = Searcher::new(&self.tt, self.movegen.clone(), time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
 				alpha,
@@ -121,7 +121,10 @@ impl Engine {
 			});
 
 			if result != None {
-				let (best_mv, eval, nodes, seldepth) = result.unwrap();
+				let (best_mv, eval, nodes, seldepth, movegen) = result.unwrap();
+
+				//import move tables over
+				self.movegen = movegen;
 
 				self.nodes += nodes;
 				self.seldepth += seldepth;

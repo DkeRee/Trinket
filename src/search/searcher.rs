@@ -22,12 +22,12 @@ pub struct Searcher<'a> {
 	tt: &'a TT,
 	nodes: u64,
 	seldepth: i32,
-	movegen: &'a mut MoveGen,
+	movegen: MoveGen,
 	searching_depth: i32
 }
 
 impl Searcher<'_> {
-	pub fn new(tt: &TT, movegen: &mut MoveGen, abort: Arc<AtomicBool>, mut search_info: SearchInfo) -> Option<(Option<Move>, Eval, u64, i32)> {
+	pub fn new(tt: &TT, movegen: MoveGen, abort: Arc<AtomicBool>, mut search_info: SearchInfo) -> Option<(Option<Move>, Eval, u64, i32, MoveGen)> {
 		let mut searcher = Searcher {
 			tt: tt,
 			nodes: 0,
@@ -37,7 +37,7 @@ impl Searcher<'_> {
 		};
 		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions)?;
 	
-		return Some((mv, eval, searcher.nodes, searcher.seldepth));
+		return Some((mv, eval, searcher.nodes, searcher.seldepth, searcher.movegen.clone()));
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {

@@ -12,10 +12,12 @@ use crate::uci::castle_parse::*;
 
 const HASH_MIN: u32 = 0;
 const HASH_MAX: u32 = 64000;
+const THREAD_MIN: u32 = 1;
+const THREAD_MAX: u32 = 1000;
 
 enum UCICmd {
 	Uci,
-	UciNewGame(u32),
+	UciNewGame(u32, u32),
 	IsReady,
 	Go(TimeControl),
 	PositionFen(String),
@@ -32,6 +34,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 pub struct UCIMaster {
 	pub playing: bool,
 	hash: u32,
+	threads: u32,
 	engine_thread: Option<thread::JoinHandle<()>>,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
@@ -56,6 +59,7 @@ impl UCIMaster {
 		UCIMaster {
 			playing: continue_engine,
 			hash: 16,
+			threads: 1,
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -86,11 +90,11 @@ impl UCIMaster {
 										println!("id name Trinket {}", env!("CARGO_PKG_VERSION"));
 										println!("id author DkeRee");
 										println!("option name Hash type spin default 16 min 0 max 64000");
-										println!("option name Threads type spin default 1 min 1 max 1");
+										println!("option name Threads type spin default 1 min 1 max 1000");
 										println!("uciok");
 									},
-									UCICmd::UciNewGame(hash_count) => {
-										engine = Engine::new(hash_count);
+									UCICmd::UciNewGame(hash_count, thread_count) => {
+										engine = Engine::new(hash_count, thread_count);
 									},
 									UCICmd::IsReady => {
 										println!("readyok");
@@ -138,11 +142,21 @@ impl UCIMaster {
 
 								if HASH_MIN <= hash && hash <= HASH_MAX {
 									self.hash = hash;
-									sender.send(UCICmd::UciNewGame(self.hash)).unwrap();
+									sender.send(UCICmd::UciNewGame(self.hash, self.threads)).unwrap();
 								} else {
-									println!("Thread input is out of bounds.");
+									println!("Hash input is out of bounds.");
 								}
 							},
+							"Threads" => {
+								let threads = cmd_vecp[4].parse::<u32>().unwrap();
+
+								if THREAD_MIN <= threads && threads <= THREAD_MAX {
+									self.threads = threads;
+									sender.send(UCICmd::UciNewGame(self.hash, self.threads)).unwrap();
+								} else {
+									println!("Thread input is out of bounds");
+								}
+							}
 							_ => {}
 						}
 					},

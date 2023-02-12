@@ -8,6 +8,7 @@ use crate::search::search_master::*;
 
 const DEPTH: i32 = 12;
 const HASH: u32 = 16;
+const THEAD: u32 = 1;
 
 //Random positions provided by Analog Hors from Tantabus https://github.com/analog-hors/tantabus/blob/master/uci/src/bench.rs
 const POSITIONS: &[&str] = &[
@@ -40,7 +41,7 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
-    let mut engine = Engine::new(HASH);
+    let mut engine = Engine::new(HASH, THREAD);
     let placeholder_abort = Arc::new(AtomicBool::new(false));
 
     let mut total_nodes = 0;

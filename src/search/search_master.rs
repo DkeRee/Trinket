@@ -42,20 +42,20 @@ pub struct Engine {
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
+	tables: Vec<MoveGen>,
 	seldepth: i32,
-	movegen: MoveGen,
 	tt: TT
 }
 
 impl Engine {
-	pub fn new(hash: u32) -> Engine {
+	pub fn new(hash: u32, threads: u32) -> Engine {
 		Engine {
 			board: Board::default(),
 			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
 			nodes: 0,
+			tables: vec![MoveGen::new(); threads as usize],
 			seldepth: 0,
-			movegen: MoveGen::new(),
 			tt: TT::new(hash)
 		}
 	}

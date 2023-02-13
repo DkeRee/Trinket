@@ -59,6 +59,7 @@ impl Evaluator<'_> {
 		}
 
 		//load in extra calculations
+		sum += self.connected_pawns(phase);
 		sum += self.get_mobility(phase);
 		sum += self.virtual_mobility(phase);
 		sum += self.bishop_pair(phase);
@@ -79,6 +80,22 @@ impl Evaluator<'_> {
 			Piece::Queen => &QUEEN_MOBILITY,
 			Piece::King => &KING_MOBILITY
 		}
+	}
+
+	fn connected_pawns(&self, phase: i32) -> i32 {
+		let mut bonus = 0;
+		let our_pawns = self.board.colors(self.color) & self.board.pieces(Piece::Pawn);
+
+		for pawn in our_pawns {
+			for supporting_location in get_pawn_attacks(pawn, !self.color) {
+				if !(supporting_location.bitboard() & our_pawns).is_empty() {
+					//we have one of our pawns on this square, supporting the checking pawn
+					bonus += CONNECTED_PASSED_PAWN.eval(phase);
+				}
+			}
+		}
+
+		bonus
 	}
 
 	fn virtual_mobility(&self, phase: i32) -> i32 {

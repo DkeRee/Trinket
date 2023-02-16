@@ -516,7 +516,7 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const NMP_REDUCTION_BASE: i32 = 3;
 	const NMP_XSHIFT: i32 = 2;
-	const NMP_YSTRETCH: i32 = 6;
+	const NMP_YSTRETCH: i32 = 9;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
 	const IID_DEPTH_MIN: i32 = 6;

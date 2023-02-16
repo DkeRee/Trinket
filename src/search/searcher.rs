@@ -53,10 +53,7 @@ impl Searcher<'_> {
 
 	fn get_nmp_reduction_amount(&self, depth: i32) -> i32 {
 		//calculate nmp reduction amount
-		//x = depth
-		//y = reduction
-		//y = base + (x - a) / b
-		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
+		return Self::NMP_REDUCTION_BASE + depth * Self::NMP_DEPTH_FACTOR;
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
@@ -515,8 +512,7 @@ impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const NMP_REDUCTION_BASE: i32 = 3;
-	const NMP_XSHIFT: i32 = 2;
-	const NMP_YSTRETCH: i32 = 4;
+	const NMP_DEPTH_FACTOR: i32 = 5;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
 	const IID_DEPTH_MIN: i32 = 6;

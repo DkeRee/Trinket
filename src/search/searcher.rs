@@ -145,7 +145,7 @@ impl Searcher<'_> {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= ply / 2 + 4	&& is_pv {
+				if depth >= ply / 2	&& is_pv {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 

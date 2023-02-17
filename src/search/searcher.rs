@@ -185,6 +185,7 @@ impl Searcher<'_> {
 
 		//Null Move Pruning
 		/*
+		// if NOT PV
 		// if NOT root node
 		// if NOT in check
 		// if board has non pawn material
@@ -194,7 +195,7 @@ impl Searcher<'_> {
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+		if !is_pv && ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
 			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();

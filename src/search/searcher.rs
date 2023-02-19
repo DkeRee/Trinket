@@ -293,6 +293,7 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
+				let mut internal_extend = false;
 
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
@@ -321,7 +322,7 @@ impl Searcher<'_> {
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
 						new_depth += 1;
-						extended = true;
+						internal_extend = true;
 					}
 				}
 
@@ -330,7 +331,7 @@ impl Searcher<'_> {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended && !internal_extend {
 					let history_value = sm.history;
 
 					//History Leaf Reduction
@@ -342,11 +343,11 @@ impl Searcher<'_> {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && !extended {
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && !internal_extend {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
-				if in_check || sm.is_killer {
+				if (in_check || sm.is_killer) && !internal_extend {
 					new_depth = depth;
 				}
 

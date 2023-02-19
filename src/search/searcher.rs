@@ -81,13 +81,6 @@ impl Searcher<'_> {
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
-		//CHECK EXTENSION
-		if in_check {
-			// https://www.chessprogramming.org/Check_Extensions
-			extended = true;
-			depth += 1;
-		}
-
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
 			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
@@ -294,25 +287,11 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
-				//History Leaf Reduction
-				//IF sufficient depth
-				//IF ISNT PV
-				//IF ISNT in check
-				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
-					let history_value = sm.history;
-
-					//History Leaf Reduction
-					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
-					}
-				}
-
-				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+				//CHECK EXTENSION
+				if !board_cache.checkers().is_empty() {
+					// https://www.chessprogramming.org/Check_Extensions
+					extended = true;
+					new_depth += 1;
 				}
 
 				//Passed Pawn Extension
@@ -341,11 +320,33 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
+						extended = true;
 						new_depth += 1;
 					}
 				}
 
-				if in_check || sm.is_killer {
+				//History Leaf Reduction
+				//IF sufficient depth
+				//IF ISNT PV
+				//IF ISNT in check
+				//IF ISNT extended
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+					let history_value = sm.history;
+
+					//History Leaf Reduction
+					if history_value < Self::HISTORY_THRESHOLD {
+						new_depth -= Self::HISTORY_REDUCTION;
+					}
+				}
+
+				//LMR can be applied
+				//IF depth is above sufficient depth
+				//IF the first X searched are searched
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+				}
+
+				if (in_check || sm.is_killer) && !extended {
 					new_depth = depth;
 				}
 

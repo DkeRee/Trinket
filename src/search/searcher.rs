@@ -172,12 +172,13 @@ impl Searcher<'_> {
 
 		//Reverse Futility Pruning
 		/*
+		// if NOT PV
 		// if depth isn't too deep
 		// if NOT in check
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if !is_pv && depth <= Self::MAX_DEPTH_RFP && !in_check {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}

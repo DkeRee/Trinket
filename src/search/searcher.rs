@@ -293,6 +293,7 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
+				let mut internal_extension = 0;
 
 				//History Leaf Reduction
 				//IF sufficient depth
@@ -342,11 +343,12 @@ impl Searcher<'_> {
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
 						new_depth += 1;
+						internal_extension += 1;
 					}
 				}
 
 				if in_check || sm.is_killer {
-					new_depth = depth;
+					new_depth = depth + internal_extension;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions)?;

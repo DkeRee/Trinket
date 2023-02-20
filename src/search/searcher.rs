@@ -291,6 +291,12 @@ impl Searcher<'_> {
 					continue;
 				}
 
+				//Delta Pruning
+				if static_eval + sm.see + Self::DELTA_PRUNE_MARGIN < alpha && sm.movetype == MoveType::Loud{
+					past_positions.pop();
+					continue;
+				}
+
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
@@ -482,11 +488,6 @@ impl Searcher<'_> {
 				break;
 			}
 
-			//Delta Pruning
-			if stand_pat.score + sm.see < alpha {
-				continue;
-			}
-
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -531,4 +532,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const DELTA_PRUNE_MARGIN: i32 = 50;
 }

@@ -158,8 +158,9 @@ impl Searcher<'_> {
 
 				//Internal Iterative Reduction
 				//IF sufficient depth
+				//IF NOT extended
 				//There is NO Hash Move
-				if depth >= ply / 2 + 2 {
+				if depth >= ply / 2 + 2 && !extended {
 					depth -= depth / 10 + 1;
 				}
 

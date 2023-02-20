@@ -473,13 +473,18 @@ impl Searcher<'_> {
 		}
 
 		let mut best_move = None;
-		let mut eval = stand_pat;
+		let mut eval = stand_pat.clone();
 
 		for sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {
 				break;
+			}
+
+			//Delta Pruning
+			if stand_pat.score + sm.see < alpha {
+				continue;
 			}
 
 			let mv = sm.mv;

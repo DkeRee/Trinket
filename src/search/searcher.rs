@@ -194,7 +194,7 @@ impl Searcher<'_> {
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && depth >= Self::NMP_DEPTH_LIM {
 			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();
@@ -514,6 +514,7 @@ impl Searcher<'_> {
 impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
+	const NMP_DEPTH_LIM: i32 = 3;
 	const NMP_REDUCTION_BASE: i32 = 3;
 	const NMP_XSHIFT: i32 = 2;
 	const NMP_YSTRETCH: i32 = 4;

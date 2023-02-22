@@ -160,7 +160,7 @@ impl Searcher<'_> {
 				//IF sufficient depth
 				//IF NOT extended
 				//There is NO Hash Move
-				if depth >= ply / 2 + 2 && !extended {
+				if depth >= ply / 2 + 2 {
 					depth -= depth / 10 + 1;
 				}
 

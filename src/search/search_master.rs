@@ -91,7 +91,7 @@ impl Engine {
 		if time != u64::MAX {
 			thread::spawn(move || {
 				let search_time = if movetime.is_none() {
-					(time + timeinc / 2) / movestogo.unwrap_or(40) as u64
+					(time + timeinc / 2) / (movestogo.unwrap_or(20) * 2) as u64
 				} else {
 					movetime.unwrap() as u64
 				};

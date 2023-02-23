@@ -268,6 +268,8 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
+			let move_is_check = !board_cache.checkers().is_empty();
+
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
@@ -278,6 +280,15 @@ impl Searcher<'_> {
 
 				value = child_eval;
 			} else {
+				//SPP
+				//IF is NOT PV
+				//IF is frontier node
+				//IF move does NOT give check
+				if !is_pv && depth == 1 && !move_is_check && sm.movetype == MoveType::Quiet && evaluate(&board_cache) + Self::SPP_MARGIN <= alpha {
+					past_positions.pop();
+					break;
+				}
+
 				//LMP
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV
@@ -526,4 +537,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const SPP_MARGIN: i32 = 100;
 }

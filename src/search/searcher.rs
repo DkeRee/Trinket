@@ -537,5 +537,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
-	const SPP_MARGIN: i32 = 100;
+	const SPP_MARGIN: i32 = 500;
 }

@@ -268,6 +268,8 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
+			let move_is_check = !board_cache.checkers().is_empty();
+
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
@@ -375,6 +377,8 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
+			let mut do_spp = false;
+
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -389,11 +393,20 @@ impl Searcher<'_> {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
+					//SPP
+					//IF is NOT PV
+					//IF is frontier node
+					//IF move does NOT give check
+					do_spp = !is_pv && depth == 1 && !move_is_check && sm.movetype == MoveType::Quiet;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
+
+			if do_spp {
+				break;
+			}
 
 			moves_searched += 1;
 		}

@@ -290,7 +290,7 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
 					past_positions.pop();
-					continue;
+					break;
 				}
 
 				//get initial value with reduction and pv-search null window

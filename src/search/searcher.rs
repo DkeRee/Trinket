@@ -395,9 +395,10 @@ impl Searcher<'_> {
 				} else {
 					//SPP
 					//IF is NOT PV
-					//IF is frontier node
+					//IF is of reasonable depth
 					//IF move does NOT give check
-					do_spp = !is_pv && depth == 1 && !move_is_check && sm.movetype == MoveType::Quiet;
+					//IF is quiet move
+					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
@@ -539,4 +540,5 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const SPP_DEPTH_CAP: i32 = 2;
 }

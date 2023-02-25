@@ -398,7 +398,7 @@ impl Searcher<'_> {
 					//IF is of reasonable depth
 					//IF move does NOT give check
 					//IF is quiet move
-					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
+					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet && mv.promotion.is_none();
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}

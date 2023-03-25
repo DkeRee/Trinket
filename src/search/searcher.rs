@@ -543,6 +543,6 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUC_DIVISOR: i32 = 100;
+	const HISTORY_REDUC_DIVISOR: i32 = 10;
 	const SPP_DEPTH_CAP: i32 = 3;
 }

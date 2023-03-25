@@ -306,7 +306,11 @@ impl Searcher<'_> {
 
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= history_value / Self::HISTORY_REDUC_DIVISOR;
+						if history_value > -Self::HISTORY_REDUC_DIVISOR {
+							new_depth -= 1;
+						} else {
+							new_depth += history_value / Self::HISTORY_REDUC_DIVISOR;
+						}
 					}
 				}
 
@@ -539,6 +543,6 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUC_DIVISOR: i32 = 5000;
+	const HISTORY_REDUC_DIVISOR: i32 = 100;
 	const SPP_DEPTH_CAP: i32 = 3;
 }

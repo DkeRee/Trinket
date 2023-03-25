@@ -307,6 +307,12 @@ impl Searcher<'_> {
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
 						new_depth -= Self::HISTORY_REDUCTION;
+
+						//History Prune
+						if history_value < -MoveSorter::HISTORY_MAX + Self::HISTORY_PRUNE_OFFSET {
+							past_positions.pop();
+							break;
+						}
 					}
 				}
 
@@ -540,5 +546,6 @@ impl Searcher<'_> {
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
+	const HISTORY_PRUNE_OFFSET: i32 = 10;
 	const SPP_DEPTH_CAP: i32 = 3;
 }

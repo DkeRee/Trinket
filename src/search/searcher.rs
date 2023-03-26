@@ -535,7 +535,7 @@ impl Searcher<'_> {
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
-	const LMP_MULTIPLIER: i32 = 10;
+	const LMP_MULTIPLIER: i32 = 7;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;

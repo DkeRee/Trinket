@@ -33,6 +33,19 @@ impl MoveSorter {
 				}
 			}
 
+			mv_info.importance += match mv_info.mv.promotion {
+				Some(Piece::Queen) => Self::QUEEN_PROMO,
+				Some(Piece::Rook) => Self::ROOK_PROMO,
+				Some(Piece::Bishop) => Self::BISHOP_PROMO,
+				Some(Piece::Knight) => Self::KNIGHT_PROMO,
+				None => 0,
+				_ => unreachable!()
+			};
+
+			if mv_info.mv.promotion != None {
+				break;
+			}
+
 			if mv_info.movetype == MoveType::Quiet {
 				if self.is_castling(mv_info.mv, board) {
 					mv_info.importance += Self::CASTLING_SCORE;
@@ -56,15 +69,6 @@ impl MoveSorter {
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
 				}
-			}
-
-			mv_info.importance += match mv_info.mv.promotion {
-				Some(Piece::Queen) => Self::QUEEN_PROMO,
-				Some(Piece::Rook) => Self::ROOK_PROMO,
-				Some(Piece::Bishop) => Self::BISHOP_PROMO,
-				Some(Piece::Knight) => Self::KNIGHT_PROMO,
-				None => 0,
-				_ => unreachable!()
 			}
 		}
 

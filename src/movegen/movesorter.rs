@@ -32,6 +32,7 @@ impl MoveSorter {
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
 					mv_info.importance += Self::HASHMOVE_SCORE;
+					continue;
 				}
 			}
 

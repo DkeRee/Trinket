@@ -259,9 +259,9 @@ impl Searcher<'_> {
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
-			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true);
+			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 		} else {
-			legal_moves = self.movegen.move_gen(board, None, ply, false);
+			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
 		for mut sm in legal_moves {

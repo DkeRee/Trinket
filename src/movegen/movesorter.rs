@@ -25,7 +25,7 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32) {
+	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32, last_move: Option<Move>) {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
@@ -45,7 +45,7 @@ impl MoveSorter {
 					mv_info.is_killer = true;
 				}
 
-				if self.is_countermove(mv_info.mv) {
+				if self.is_countermove(mv_info.mv, last_move) {
 					mv_info.importance += Self::COUNTERMOVE_SCORE;
 				}
 
@@ -126,8 +126,12 @@ impl MoveSorter {
 		return false;
 	}
 
-	fn is_countermove(&self, mv: Move) -> bool {
-		self.countermove_table[mv.from as usize][mv.to as usize] == Some(mv)
+	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
+		if last_move.is_none() {
+			return false;
+		}
+
+		return self.countermove_table[last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
 	}
 
 	fn get_history(&self, mv: Move) -> i32 {

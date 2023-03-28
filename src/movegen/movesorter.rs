@@ -152,8 +152,8 @@ impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 25000;
 	const WINNING_CAPTURE: i32 = 10000;
 	const QUEEN_PROMO: i32 = 8000;
-	const COUNTERMOVE_SCORE: i32 = 200;
-    const KILLER_MOVE_SCORE: i32 = 100;
+	const COUNTERMOVE_SCORE: i32 = 6000;
+    const KILLER_MOVE_SCORE: i32 = 5000;
 	const CASTLING_SCORE: i32 = 10;
    	const KNIGHT_PROMO: i32 = -5000;
 	const BISHOP_PROMO: i32 = -6000;

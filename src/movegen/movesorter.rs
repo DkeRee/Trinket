@@ -36,22 +36,21 @@ impl MoveSorter {
 			}
 
 			if mv_info.movetype == MoveType::Quiet {
+				let history = self.get_history(mv_info.mv);
+				mv_info.history = history;
+
 				if self.is_castling(mv_info.mv, board) {
 					mv_info.importance += Self::CASTLING_SCORE;
 				}
 
 				if self.is_killer(mv_info.mv, board, ply) {
-					mv_info.importance += Self::KILLER_MOVE_SCORE;
+					mv_info.importance += Self::KILLER_MOVE_SCORE + history;
 					mv_info.is_killer = true;
+				} else if self.is_countermove(mv_info.mv, last_move) {
+					mv_info.importance += Self::COUNTERMOVE_SCORE + history;
+				} else {
+					mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
 				}
-
-				if self.is_countermove(mv_info.mv, last_move) {
-					mv_info.importance += Self::COUNTERMOVE_SCORE;
-				}
-
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
-				mv_info.history = history;
 			}
 
 			if mv_info.movetype == MoveType::Loud {

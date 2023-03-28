@@ -156,11 +156,11 @@ impl MoveSorter {
     const KILLER_MOVE_SCORE: i32 = 2000;
 	const COUNTERMOVE_SCORE: i32 = 1000;
 	const CASTLING_SCORE: i32 = 1000;
-   	const KNIGHT_PROMO: i32 = -5000;
-	const BISHOP_PROMO: i32 = -6000;
-	const ROOK_PROMO: i32 = -7000;
 	const HISTORY_MOVE_OFFSET: i32 = -10000;
 	const LOSING_CAPTURE: i32 = -30000;
+   	const ROOK_PROMO: i32 = -40000;
+	const BISHOP_PROMO: i32 = -41000;
+	const KNIGHT_PROMO: i32 = -42000;
 
 	const HISTORY_MAX: i32 = 2000;
 }

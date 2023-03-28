@@ -33,6 +33,12 @@ impl SortedMove {
 		}
 	}
 
+	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>) {
+		if self.movetype == MoveType::Quiet && !last_move.is_none() {
+			move_sorter.add_countermove(self.mv, last_move.unwrap());
+		}
+	}
+
 	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.decay_history(self.mv, depth);
@@ -51,7 +57,7 @@ impl MoveGen {
 		}
 	}
 
-	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, ply: i32, skip_hash: bool) -> Vec<SortedMove> {
+	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, ply: i32, skip_hash: bool, last_move: Option<Move>) -> Vec<SortedMove> {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
@@ -82,7 +88,7 @@ impl MoveGen {
 			false
 		});
 
-		self.sorter.sort(&mut move_list, tt_move, board, ply);
+		self.sorter.sort(&mut move_list, tt_move, board, ply, last_move);
 
 		move_list
 	}
@@ -100,7 +106,7 @@ impl MoveGen {
 			false
 		});
 
-		self.sorter.sort(&mut move_list, tt_move, board, ply);
+		self.sorter.sort(&mut move_list, tt_move, board, ply, None);
 
 		move_list
 	}

@@ -36,10 +36,6 @@ impl MoveSorter {
 			}
 
 			if mv_info.movetype == MoveType::Quiet {
-				if self.is_castling(mv_info.mv, board) {
-					mv_info.importance += Self::CASTLING_SCORE;
-				}
-
 				if self.is_killer(mv_info.mv, board, ply) {
 					mv_info.importance += Self::KILLER_MOVE_SCORE;
 					mv_info.is_killer = true;
@@ -137,16 +133,6 @@ impl MoveSorter {
 	fn get_history(&self, mv: Move) -> i32 {
 		return self.history_table[mv.from as usize][mv.to as usize];
 	}
-
-	fn is_castling(&self, mv: Move, board: &Board) -> bool {
-		if mv.from == Square::E1 && (mv.to == Square::C1 || mv.to == Square::G1) && board.piece_on(mv.from).unwrap() == Piece::King {
-			return true;
-		} else if mv.from == Square::E8 && (mv.to == Square::C8 || mv.to == Square::G8) && board.piece_on(mv.from).unwrap() == Piece::King {
-			return true;
-		} else {
-			return false;
-		}
-	}
 }
 
 impl MoveSorter {
@@ -155,7 +141,6 @@ impl MoveSorter {
 	const QUEEN_PROMO: i32 = 8000;
     const KILLER_MOVE_SCORE: i32 = 2000;
 	const COUNTERMOVE_SCORE: i32 = 1000;
-	const CASTLING_SCORE: i32 = 1000;
    	const KNIGHT_PROMO: i32 = -5000;
 	const BISHOP_PROMO: i32 = -6000;
 	const ROOK_PROMO: i32 = -7000;

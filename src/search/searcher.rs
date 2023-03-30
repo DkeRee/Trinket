@@ -160,7 +160,7 @@ impl Searcher<'_> {
 				//IF sufficient depth
 				//There is NO Hash Move
 				if depth >= ply / 2 + 2 {
-					depth -= depth / 10 + 1;
+					depth -= depth / 5 + 1;
 				}
 
 				(None, iid_move)

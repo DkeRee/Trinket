@@ -84,7 +84,7 @@ impl MoveSorter {
 		for &piece in &Piece::ALL {
 			let bitboard = board.pieces(piece);
 
-			if !(bitboard & mv.to.bitboard()).is_empty() {
+			if !(bitboard & mv.from.bitboard()).is_empty() {
 				piece_type = Some(piece);
 				break;
 			}

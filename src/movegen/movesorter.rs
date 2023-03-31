@@ -1,6 +1,8 @@
 use cozy_chess::*;
 use crate::movegen::movegen::*;
 use crate::movegen::see::*;
+use crate::eval::evaluator::*;
+use crate::eval::eval_info::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum MoveType {
@@ -58,7 +60,7 @@ impl MoveSorter {
 				let capture_score = self.see.see(board, mv_info.mv);
 
 				if capture_score >= 0 {
-					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
+					mv_info.importance += capture_score + Self::WINNING_CAPTURE + self.get_psqt_bonus(board, mv_info.mv);
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
 				}
@@ -75,6 +77,35 @@ impl MoveSorter {
 		}
 
 		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
+	}
+
+	pub fn get_psqt_bonus(&self, board: &Board, mv: Move) -> i32 {
+		let mut piece_type = None;
+		for &piece in &Piece::ALL {
+			let bitboard = board.pieces(piece);
+
+			if !(bitboard & mv.to.bitboard()).is_empty() {
+				piece_type = Some(piece);
+				break;
+			}
+		}
+
+		let phase = Evaluator::new(board, board.side_to_move()).calculate_phase();
+		let square = if board.side_to_move() == Color::White {
+			mv.to as usize
+		} else {
+			//mirrors square
+			mv.to as usize ^ 0x38
+		};
+		
+		return match piece_type.unwrap() {
+			Piece::Pawn => P[square].eval(phase),
+			Piece::Knight => N[square].eval(phase),
+			Piece::Bishop => B[square].eval(phase),
+			Piece::Rook => R[square].eval(phase),
+			Piece::Queen => Q[square].eval(phase),
+			Piece::King => K[square].eval(phase)
+		};
 	}
 
 	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {

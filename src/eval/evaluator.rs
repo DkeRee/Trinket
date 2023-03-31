@@ -6,13 +6,13 @@ use cozy_chess::*;
 use crate::eval::score::*;
 use crate::eval::eval_info::*;
 
-struct Evaluator<'a> {
+pub struct Evaluator<'a> {
 	board: &'a Board,
 	color: Color
 }
 
 impl Evaluator<'_> {
-	fn new(board: &Board, color: Color) -> Evaluator {
+	pub fn new(board: &Board, color: Color) -> Evaluator {
 		Evaluator {
 			board: board,
 			color: color
@@ -260,7 +260,7 @@ impl Evaluator<'_> {
 		score
 	}
 
-	fn calculate_phase(&self) -> i32 {
+	pub fn calculate_phase(&self) -> i32 {
 		let mut phase = Self::TOTAL_PIECE_PHASE;
 
 		let pawns = self.board.pieces(Piece::Pawn);

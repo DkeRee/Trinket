@@ -32,7 +32,10 @@ impl MoveSorter {
 			let mv_info = &mut move_list[i];
 
 			//PST bonus
-			mv_info.importance += self.get_psqt_bonus(board, mv_info.mv);
+			let psqt_bonus = self.get_psqt_bonus(board, mv_info.mv);
+			if psqt_bonus > 0 {
+				mv_info.importance += psqt_bonus;
+			}
 
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {

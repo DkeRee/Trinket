@@ -31,12 +31,6 @@ impl MoveSorter {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
-			//PST bonus
-			let psqt_bonus = self.get_psqt_bonus(board, mv_info.mv);
-			if psqt_bonus > 0 {
-				mv_info.importance += psqt_bonus;
-			}
-
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
 					mv_info.importance += Self::HASHMOVE_SCORE;
@@ -66,6 +60,11 @@ impl MoveSorter {
 				let capture_score = self.see.see(board, mv_info.mv);
 
 				if capture_score >= 0 {
+					let psqt_bonus = self.get_psqt_bonus(board, mv_info.mv);
+					if psqt_bonus > 0 {
+						mv_info.importance += psqt_bonus / 2;
+					}
+
 					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;

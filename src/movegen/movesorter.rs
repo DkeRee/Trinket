@@ -31,6 +31,9 @@ impl MoveSorter {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
+			//PST bonus
+			mv_info.importance += self.get_psqt_bonus(board, mv_info.mv);
+
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
 					mv_info.importance += Self::HASHMOVE_SCORE;
@@ -52,7 +55,7 @@ impl MoveSorter {
 				}
 
 				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history + self.get_psqt_bonus(board, mv_info.mv);
+				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
 				mv_info.history = history;
 			}
 

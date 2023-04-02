@@ -145,7 +145,7 @@ impl Searcher<'_> {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if depth >= ply / 4 + Self::IID_DEPTH_MIN && is_pv {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 
@@ -535,7 +535,7 @@ impl Searcher<'_> {
 	const NMP_YSTRETCH: i32 = 4;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
-	const IID_DEPTH_MIN: i32 = 6;
+	const IID_DEPTH_MIN: i32 = 3;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
 	const HISTORY_DEPTH_MIN: i32 = 5;

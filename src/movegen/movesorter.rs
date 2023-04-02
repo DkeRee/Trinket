@@ -60,11 +60,13 @@ impl MoveSorter {
 				let capture_score = self.see.see(board, mv_info.mv);
 
 				if capture_score >= 0 {
-					let psqt_bonus = self.get_psqt_bonus(board, mv_info.mv);
+					let mut psqt_bonus = self.get_psqt_bonus(board, mv_info.mv);
 					if psqt_bonus > 0 {
+						if psqt_bonus > 10 {
+							psqt_bonus = 10;
+						}
 						mv_info.importance += psqt_bonus / 2;
 					}
-
 					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;

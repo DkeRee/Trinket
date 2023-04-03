@@ -56,7 +56,7 @@ impl Searcher<'_> {
 		//x = depth
 		//y = reduction
 		//y = base + (x - a) / b
-		return Self::NMP_REDUCTION_BASE + ((depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH) + eval_sub / 400;
+		return Self::NMP_REDUCTION_BASE + ((depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH) + eval_sub / 50;
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {

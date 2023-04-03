@@ -146,7 +146,7 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let iid_max_depth = depth / (2 + ply);
+					let iid_max_depth = depth / ply;
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {

@@ -196,7 +196,11 @@ impl Searcher<'_> {
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
-			let r = self.get_nmp_reduction_amount(depth);
+			let mut r = self.get_nmp_reduction_amount(depth);
+
+			if last_move.is_none() {
+				r -= 1;
+			}
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search

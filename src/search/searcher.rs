@@ -318,7 +318,7 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 
 					if !is_pv {
-						new_depth -= 1;
+						new_depth -= ((depth / 10) + 1);
 					}
 				}
 

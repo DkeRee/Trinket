@@ -315,10 +315,11 @@ impl Searcher<'_> {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+					let amount = self.get_lmr_reduction_amount(depth, moves_searched);
+					new_depth -= amount;
 
 					if !is_pv {
-						new_depth -= 1;
+						new_depth -= ((amount / 4) + 1);
 					}
 				}
 

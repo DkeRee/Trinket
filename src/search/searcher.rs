@@ -59,8 +59,19 @@ impl Searcher<'_> {
 		return Self::NMP_REDUCTION_BASE + (depth - Self::NMP_XSHIFT) / Self::NMP_YSTRETCH;
 	}
 
-	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
-		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32, movetype: &MoveType) -> i32 {
+		let amount = LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+		let r = if movetype == &MoveType::Quiet {
+			amount
+		} else {
+			if amount - 1 > 0 {
+				amount - 1
+			} else {
+				0
+			}
+		};
+
+		return r;
 	}
 
 	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {
@@ -315,7 +326,7 @@ impl Searcher<'_> {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched, &sm.movetype);
 
 					if !is_pv && sm.movetype == MoveType::Quiet {
 						new_depth -= 1;

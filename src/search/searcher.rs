@@ -317,7 +317,7 @@ impl Searcher<'_> {
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 
-					if !is_pv {
+					if !is_pv && sm.movetype == MoveType::Quiet {
 						new_depth -= 1;
 					}
 				}

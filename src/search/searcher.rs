@@ -264,6 +264,7 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
+		let move_length = legal_moves.len();
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -276,7 +277,14 @@ impl Searcher<'_> {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				//only move extension
+				let mut new_depth = depth;
+				if move_length == 1 {
+					new_depth += 1;
+				}
+
+
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;

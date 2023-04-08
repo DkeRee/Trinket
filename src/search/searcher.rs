@@ -269,6 +269,7 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
+			let static_eval_played = evaluate(&board_cache);
 			let move_is_check = !board_cache.checkers().is_empty();
 
 			past_positions.push(board_cache.hash());
@@ -318,7 +319,7 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 
 					if !is_pv && sm.movetype == MoveType::Quiet {
-						new_depth -= 1;
+						new_depth -= (1 + (alpha - static_eval_played) / 2000);
 					}
 				}
 

@@ -280,7 +280,7 @@ impl Searcher<'_> {
 				//only move extension
 				let mut new_depth = depth;
 				if move_length == 1 && !extended {
-					new_depth += 1;
+					new_depth += 3;
 				}
 
 

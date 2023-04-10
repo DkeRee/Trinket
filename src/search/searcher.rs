@@ -358,7 +358,7 @@ impl Searcher<'_> {
 				let promo_rank = Rank::Eighth.relative_to(board.side_to_move());
 				let shield_possible = my_king_square.rank() != promo_rank;
 
-				if shield_possible {
+				if shield_possible && sm.movetype == MoveType::Loud && !extended && is_pv {
 					let king_bitboard_forward = if board.side_to_move() == Color::White {
 						my_king_square.offset(0, 1).bitboard()
 					} else {

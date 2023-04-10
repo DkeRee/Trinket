@@ -264,6 +264,7 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
+		let move_length = legal_moves.len();
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -276,6 +277,7 @@ impl Searcher<'_> {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
+				//only move extension
 				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
@@ -348,7 +350,11 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						new_depth += 1;
+						if sm.movetype == MoveType::Loud {
+							new_depth += 2;
+						} else {
+							new_depth += 1;
+						}
 					}
 				}
 

@@ -322,6 +322,13 @@ impl Searcher<'_> {
 					}
 				}
 
+				//Underpromo Reduction
+				if !mv.promotion.is_none() {
+					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
+						new_depth -= 1;
+					}
+				}
+
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());
@@ -549,4 +556,5 @@ impl Searcher<'_> {
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
+	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

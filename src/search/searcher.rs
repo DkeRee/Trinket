@@ -556,5 +556,5 @@ impl Searcher<'_> {
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
-	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
+	const UNDERPROMO_REDUC_DEPTH: i32 = 1;
 }

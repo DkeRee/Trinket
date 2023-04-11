@@ -354,7 +354,13 @@ impl Searcher<'_> {
 					}
 				}
 
-				if in_check || sm.is_killer {
+				let promo_noreduce = if !mv.promotion.is_none() {
+					mv.promotion.unwrap() == Piece::Queen && depth <= Self::PROMO_NOREDUCE_DEPTH
+				} else {
+					false
+				};
+
+				if in_check || sm.is_killer || promo_noreduce {
 					new_depth = depth;
 				}
 
@@ -549,4 +555,5 @@ impl Searcher<'_> {
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
+	const PROMO_NOREDUCE_DEPTH: i32 = 4;
 }

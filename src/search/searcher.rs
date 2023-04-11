@@ -350,7 +350,7 @@ impl Searcher<'_> {
 					if passed {
 						new_depth += 1;
 					} else {
-						new_depth -= 1;
+						new_depth -= depth / 10 + 1;
 					}
 				}
 

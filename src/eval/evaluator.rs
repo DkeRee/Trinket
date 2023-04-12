@@ -59,6 +59,7 @@ impl Evaluator<'_> {
 		}
 
 		//load in extra calculations
+		sum += self.backward_pawns(phase);
 		sum += self.connected_pawns(phase);
 		sum += self.get_mobility(phase);
 		sum += self.virtual_mobility(phase);
@@ -96,6 +97,41 @@ impl Evaluator<'_> {
 		}
 
 		bonus
+	}
+
+	fn backward_pawns(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+		let our_pawns = self.board.colors(self.color) & self.board.pieces(Piece::Pawn);
+
+		for pawn in our_pawns {
+			for supporting_location in get_pawn_attacks(pawn, self.color) {
+				if !(supporting_location.bitboard() & our_pawns).is_empty() {
+					//backward pawns must support another pawn
+					let mut is_supported = false;
+
+					for backward_location in get_pawn_attacks(pawn, !self.color) {
+						let starting_square = Square::new(backward_location.file(), Rank::First.relative_to(self.color));
+						let behind = backward_location.bitboard() | get_between_rays(backward_location, starting_square) | starting_square.bitboard();
+
+						if !((our_pawns ^ pawn.bitboard()) & behind).is_empty() {
+							is_supported = true;
+							break;
+						}
+					}
+
+					if is_supported {
+						break;
+					}
+					
+					//pawn is supporting another pawn, but is not supported by another pawn, it is backwards
+					penalty += BACKWARDS_PAWN_PENALTY.eval(phase);
+
+					break;
+				}
+			}
+		}
+
+		penalty
 	}
 
 	fn virtual_mobility(&self, phase: i32) -> i32 {

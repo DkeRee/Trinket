@@ -327,7 +327,7 @@ impl Searcher<'_> {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
 
-						if sm.importance < Self::UNDERPROMO_IMPORTANCE {
+						if sm.importance < Self::UNDERPROMO_IMPORTANCE && sm.movetype == MoveType::Quiet {
 							past_positions.pop();
 							break;
 						}

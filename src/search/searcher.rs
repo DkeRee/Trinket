@@ -323,14 +323,9 @@ impl Searcher<'_> {
 				}
 
 				//Underpromo Reduction
-				if !mv.promotion.is_none() {
+				if !mv.promotion.is_none() && !is_pv {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
-
-						if sm.importance < Self::UNDERPROMO_IMPORTANCE && sm.movetype == MoveType::Quiet {
-							past_positions.pop();
-							break;
-						}
 					}
 				}
 
@@ -562,5 +557,4 @@ impl Searcher<'_> {
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
-	const UNDERPROMO_IMPORTANCE: i32 = -10000;
 }

@@ -326,6 +326,11 @@ impl Searcher<'_> {
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
+
+						if sm.importance < Self::UNDERPROMO_IMPORTANCE {
+							past_positions.pop();
+							break;
+						}
 					}
 				}
 
@@ -557,4 +562,5 @@ impl Searcher<'_> {
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
+	const UNDERPROMO_IMPORTANCE: i32 = -10000;
 }

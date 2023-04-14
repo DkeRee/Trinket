@@ -226,9 +226,17 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
+			let move_is_check = !board_cache.checkers().is_empty();
+
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+			let mut new_depth = depth;
+
+			if move_is_check {
+				new_depth += 1;
+			}
+
+			let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 			child_eval.score *= -1;
 
 			past_positions.pop();

@@ -302,7 +302,8 @@ impl Searcher<'_> {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				//IF move doesn't give check
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended && !move_is_check {
 					let history_value = sm.history;
 
 					//History Leaf Reduction

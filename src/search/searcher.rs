@@ -314,10 +314,11 @@ impl Searcher<'_> {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+				//IF move doesn't give check
+				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT && !move_is_check {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 
-					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
+					if !is_pv && sm.movetype == MoveType::Quiet {
 						new_depth -= 1;
 					}
 				}

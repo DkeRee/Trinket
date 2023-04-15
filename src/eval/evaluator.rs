@@ -5,6 +5,7 @@
 use cozy_chess::*;
 use crate::eval::score::*;
 use crate::eval::eval_info::*;
+use crate::eval::draw_oracle::*;
 
 struct Evaluator<'a> {
 	board: &'a Board,
@@ -297,6 +298,7 @@ impl Evaluator<'_> {
 	const ROOK_PHASE: i32 = 2;
 	const QUEEN_PHASE: i32 = 4;
 	const TOTAL_PIECE_PHASE: i32 = 24;
+	const ORACLE_SCALE: i32 = 200;
 }
 
 pub fn evaluate(board: &Board) -> i32 {
@@ -314,6 +316,11 @@ pub fn evaluate(board: &Board) -> i32 {
 		eval += TEMPO.eval(phase);
 	} else {
 		eval -= TEMPO.eval(phase);
+	}
+
+	if oracle_lookup(board) {
+		//scale eval down in the case of a known draw
+		eval /= Evaluator::ORACLE_SCALE;
 	}
 
 	if board.side_to_move() == Color::White {

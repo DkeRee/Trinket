@@ -34,8 +34,11 @@ fn bishop_pair_bishop(board: &Board, color: Color) -> bool {
 	let me_only_have_2_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 2;
 	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
 
+	let has_light_bishop = !((my_pieces & board.pieces(Piece::Bishop)) & BitBoard::LIGHT_SQUARES).is_empty();
+	let has_dark_bishop = !((my_pieces & board.pieces(Piece::Bishop)) & BitBoard::DARK_SQUARES).is_empty();
+
 	let opponent_has_1_bishop = (opponent_pieces & board.pieces(Piece::Bishop)).len() == 1;
 	let opponent_only_bishop = ((opponent_pieces & board.pieces(Piece::Bishop)) ^ (board.king(!color).bitboard() ^ opponent_pieces)).is_empty();
 
-	me_only_have_2_bishop && me_only_have_bishops && opponent_only_bishop && opponent_has_1_bishop
+	me_only_have_2_bishop && me_only_have_bishops && opponent_only_bishop && opponent_has_1_bishop && has_light_bishop && has_dark_bishop
 }

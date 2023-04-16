@@ -35,7 +35,7 @@ fn varied_minor_pieces(board: &Board, color: Color) -> bool {
 
 	let me_only_knight = (my_pieces & board.pieces(Piece::Knight)).len() == 1;
 	let me_only_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 1;
-	let me_only_have_knight_bishop = ((my_pieces & board.pieces(Piece::Knight)) ^ (board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
+	let me_only_have_knight_bishop = ((my_pieces & board.pieces(Piece::Knight) & board.pieces(Piece::Bishop)) ^ (board.king(color).bitboard() ^ my_pieces)).is_empty();
 
 	let opponent_only_knight = ((opponent_pieces & board.pieces(Piece::Knight)) ^ (board.king(!color).bitboard() ^ opponent_pieces)).is_empty();
 	let opponent_only_bishop = ((opponent_pieces & board.pieces(Piece::Bishop)) ^ (board.king(!color).bitboard() ^ opponent_pieces)).is_empty();

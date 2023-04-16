@@ -31,11 +31,11 @@ fn bishop_pair_bishop(board: &Board, color: Color) -> bool {
 	let my_pieces = board.colors(color);
 	let opponent_pieces = board.colors(!color);
 
-	let my_bishop_number = (my_pieces & board.pieces(Piece::Bishop)).len() as i32;
+	let my_bishop_number = (my_pieces & board.pieces(Piece::Bishop)).len();
 	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
 
-	let opponent_bishop_number = (opponent_pieces & board.pieces(Piece::Bishop)).len() as i32;
+	let opponent_bishop_number = (opponent_pieces & board.pieces(Piece::Bishop)).len();
 	let opponent_only_bishop = ((opponent_pieces & board.pieces(Piece::Bishop)) ^ (board.king(!color).bitboard() ^ opponent_pieces)).is_empty();
 
-	me_only_have_bishops && opponent_only_bishop && my_bishop_number - 1 == opponent_bishop_number
+	me_only_have_bishops && opponent_only_bishop && my_bishop_number == 2 && opponent_bishop_number == 1
 }

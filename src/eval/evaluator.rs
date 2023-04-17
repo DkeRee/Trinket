@@ -298,7 +298,7 @@ impl Evaluator<'_> {
 	const ROOK_PHASE: i32 = 2;
 	const QUEEN_PHASE: i32 = 4;
 	const TOTAL_PIECE_PHASE: i32 = 24;
-	const ORACLE_SCALE: i32 = 200;
+	const ORACLE_SCALE: i32 = 100;
 }
 
 pub fn evaluate(board: &Board) -> i32 {

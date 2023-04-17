@@ -6,7 +6,7 @@ pub fn oracle_lookup(board: &Board) -> bool {
 
 	((knight_lone_king(board, Color::White) || white_only_king) && (bishop_lone_king(board, Color::Black) || black_only_king))
 	|| ((knight_lone_king(board, Color::Black) || black_only_king) && (bishop_lone_king(board, Color::White) || white_only_king))
-	|| (knight_lone_king(board, Color::White) && knight_lone_king(board, Color::Black))
+	|| ((knight_lone_king(board, Color::White) || white_only_king) && (knight_lone_king(board, Color::Black) || black_only_king))
 	/*
 	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black))
 	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White))

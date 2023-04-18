@@ -1,27 +1,40 @@
 use cozy_chess::*;
 
 pub fn oracle_lookup(board: &Board) -> bool {
-	let white_only_king = (board.king(Color::White).bitboard() ^ board.colors(Color::White)).is_empty();
-	let black_only_king = (board.king(Color::Black).bitboard() ^ board.colors(Color::Black)).is_empty();
+	let white_pieces = board.colors(Color::White);
+	let black_pieces = board.colors(Color::Black);
 
-	((knight_lone_king(board, Color::White, false) || white_only_king) && (bishop_lone_king(board, Color::Black) || black_only_king))
-	|| ((knight_lone_king(board, Color::Black, false) || black_only_king) && (bishop_lone_king(board, Color::White) || white_only_king))
-	|| (knight_lone_king(board, Color::White, true) && knight_lone_king(board, Color::Black, true))
+	let white_only_king = (board.king(Color::White).bitboard() ^ white_pieces).is_empty();
+	let black_only_king = (board.king(Color::Black).bitboard() ^ black_pieces).is_empty();
+
+	let white_pawn_remove = if (white_pieces & board.pieces(Piece::Pawn)).len() <= 3 {
+		Some(white_pieces ^ (white_pieces & board.pieces(Piece::Pawn)))
+	} else {
+		None
+	};
+
+	let black_pawn_remove = if (black_pieces & board.pieces(Piece::Pawn)).len() <= 3 {
+		Some(black_pieces ^ (black_pieces & board.pieces(Piece::Pawn)))
+	} else {
+		None
+	};
+
+	((knight_lone_king(board, Color::White, None) || white_only_king) && (bishop_lone_king(board, Color::Black, None) || black_only_king))
+	|| ((knight_lone_king(board, Color::Black, None) || black_only_king) && (bishop_lone_king(board, Color::White, None) || white_only_king))
+	//|| (knight_lone_king(board, Color::White) && knight_lone_king(board, Color::Black))
 	//|| (bishop_pair_lone_king(board, Color::White) && bishop_lone_king(board, Color::Black))
 	//|| (bishop_pair_lone_king(board, Color::Black) && bishop_lone_king(board, Color::White))
-	/*
-	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White))
-	|| (minor_piece_king(board, Color::White) && bishop_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && bishop_lone_king(board, Color::White))
-	*/
+	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black, black_pawn_remove))
+	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White, white_pawn_remove))
+	|| (minor_piece_king(board, Color::White) && bishop_lone_king(board, Color::Black, black_pawn_remove))
+	|| (minor_piece_king(board, Color::Black) && bishop_lone_king(board, Color::White, white_pawn_remove))
 }
 
-fn knight_lone_king(board: &Board, color: Color, no_check_pawn: bool) -> bool {
+fn knight_lone_king(board: &Board, color: Color, custom_pieces: Option<BitBoard>) -> bool {
 	let mut my_pieces = board.colors(color);
 
-	if no_check_pawn {
-		my_pieces ^= (my_pieces & board.pieces(Piece::Pawn));
+	if !custom_pieces.is_none() {
+		my_pieces = custom_pieces.unwrap();
 	}
 
 	let me_two_or_one_knights = (my_pieces & board.pieces(Piece::Knight)).len() == 2 || (my_pieces & board.pieces(Piece::Knight)).len() == 1;
@@ -30,8 +43,12 @@ fn knight_lone_king(board: &Board, color: Color, no_check_pawn: bool) -> bool {
 	me_two_or_one_knights && me_only_knights
 }
 
-fn bishop_lone_king(board: &Board, color: Color) -> bool {
-	let my_pieces = board.colors(color);
+fn bishop_lone_king(board: &Board, color: Color, custom_pieces: Option<BitBoard>) -> bool {
+	let mut my_pieces = board.colors(color);
+
+	if !custom_pieces.is_none() {
+		my_pieces = custom_pieces.unwrap();
+	}
 
 	let me_only_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 1;
 	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();

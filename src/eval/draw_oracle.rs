@@ -6,7 +6,8 @@ pub fn oracle_lookup(board: &Board) -> bool {
 
 	((knight_lone_king(board, Color::White) || white_only_king) && (bishop_lone_king(board, Color::Black) || black_only_king))
 	|| ((knight_lone_king(board, Color::Black) || black_only_king) && (bishop_lone_king(board, Color::White) || white_only_king))
-	|| (knight_lone_king(board, Color::White) && knight_lone_king(board, Color::Black))
+	|| (bishop_pair_lone_king(board, Color::White) && bishop_lone_king(board, Color::Black))
+	|| (bishop_pair_lone_king(board, Color::Black) && bishop_lone_king(board, Color::White))
 	/*
 	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black))
 	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White))
@@ -31,6 +32,15 @@ fn bishop_lone_king(board: &Board, color: Color) -> bool {
 	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
 
 	me_only_bishop && me_only_have_bishops
+}
+
+fn bishop_pair_lone_king(board: &Board, color: Color) -> bool {
+	let my_pieces = board.colors(color);
+
+	let me_only_have_2_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 2;
+	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
+
+	me_only_have_2_bishop && me_only_have_bishops
 }
 
 fn minor_piece_king(board: &Board, color: Color) -> bool {

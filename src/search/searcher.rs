@@ -94,13 +94,13 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		if depth <= 0 {
-			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
-		}
-
 		//check for three move repetition
 		if self.is_repetition(board, past_positions) && ply > 0 {
 			return Some((None, Eval::new(Score::DRAW, false)));
+		}
+
+		if depth <= 0 {
+			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
 		}
 
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);

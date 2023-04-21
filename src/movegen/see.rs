@@ -6,18 +6,18 @@ https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
 */
 
 pub struct See {
-	gains: [i32; 16]
+	gains: [i32; 32]
 }
 
 impl See {
 	pub fn new() -> See {
 		See {
-			gains: [0_i32; 16]
+			gains: [0_i32; 32]
 		}
 	}
 
 	pub fn see(&mut self, board: &Board, mv: Move) -> i32 {
-		self.gains = [0_i32; 16];
+		self.gains = [0_i32; 32];
 
 		let mut max_depth = 0;
 		let mv_piece = board.piece_on(mv.from).unwrap();
@@ -35,7 +35,7 @@ impl See {
 		let mut blockers = board.occupied() & !mv.from.bitboard();
 		let mut last_piece_pts = self.piece_pts(mv_piece);
 	
-		'outer: for i in 1..16 {
+		'outer: for i in 1..32 {
 			self.gains[i] = last_piece_pts - self.gains[i - 1];
 
 			let defenders = board.colors(color) & blockers;

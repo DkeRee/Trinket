@@ -1,7 +1,8 @@
 use cozy_chess::*;
+use crate::eval::evaluator::*;
+use crate::eval::eval_info::*;
 
 /*
-Special thanks to Malarksist and Pali from Openbench!
 https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
 */
 
@@ -21,9 +22,10 @@ impl See {
 
 		let mut max_depth = 0;
 		let mv_piece = board.piece_on(mv.from).unwrap();
+		let phase = Evaluator::new(board, board.side_to_move()).calculate_phase();
 
 		self.gains[0] = if let Some(piece) = board.piece_on(mv.to) {
-			self.piece_pts(piece)
+			self.piece_pts(piece, phase)
 		} else {
 			if mv_piece == Piece::King {
 				return 0;
@@ -33,7 +35,7 @@ impl See {
 
 		let mut color = !board.side_to_move();
 		let mut blockers = board.occupied() & !mv.from.bitboard();
-		let mut last_piece_pts = self.piece_pts(mv_piece);
+		let mut last_piece_pts = self.piece_pts(mv_piece, phase);
 	
 		'outer: for i in 1..16 {
 			self.gains[i] = last_piece_pts - self.gains[i - 1];
@@ -41,7 +43,7 @@ impl See {
 			let defenders = board.colors(color) & blockers;
 
 			for &piece in &Piece::ALL {
-				last_piece_pts = self.piece_pts(piece);
+				last_piece_pts = self.piece_pts(piece, phase);
 
 				let mut victim_square = match piece {
 					Piece::Pawn => {
@@ -81,13 +83,13 @@ impl See {
 		self.gains[0]
 	}
 
-	fn piece_pts(&self, piece: Piece) -> i32 {
+	fn piece_pts(&self, piece: Piece, phase: i32) -> i32 {
 		match piece {
-			Piece::Pawn => 100,
-			Piece::Knight => 375,
-			Piece::Bishop => 375,
-			Piece::Rook => 500,
-			Piece::Queen => 1025,
+			Piece::Pawn => PAWN.eval(phase),
+			Piece::Knight => KNIGHT.eval(phase),
+			Piece::Bishop => BISHOP.eval(phase),
+			Piece::Rook => ROOK.eval(phase),
+			Piece::Queen => QUEEN.eval(phase),
 			Piece::King => 10000
 		}
 	}

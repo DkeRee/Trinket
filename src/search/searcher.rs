@@ -425,10 +425,9 @@ impl Searcher<'_> {
 					//IF is quiet move
 					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					sm.decay_history(&mut self.movegen.sorter, depth);
 				}
 			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			if do_spp {
 				break;

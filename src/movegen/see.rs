@@ -85,7 +85,7 @@ impl See {
 		match piece {
 			Piece::Pawn => 100,
 			Piece::Knight => 375,
-			Piece::Bishop => 375,
+			Piece::Bishop => 400,
 			Piece::Rook => 500,
 			Piece::Queen => 1025,
 			Piece::King => 10000

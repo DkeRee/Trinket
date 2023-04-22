@@ -110,6 +110,21 @@ impl MoveSorter {
 		}
 	}
 
+	pub fn average_pos_history_heuristic(&self) -> i32 {
+		let mut sum = 0;
+
+		for row in 0..64 {
+			for col in 0..64 {
+				let score = self.history_table[row][col];
+				if score > 0 {
+					sum += score;
+				}
+			}
+		}
+
+		return sum / 4096;
+	}
+
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
 		if ply < 100 {
 			let color = board.side_to_move();

@@ -212,8 +212,16 @@ impl Searcher<'_> {
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
 
 			null_score.score *= -1;
+
+			//Variable NMP bound based off of history heuristic average positive scores
+			let mut bound = beta;
+
+			if last_move.is_some() {
+				let avg_pos_history_score = self.movegen.sorter.average_pos_history_heuristic();
+				bound -= 10 * (avg_pos_history_score > 5) as i32 + 10 * (avg_pos_history_score > 10) as i32;
+			}
 		
-			if null_score.score >= beta {
+			if null_score.score >= bound {
 				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
 			}
 		}

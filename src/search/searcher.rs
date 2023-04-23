@@ -280,6 +280,7 @@ impl Searcher<'_> {
 			board_cache.play_unchecked(mv);
 
 			let move_is_check = !board_cache.checkers().is_empty();
+			let future_board_moves = self.movegen.move_gen_no_sort(&board_cache);
 
 			past_positions.push(board_cache.hash());
 
@@ -337,6 +338,11 @@ impl Searcher<'_> {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
 					}
+				}
+
+				//Checking Move Reduction
+				if future_board_moves.len() >= 5 && move_is_check {
+					new_depth -= 1;
 				}
 
 				//Passed Pawn Extension

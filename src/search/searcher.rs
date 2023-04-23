@@ -3,6 +3,7 @@ use cozy_chess::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
+use crate::search::search_master::*;
 use crate::search::lmr_table::*;
 use crate::eval::evaluator::*;
 use crate::eval::score::*;
@@ -139,6 +140,8 @@ impl Searcher<'_> {
 			},
 			None => {
 				let mut iid_move = None;
+				let mut iid_alpha = alpha;
+				let mut iid_beta = beta;
 
 				//Internal Iterative Deepening
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
@@ -150,9 +153,20 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
-						iid_move = best_mv;
-						iid_depth += 1;
+						let (best_mv, eval) = self.search(&abort, board, iid_depth, ply, iid_alpha, iid_beta, past_positions, last_move)?;
+
+						if eval.score >= iid_beta {
+							iid_beta += Engine::ASPIRATION_WINDOW * 4;
+							continue;						
+						} else if eval.score <= iid_alpha {
+							iid_alpha -= Engine::ASPIRATION_WINDOW * 4;
+							continue;						
+						} else {
+							iid_alpha = eval.score - Engine::ASPIRATION_WINDOW;
+							iid_beta = eval.score + Engine::ASPIRATION_WINDOW;
+							iid_move = best_mv;
+							iid_depth += 1;
+						}
 					}
 				}
 

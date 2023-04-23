@@ -57,6 +57,7 @@ impl MoveSorter {
 
 			if mv_info.movetype == MoveType::Loud {
 				let capture_score = self.see.see(board, mv_info.mv);
+				mv_info.see = capture_score;
 
 				if capture_score >= 0 {
 					mv_info.importance += capture_score + Self::WINNING_CAPTURE;

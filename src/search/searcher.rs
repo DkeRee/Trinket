@@ -156,10 +156,10 @@ impl Searcher<'_> {
 						let (best_mv, eval) = self.search(&abort, board, iid_depth, ply, iid_alpha, iid_beta, past_positions, last_move)?;
 
 						if eval.score >= iid_beta {
-							iid_beta += Engine::ASPIRATION_WINDOW * 4;
+							iid_beta += Engine::ASPIRATION_WINDOW * 8;
 							continue;						
 						} else if eval.score <= iid_alpha {
-							iid_alpha -= Engine::ASPIRATION_WINDOW * 4;
+							iid_alpha -= Engine::ASPIRATION_WINDOW * 8;
 							continue;						
 						} else {
 							iid_alpha = eval.score - Engine::ASPIRATION_WINDOW;

@@ -258,7 +258,7 @@ impl Searcher<'_> {
 				if alpha >= beta {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 					sm.insert_killer(&mut self.movegen.sorter, ply, board);
-					sm.insert_history(&mut self.movegen.sorter, depth);
+					sm.insert_history(&mut self.movegen.sorter, depth, alpha);
 					return Some((best_move, eval));
 				} else {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
@@ -267,7 +267,7 @@ impl Searcher<'_> {
 				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth);
+			sm.decay_history(&mut self.movegen.sorter, depth, alpha);
 
 			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 		} else {
@@ -411,7 +411,7 @@ impl Searcher<'_> {
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
-						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_history(&mut self.movegen.sorter, depth, alpha);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
@@ -428,7 +428,7 @@ impl Searcher<'_> {
 				}
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth);
+			sm.decay_history(&mut self.movegen.sorter, depth, alpha);
 
 			if do_spp {
 				break;

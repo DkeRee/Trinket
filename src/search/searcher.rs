@@ -340,9 +340,10 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Checking Move Reduction
-				if future_board_moves.len() >= 5 && move_is_check {
-					new_depth -= 1;
+				//Checking Move Pruning
+				if future_board_moves.len() >= 8 && move_is_check {
+					past_positions.pop();
+					break;
 				}
 
 				//Passed Pawn Extension

@@ -59,6 +59,34 @@ impl MoveGen {
 		}
 	}
 
+	pub fn move_gen_no_sort(&self, board: &Board) -> Vec<SortedMove> {
+		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
+		let color = board.side_to_move();
+		let their_pieces = board.colors(!color);
+
+		//capture move
+		board.generate_moves(|moves| {
+			let mut capture_moves = moves;
+			capture_moves.to &= their_pieces;
+			for mv in capture_moves {
+				move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
+			}
+			false
+		});
+
+		//quiet move
+		board.generate_moves(|moves| {
+			let mut quiet_moves = moves;
+			quiet_moves.to &= !their_pieces;
+			for mv in quiet_moves {
+				move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
+			}
+			false
+		});
+
+		move_list
+	}
+
 	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, ply: i32, skip_hash: bool, last_move: Option<Move>) -> Vec<SortedMove> {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();

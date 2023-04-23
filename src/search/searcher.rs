@@ -212,8 +212,15 @@ impl Searcher<'_> {
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
 
 			null_score.score *= -1;
+
+			let mut bound = beta;
+
+			//Parity Prune NMP
+			if ply % 2 == 0 {
+				bound -= 10;
+			}
 		
-			if null_score.score >= beta {
+			if null_score.score >= bound {
 				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
 			}
 		}

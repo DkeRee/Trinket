@@ -334,7 +334,7 @@ impl Searcher<'_> {
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
-					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
+					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH && sm.importance < 0 {
 						new_depth -= 1;
 					}
 				}

@@ -170,8 +170,13 @@ impl Searcher<'_> {
 		//static eval for tuning methods
 		let static_eval = if table_find_move.as_ref().is_some() {
 			let mut tt_eval = table_find_move.as_ref().unwrap().eval;
+			let in_range = if alpha > -i32::MAX && beta < i32::MAX {
+				tt_eval > alpha - 50 && tt_eval < beta + 50
+			} else {
+				false
+			};
 
-			if table_find_move.as_ref().unwrap().depth < depth {
+			if table_find_move.as_ref().unwrap().depth < depth || in_range {
 				tt_eval = evaluate(board);
 			}
 

@@ -374,7 +374,7 @@ impl Searcher<'_> {
 				let non_pawns_old = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
 				let non_pawns_new = board_cache.pieces(Piece::Rook) | board_cache.pieces(Piece::Bishop) | board_cache.pieces(Piece::Queen) | board_cache.pieces(Piece::Knight);
 				if !(board.occupied() & non_pawns_old).is_empty() && (board_cache.occupied() & non_pawns_new).is_empty() && sm.movetype == MoveType::Loud {
-					new_depth += 3;
+					new_depth += 1;
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {

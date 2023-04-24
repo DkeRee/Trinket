@@ -371,6 +371,11 @@ impl Searcher<'_> {
 					}
 				}
 
+				let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
+				if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() {
+					new_depth += 1;
+				}
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}

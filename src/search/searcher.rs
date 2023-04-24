@@ -371,6 +371,23 @@ impl Searcher<'_> {
 					}
 				}
 
+				//Bishop King Attack Extension
+				let enemy_king_front = board.king(!board.side_to_move()).try_offset(0, -1);
+				if enemy_king_front.is_some() {
+					let mut enemy_shield = board.pieces(Piece::Pawn) & board.colors(!board.side_to_move());
+					let mut mask = BitBoard::EMPTY;
+					for attack_location in get_pawn_attacks(board.king(!board.side_to_move()), !board.side_to_move()) {
+						mask |= attack_location.bitboard();
+					}
+
+					mask |= enemy_king_front.unwrap().bitboard();
+					enemy_shield &= mask;
+
+					if sm.movetype == MoveType::Loud && !(mv.to.bitboard() & enemy_shield).is_empty() && board.piece_on(mv.from) == Some(Piece::Bishop) {
+						new_depth += 1;
+					}
+				}
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}

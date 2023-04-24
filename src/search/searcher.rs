@@ -536,7 +536,7 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
-						return Some((None, Eval::new(beta, false)));
+						break;
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 					}

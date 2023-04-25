@@ -274,6 +274,30 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
+		//Multi-Cut
+		//Is PV
+		//Is sufficient depth
+		//Has enough legal moves to check
+		if is_pv && depth >= Self::MULTICUT_R && legal_moves.clone().len() >= Self::MULTICUT_M as usize {
+			let mut count = 0;
+
+			for i in 0..Self::MULTICUT_M as usize {
+				let mut board_cache = board.clone();
+				board_cache.play_unchecked(legal_moves[i].mv);
+
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - Self::MULTICUT_R - 1, ply + 1, -beta, -beta + 1, past_positions, Some(legal_moves[i].mv))?;
+				child_eval.score *= -1;
+
+				if child_eval.score >= beta {
+					if count == Self::MULTICUT_C {
+						//return Some((None, Eval::new(beta, false)));
+					}
+
+					count += 1;
+				}
+			}
+		}
+
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -567,4 +591,7 @@ impl Searcher<'_> {
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
+	const MULTICUT_R: i32 = 6;
+	const MULTICUT_M: i32 = 5;
+	const MULTICUT_C: i32 = 3;
 }

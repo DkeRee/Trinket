@@ -35,7 +35,7 @@ impl Searcher<'_> {
 			movegen: movegen,
 			searching_depth: search_info.depth
 		};
-		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions, None)?;
+		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions, None, true)?;
 	
 		return Some((mv, eval, searcher.nodes, searcher.seldepth));
 	}
@@ -63,7 +63,7 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, board: &Board, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>, multicut: bool) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -150,7 +150,7 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
+						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move, multicut)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}
@@ -209,7 +209,7 @@ impl Searcher<'_> {
 			let r = self.get_nmp_reduction_amount(depth);
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None, multicut)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -238,7 +238,7 @@ impl Searcher<'_> {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv), multicut)?;
 			child_eval.score *= -1;
 
 			past_positions.pop();
@@ -275,25 +275,24 @@ impl Searcher<'_> {
 		}
 
 		//Multi-Cut
-		//Is PV
-		//Is sufficient depth
-		//Has enough legal moves to check
-		if is_pv && depth >= Self::MULTICUT_R && legal_moves.clone().len() >= Self::MULTICUT_M as usize {
-			let mut count = 0;
+		if table_find_move.is_some() {
+			if table_find_move.unwrap().node_kind == NodeKind::LowerBound && multicut && ply > 0 && depth >= Self::MULTICUT_R && legal_moves.clone().len() >= Self::MULTICUT_M as usize {
+				let mut count = 0;
 
-			for i in 0..Self::MULTICUT_M as usize {
-				let mut board_cache = board.clone();
-				board_cache.play_unchecked(legal_moves[i].mv);
+				for i in 0..Self::MULTICUT_M as usize {
+					let mut board_cache = board.clone();
+					board_cache.play_unchecked(legal_moves[i].mv);
 
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - Self::MULTICUT_R - 1, ply + 1, -beta, -beta + 1, past_positions, Some(legal_moves[i].mv))?;
-				child_eval.score *= -1;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - (Self::MULTICUT_R * 2) - 1, ply + 1, -beta, -beta + 1, past_positions, None, false)?;
+					child_eval.score *= -1;
 
-				if child_eval.score >= beta {
-					if count == Self::MULTICUT_C {
-						return Some((None, Eval::new(beta, false)));
+					if child_eval.score >= beta {
+						if count == Self::MULTICUT_C {
+							return Some((None, Eval::new(beta, false)));
+						}
+
+						count += 1;
 					}
-
-					count += 1;
 				}
 			}
 		}
@@ -310,7 +309,7 @@ impl Searcher<'_> {
 			let mut value: Eval;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv), multicut)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -399,7 +398,7 @@ impl Searcher<'_> {
 					new_depth = depth;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), multicut)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -407,7 +406,7 @@ impl Searcher<'_> {
 				//check if reductions should be removed
 				//search with full depth and null window
 				if value.score > alpha && new_depth < depth {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), multicut)?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -416,7 +415,7 @@ impl Searcher<'_> {
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv), multicut)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -591,7 +590,7 @@ impl Searcher<'_> {
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
-	const MULTICUT_R: i32 = 6;
-	const MULTICUT_M: i32 = 5;
+	const MULTICUT_R: i32 = 4;
+	const MULTICUT_M: i32 = 6;
 	const MULTICUT_C: i32 = 3;
 }

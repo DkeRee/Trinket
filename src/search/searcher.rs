@@ -290,7 +290,7 @@ impl Searcher<'_> {
 
 				if child_eval.score >= beta {
 					if count == Self::MULTICUT_C {
-						//return Some((None, Eval::new(beta, false)));
+						return Some((None, Eval::new(beta, false)));
 					}
 
 					count += 1;

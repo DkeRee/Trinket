@@ -12,7 +12,7 @@ pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
-	see: See
+	pub see: See
 }
 
 impl MoveSorter {

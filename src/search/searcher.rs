@@ -135,7 +135,20 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				let mut iid_move = None;
+
+				//Internal Iterative Deepening with a TT move
+				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
+
+				//if sufficient depth
+				//if PV node
+				if depth >= Self::IID_DEPTH_MIN	&& is_pv && 
+				(table_find.node_kind != NodeKind::Exact || table_find.depth + 2 < depth) {
+					let (best_mv, _) = self.search(&abort, board, depth - 8, ply, alpha, beta, past_positions, last_move)?;
+					iid_move = best_mv;
+				}
+
+				(Some(table_find), iid_move)
 			},
 			None => {
 				let mut iid_move = None;
@@ -221,7 +234,7 @@ impl Searcher<'_> {
 		if table_find_move.is_some() || iid_find_move.is_some() {
 			moves_searched += 1;
 
-			let mv = if table_find_move.is_some() {
+			let mv = if table_find_move.is_some() && iid_find_move.is_none() {
 				table_find_move.clone().unwrap().best_move.unwrap()
 			} else {
 				iid_find_move.clone().unwrap()
@@ -552,7 +565,7 @@ impl Searcher<'_> {
 	const NMP_YSTRETCH: i32 = 4;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
-	const IID_DEPTH_MIN: i32 = 5;
+	const IID_DEPTH_MIN: i32 = 3;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
 	const HISTORY_DEPTH_MIN: i32 = 5;

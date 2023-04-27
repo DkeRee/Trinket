@@ -215,7 +215,7 @@ impl Searcher<'_> {
 		
 			if null_score.score >= beta {
 				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
-			} else {
+			} else if is_pv {
 				let (_, mut mate_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -Score::CHECKMATE_DEFINITE, -Score::CHECKMATE_DEFINITE + 1, past_positions, None)?;
 				mate_score.score *= -1;
 

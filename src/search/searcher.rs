@@ -371,7 +371,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
+				if in_check || sm.is_killer || sm.is_countermove || mv.promotion == Some(Piece::Queen) {
 					new_depth = depth;
 				}
 

@@ -21,7 +21,7 @@ fn knight_lone_king(board: &Board, color: Color) -> bool {
 	let me_two_or_one_knights = (my_pieces & board.pieces(Piece::Knight)).len() == 2 || (my_pieces & board.pieces(Piece::Knight)).len() == 1;
 	let me_only_knights = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Knight))).is_empty();
 
-	me_two_or_one_knights && me_only_knights
+	me_two_or_one_knights && me_only_knights && (board.pieces(Piece::King) & BitBoard::EDGES).is_empty()
 }
 
 fn bishop_lone_king(board: &Board, color: Color) -> bool {

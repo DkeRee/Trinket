@@ -81,13 +81,6 @@ impl Searcher<'_> {
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
-		//CHECK EXTENSION
-		if in_check {
-			// https://www.chessprogramming.org/Check_Extensions
-			extended = true;
-			depth += 1;
-		}
-
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
 			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
@@ -179,6 +172,13 @@ impl Searcher<'_> {
 		} else {
 			evaluate(board)
 		};
+
+		//CHECK EXTENSION
+		if in_check {
+			// https://www.chessprogramming.org/Check_Extensions
+			extended = true;
+			depth += 1;
+		}
 
 		//Reverse Futility Pruning
 		/*

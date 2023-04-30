@@ -51,8 +51,12 @@ impl MoveSorter {
 				}
 
 				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
+				mv_info.importance += history;
 				mv_info.history = history;
+
+				if !mv_info.is_killer && !mv_info.is_countermove {
+					mv_info.importance += Self::HISTORY_MOVE_OFFSET;
+				}
 			}
 
 			if mv_info.movetype == MoveType::Loud {
@@ -154,8 +158,8 @@ impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 25000;
 	const WINNING_CAPTURE: i32 = 10000;
 	const QUEEN_PROMO: i32 = 8000;
-    const KILLER_MOVE_SCORE: i32 = 2000;
-	const COUNTERMOVE_SCORE: i32 = 1000;
+    const KILLER_MOVE_SCORE: i32 = 200;
+	const COUNTERMOVE_SCORE: i32 = 100;
 	const CASTLING_SCORE: i32 = 1000;
    	const KNIGHT_PROMO: i32 = -5000;
 	const BISHOP_PROMO: i32 = -6000;

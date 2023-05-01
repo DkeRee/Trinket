@@ -365,7 +365,13 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						new_depth += 1;
+						if mv.promotion.is_some() {
+							if mv.promotion.unwrap() == Piece::Queen {
+								new_depth += 1;
+							}
+						} else {
+							new_depth += 1;
+						}
 					} else {
 						new_depth -= 1;
 					}

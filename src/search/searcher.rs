@@ -535,13 +535,13 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, 1, NodeKind::LowerBound);
 						return Some((None, Eval::new(beta, false)));
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, 1, NodeKind::Exact);
 					}
 				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, 1, NodeKind::UpperBound);
 				}
 			}
 		}

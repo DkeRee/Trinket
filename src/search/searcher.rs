@@ -82,7 +82,7 @@ impl Searcher<'_> {
 		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
-		if in_check {
+		if in_check && is_pv {
 			// https://www.chessprogramming.org/Check_Extensions
 			extended = true;
 			depth += 1;

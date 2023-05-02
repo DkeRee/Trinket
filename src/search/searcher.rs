@@ -371,6 +371,13 @@ impl Searcher<'_> {
 					}
 				}
 
+				//Castle Extesnion
+				let castle_rights = board.castle_rights(board.side_to_move());
+				let after_move_castle_rights = board_cache.castle_rights(board.side_to_move());
+				if (castle_rights.long.is_some() || castle_rights.short.is_some()) && after_move_castle_rights.long.is_none() && after_move_castle_rights.short.is_none() && is_pv {
+					depth += 1;
+				}
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}

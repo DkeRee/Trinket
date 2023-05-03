@@ -333,6 +333,10 @@ impl Searcher<'_> {
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
+
+						if mv.promotion.unwrap() == Piece::Knight || mv.promotion.unwrap() == Piece::Bishop {
+							new_depth -= 1;
+						}
 					}
 				}
 

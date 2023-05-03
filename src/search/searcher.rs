@@ -363,7 +363,7 @@ impl Searcher<'_> {
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
 						new_depth += 1;
-					} else {
+					} else if !(my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty() {
 						new_depth -= 1;
 					}
 				}

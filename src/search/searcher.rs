@@ -53,7 +53,7 @@ impl Searcher<'_> {
 
 	fn get_nmp_reduction_amount(&self, board: &Board, depth: i32, diff: i32) -> i32 {
 		//calculate nmp reduction amount
-		return 2 + (depth / 3) + (diff / 128) - (Evaluator::new(board, board.side_to_move()).calculate_phase() / 200);
+		return 2 + (depth / 3) + (diff / 128) - (Evaluator::new(board, board.side_to_move()).calculate_phase() / 240);
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {

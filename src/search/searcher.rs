@@ -51,9 +51,9 @@ impl Searcher<'_> {
 		return false;
 	}
 
-	fn get_nmp_reduction_amount(&self, depth: i32, diff: i32) -> i32 {
+	fn get_nmp_reduction_amount(&self, board: &Board, depth: i32, diff: i32) -> i32 {
 		//calculate nmp reduction amount
-		return 2 + (depth / 3) + (diff / 128);
+		return 2 + (depth / 3) + (diff / 128) - (Evaluator::new(board, board.side_to_move()).calculate_phase() / 200);
 	}
 
 	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
@@ -203,7 +203,7 @@ impl Searcher<'_> {
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
-			let r = self.get_nmp_reduction_amount(depth, static_eval - beta);
+			let r = self.get_nmp_reduction_amount(board, depth, static_eval - beta);
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search

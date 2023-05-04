@@ -166,13 +166,7 @@ impl Searcher<'_> {
 
 		//static eval for tuning methods
 		let static_eval = if table_find_move.as_ref().is_some() {
-			let mut tt_eval = table_find_move.as_ref().unwrap().eval;
-
-			if table_find_move.as_ref().unwrap().depth < depth {
-				tt_eval = evaluate(board);
-			}
-
-			tt_eval
+			table_find_move.as_ref().unwrap().eval
 		} else {
 			evaluate(board)
 		};

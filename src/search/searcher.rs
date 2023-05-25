@@ -328,7 +328,7 @@ impl Searcher<'_> {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
 					}
-				}
+				}				
 
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
@@ -360,6 +360,14 @@ impl Searcher<'_> {
 					} else {
 						new_depth -= 1;
 					}
+				}
+
+				//Side pawn push extension
+				let starter_rank = Rank::Second.relative_to(board.side_to_move()).bitboard();
+				let side_files = File::A.bitboard() | File::H.bitboard();
+				let pawn_on_starter_sides = my_pawns & starter_rank & side_files;
+				if !(mv.from.bitboard() & pawn_on_starter_sides).is_empty() && !(mv.to.bitboard() & Rank::Fourth.relative_to(board.side_to_move()).bitboard()).is_empty() && is_pv {
+					new_depth += 1;
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {

@@ -23,7 +23,8 @@ pub struct Searcher<'a> {
 	nodes: u64,
 	seldepth: i32,
 	movegen: &'a mut MoveGen,
-	searching_depth: i32
+	searching_depth: i32,
+	evals: [i32; 250]
 }
 
 impl Searcher<'_> {
@@ -33,7 +34,8 @@ impl Searcher<'_> {
 			nodes: 0,
 			seldepth: 0,
 			movegen: movegen,
-			searching_depth: search_info.depth
+			searching_depth: search_info.depth,
+			evals: [0; 250]
 		};
 		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions, None)?;
 	
@@ -171,6 +173,9 @@ impl Searcher<'_> {
 			evaluate(board)
 		};
 
+		self.evals[ply as usize] = static_eval;
+		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
+
 		//Reverse Futility Pruning
 		/*
 		// if depth isn't too deep
@@ -290,7 +295,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > Self::LMP_MULTIPLIER * depth && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}

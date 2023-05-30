@@ -184,7 +184,7 @@ impl Searcher<'_> {
 		*/
 
 		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
+			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 60) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}

@@ -201,7 +201,13 @@ impl Searcher<'_> {
 
 		let our_pieces = board.colors(board.side_to_move());
 		let sliding_pieces = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen);
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta {
+		let improving_nmp_check = if ply > 1 {
+			self.evals[ply as usize] - self.evals[ply as usize - 2] > -100
+		} else {
+			true
+		};
+
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = board.clone().null_move().unwrap();

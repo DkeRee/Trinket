@@ -174,7 +174,12 @@ impl Searcher<'_> {
 		};
 
 		self.evals[ply as usize] = static_eval;
-		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
+		let improving = if ply > 1 && depth < 6 {
+			Some(self.evals[ply as usize] > self.evals[ply as usize - 2])
+		} else {
+			None
+		};
+
 
 		//Reverse Futility Pruning
 		/*
@@ -184,7 +189,7 @@ impl Searcher<'_> {
 		*/
 
 		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
+			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving.unwrap_or(true) as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
 		}
@@ -208,7 +213,7 @@ impl Searcher<'_> {
 		};
 
 		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
-			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
+			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving.unwrap_or(true) as i32) * 30);
 
 			let nulled_board = board.clone().null_move().unwrap();
 			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
@@ -301,7 +306,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving.unwrap_or(true) as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}

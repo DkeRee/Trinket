@@ -330,7 +330,7 @@ impl Searcher<'_> {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
 
 					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
-						new_depth -= 1;
+						new_depth -= 1 + !improving as i32;
 					}
 				}
 

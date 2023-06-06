@@ -373,7 +373,13 @@ impl Searcher<'_> {
 					}
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
+				let nullify_reduc_improving = if ply > 1 {
+					self.evals[ply as usize] - self.evals[ply as usize - 2] > 300
+				} else {
+					false
+				};
+
+				if in_check || sm.is_killer || sm.is_countermove || nullify_reduc_improving {
 					new_depth = depth;
 				}
 

@@ -138,6 +138,7 @@ impl Searcher<'_> {
 			},
 			None => {
 				let mut iid_move = None;
+				let mut iid_score = None;
 
 				//Internal Iterative Deepening
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
@@ -149,8 +150,9 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
+						let (best_mv, score) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
 						iid_move = best_mv;
+						iid_score = Some(-score.score);
 						iid_depth += 1;
 					}
 				}
@@ -158,7 +160,13 @@ impl Searcher<'_> {
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
-				if depth >= ply / 4 + 2 {
+				let iid_score_pass =  if !iid_score.is_none() {
+					self.evals[ply as usize] - iid_score.unwrap() < -100
+				} else {
+					true
+				};
+
+				if depth >= ply / 4 + 2 && iid_score_pass {
 					depth -= depth / 10 + 1;
 				}
 

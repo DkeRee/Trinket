@@ -161,7 +161,7 @@ impl Searcher<'_> {
 				//IF sufficient depth
 				//There is NO Hash Move
 				let iid_score_pass =  if !iid_score.is_none() {
-					self.evals[ply as usize] - iid_score.unwrap() < -100
+					self.evals[ply as usize] - iid_score.unwrap() < 300
 				} else {
 					true
 				};

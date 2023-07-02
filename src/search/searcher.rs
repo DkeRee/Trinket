@@ -368,13 +368,15 @@ impl Searcher<'_> {
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
 						new_depth += 1;
-
-						if improving {
-							new_depth += 1;
-						}
 					} else {
 						new_depth -= 1;
 					}
+				}
+
+				//Side Pawn Push Extension
+				let side_pawns = my_pawns & Rank::Second.relative_to(board.side_to_move()).bitboard() & (File::A.bitboard() | File::H.bitboard());
+				if is_pv && !(mv.from.bitboard() & side_pawns).is_empty() && !(mv.to.bitboard() & get_pawn_quiets(mv.from, board.side_to_move(), BitBoard::EMPTY)).is_empty() {
+					new_depth += 1;
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {

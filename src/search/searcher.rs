@@ -334,8 +334,13 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Underpromo Reduction
 				if !mv.promotion.is_none() {
+					//Promotion Extension
+					if is_pv && mv.promotion.unwrap() == Piece::Queen && improving {
+						new_depth += 1;
+					}
+
+					//Underpromo Reduction
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
 					}

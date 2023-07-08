@@ -43,9 +43,7 @@ impl MoveSorter {
 				if self.is_killer(mv_info.mv, board, ply) {
 					mv_info.importance += Self::KILLER_MOVE_SCORE;
 					mv_info.is_killer = true;
-				}
-
-				if self.is_countermove(mv_info.mv, last_move) {
+				} else if self.is_countermove(mv_info.mv, last_move) {
 					mv_info.importance += Self::COUNTERMOVE_SCORE;
 					mv_info.is_countermove = true;
 				}

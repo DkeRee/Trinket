@@ -46,11 +46,11 @@ impl MoveSorter {
 				} else if self.is_countermove(mv_info.mv, last_move) {
 					mv_info.importance += Self::COUNTERMOVE_SCORE;
 					mv_info.is_countermove = true;
+				} else {
+					let history = self.get_history(mv_info.mv);
+					mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
+					mv_info.history = history;
 				}
-
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
-				mv_info.history = history;
 			}
 
 			if mv_info.movetype == MoveType::Loud {
@@ -152,7 +152,7 @@ impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 25000;
 	const WINNING_CAPTURE: i32 = 10000;
 	const QUEEN_PROMO: i32 = 8000;
-    const KILLER_MOVE_SCORE: i32 = 3000;
+    const KILLER_MOVE_SCORE: i32 = 2000;
 	const COUNTERMOVE_SCORE: i32 = 1000;
 	const CASTLING_SCORE: i32 = 1000;
    	const KNIGHT_PROMO: i32 = -5000;

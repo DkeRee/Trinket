@@ -215,7 +215,7 @@ impl Searcher<'_> {
 
 			null_score.score *= -1;
 		
-			if null_score.score >= beta {
+			if null_score.score >= beta + is_pv as i32 * 10 {
 				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
 			}
 		}

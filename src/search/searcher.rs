@@ -334,13 +334,6 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Underpromo Reduction
-				if !mv.promotion.is_none() {
-					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
-						new_depth -= 1;
-					}
-				}
-
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());
@@ -367,11 +360,25 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
+						extended = true;
 						new_depth += 1;
 					} else {
 						new_depth -= 1;
 					}
 				}
+
+				//Underpromo Reduction
+				if !mv.promotion.is_none() {
+					if mv.promotion.unwrap() == Piece::Queen && !extended && is_pv {
+						extended = true;
+						new_depth += 1;
+					}
+
+					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
+						new_depth -= 1;
+					}
+				}
+
 
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;

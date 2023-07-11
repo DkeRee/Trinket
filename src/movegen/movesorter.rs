@@ -11,6 +11,7 @@ pub enum MoveType {
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
+	countermove_table: [[Option<Move>; 64]; 64],
 	see: See
 }
 
@@ -19,11 +20,12 @@ impl MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
+			countermove_table: [[None; 64]; 64],
 			see: See::new()
 		}
 	}
 
-	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32) {
+	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32, last_move: Option<Move>) {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
@@ -37,6 +39,11 @@ impl MoveSorter {
 				if self.is_killer(mv_info.mv, board, ply) {
 					mv_info.importance += Self::KILLER_MOVE_SCORE;
 					mv_info.is_killer = true;
+				}
+
+				if self.is_countermove(mv_info.mv, last_move) {
+					mv_info.importance += Self::COUNTERMOVE_SCORE;
+					mv_info.is_countermove = true;
 				}
 
 				let history = self.get_history(mv_info.mv);
@@ -86,6 +93,10 @@ impl MoveSorter {
 		}
 	}
 
+	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
+		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
+	}
+
 	pub fn decay_history(&mut self, mv: Move, depth: i32) {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
 		let change = depth * depth;
@@ -112,6 +123,14 @@ impl MoveSorter {
 		return false;
 	}
 
+	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
+		if last_move.is_none() {
+			return false;
+		}
+
+		return self.countermove_table[last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
+	}
+
 	fn get_history(&self, mv: Move) -> i32 {
 		return self.history_table[mv.from as usize][mv.to as usize];
 	}
@@ -122,6 +141,7 @@ impl MoveSorter {
 	const WINNING_CAPTURE: i32 = 10000;
 	const QUEEN_PROMO: i32 = 8000;
     const KILLER_MOVE_SCORE: i32 = 2000;
+	const COUNTERMOVE_SCORE: i32 = 1000;
    	const KNIGHT_PROMO: i32 = -5000;
 	const BISHOP_PROMO: i32 = -6000;
 	const ROOK_PROMO: i32 = -7000;

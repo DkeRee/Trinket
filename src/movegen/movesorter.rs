@@ -63,6 +63,13 @@ impl MoveSorter {
 				} else {
 					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
 				}
+
+				let enemy_pawns = board.pieces(Piece::Pawn) & board.colors(!board.side_to_move());
+				let enemy_king_shield = enemy_pawns & (get_pawn_quiets(board.king(!board.side_to_move()), !board.side_to_move(), BitBoard::EMPTY) | get_pawn_attacks(board.king(!board.side_to_move()), !board.side_to_move()));
+
+				if !(mv_info.mv.to.bitboard() & enemy_king_shield).is_empty() {
+					mv_info.importance += Self::SHIELD_BREAK_BONUS;
+				}
 			}
 
 			mv_info.importance += match mv_info.mv.promotion {
@@ -162,6 +169,8 @@ impl MoveSorter {
 	const ROOK_PROMO: i32 = -7000;
 	const HISTORY_MOVE_OFFSET: i32 = -10000;
 	const LOSING_CAPTURE: i32 = -30000;
+
+	const SHIELD_BREAK_BONUS: i32 = 100;
 
 	const HISTORY_MAX: i32 = 2000;
 }

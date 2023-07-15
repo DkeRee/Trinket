@@ -43,20 +43,20 @@ struct EncodedEntry {
 
 //adjust tricky mate scores to make valid eval
 fn add_mate_score(eval: i32, ply: i32) -> i32 {
-	if eval < -Score::CHECKMATE_DEFINITE {
-		eval + ply
-	} else if eval > Score::CHECKMATE_DEFINITE {
+	if eval == Score::CHECKMATE_BASE {
 		eval - ply
+	} else if eval == -Score::CHECKMATE_BASE {
+		eval + ply
 	} else {
 		eval
 	}
 }
 
 fn remove_mate_score(eval: i32, ply: i32) -> i32 {
-	if eval < -Score::CHECKMATE_DEFINITE {
-		eval - ply
-	} else if eval > Score::CHECKMATE_DEFINITE {
+	if eval + ply == Score::CHECKMATE_BASE {
 		eval + ply
+	} else if eval - ply == -Score::CHECKMATE_BASE {
+		eval - ply
 	} else {
 		eval
 	}

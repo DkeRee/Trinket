@@ -68,6 +68,7 @@ impl Evaluator<'_> {
 		sum += self.pawn_island(phase);
 		sum += self.isolated_pawn(phase);
 		sum += self.rook_files(phase);
+		sum += self.king_open_file_penalty(phase);
 
 		sum
 	}
@@ -81,6 +82,42 @@ impl Evaluator<'_> {
 			Piece::Queen => &QUEEN_MOBILITY,
 			Piece::King => &KING_MOBILITY
 		}
+	}
+
+	fn king_open_file_penalty(&self, phase: i32) -> i32 {
+		let pawns = self.board.pieces(Piece::Pawn);
+		let our_king_file = self.board.king(self.color).file();
+
+		let mut left_adjacent = None;
+		let mut right_adjacent = None;
+
+		if our_king_file as i32 - 1 >= 0 {
+			left_adjacent = Some(File::index(our_king_file as usize - 1));
+		}
+
+		if our_king_file as i32 + 1 <= 7 {
+			right_adjacent = Some(File::index(our_king_file as usize + 1));
+		}
+
+		let mut count = 0;
+
+		if left_adjacent.is_some() {
+			if (pawns & left_adjacent.unwrap().bitboard()).is_empty() {
+				count += 1;
+			}
+		}
+
+		if right_adjacent.is_some() {
+			if (pawns & right_adjacent.unwrap().bitboard()).is_empty() {
+				count += 1;
+			}
+		}
+
+		if count == 0 {
+			return 0;
+		}
+
+		KING_OPEN_FILE_PENALTY[count - 1 as usize].eval(phase)
 	}
 
 	fn connected_pawns(&self, phase: i32) -> i32 {

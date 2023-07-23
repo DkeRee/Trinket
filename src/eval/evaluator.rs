@@ -68,6 +68,7 @@ impl Evaluator<'_> {
 		sum += self.pawn_island(phase);
 		sum += self.isolated_pawn(phase);
 		sum += self.rook_files(phase);
+		sum += self.king_on_risky_file(phase);
 
 		sum
 	}
@@ -81,6 +82,22 @@ impl Evaluator<'_> {
 			Piece::Queen => &QUEEN_MOBILITY,
 			Piece::King => &KING_MOBILITY
 		}
+	}
+
+	fn king_on_risky_file(&self, phase: i32) -> i32 {
+		let mut penalty = 0;
+
+		let pawns = self.board.pieces(Piece::Pawn);
+		let our_pawns = self.board.colors(self.color) & pawns;
+		let our_king_file = self.board.king(self.color).file();
+
+		if (pawns & our_king_file.bitboard()).is_empty() {
+			penalty += KING_ON_OPEN_FILE.eval(phase);
+		} else if (our_pawns & our_king_file.bitboard()).is_empty() {
+			penalty += KING_ON_SEMI_OPEN_FILE.eval(phase);
+		}
+
+		penalty
 	}
 
 	fn connected_pawns(&self, phase: i32) -> i32 {

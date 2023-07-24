@@ -86,51 +86,56 @@ impl Evaluator<'_> {
 	}
 
 	fn king_ring_attacks(&self, phase: i32) -> i32 {
-		let mut count = 0;
+		let mut sum = 0;
 
-		let side = self.board.side_to_move();
 		let squares = &Square::ALL;
-		let king_moves = get_king_moves(self.board.king(side));
-		let blockers = self.board.occupied() & king_moves;
+		let king_moves = get_king_moves(self.board.king(self.color));
+		let blockers = self.board.occupied() ^ king_moves;
 
-		let mut count = 0;
+		let mut pawn_attacks = 0;
+		let mut knight_attacks = 0;
+		let mut bishop_attacks = 0;
+		let mut rook_attacks = 0;
+		let mut queen_attacks = 0;
 
 		for &piece in &Piece::ALL {
 			match piece {
 				Piece::Pawn => {
-					for sq in (self.board.pieces(Piece::Pawn) & self.board.colors(!side)) {
-						count += (get_pawn_attacks(sq, !side) & king_moves).len();
+					for sq in self.board.pieces(Piece::Pawn) & self.board.colors(!self.color) {
+						pawn_attacks += (get_pawn_attacks(sq, !self.color) & king_moves).len();
 					}
 				},
 				Piece::Knight => {
-					for sq in (self.board.pieces(Piece::Knight) & self.board.colors(!side)) {
-						count += (get_knight_moves(sq) & king_moves).len();
+					for sq in self.board.pieces(Piece::Knight) & self.board.colors(!self.color) {
+						knight_attacks += (get_knight_moves(sq) & king_moves).len();
 					}
 				},
 				Piece::Bishop => {
-					for sq in (self.board.pieces(Piece::Bishop) & self.board.colors(!side)) {
-						count += (get_bishop_moves(sq, blockers) & king_moves).len();
+					for sq in self.board.pieces(Piece::Bishop) & self.board.colors(!self.color) {
+						bishop_attacks += (get_bishop_moves(sq, blockers) & king_moves).len();
 					}	
 				},
 				Piece::Rook => {
-					for sq in (self.board.pieces(Piece::Rook) & self.board.colors(!side)) {
-						count += (get_rook_moves(sq, blockers) & king_moves).len();
+					for sq in self.board.pieces(Piece::Rook) & self.board.colors(!self.color) {
+						rook_attacks += (get_rook_moves(sq, blockers) & king_moves).len();
 					}
 				},
 				Piece::Queen => {
-					for sq in (self.board.pieces(Piece::Queen) & self.board.colors(!side)) {
-						count += ((get_bishop_moves(sq, blockers) | get_rook_moves(sq, blockers)) & king_moves).len();
+					for sq in self.board.pieces(Piece::Queen) & self.board.colors(!self.color) {
+						queen_attacks += ((get_bishop_moves(sq, blockers) | get_rook_moves(sq, blockers)) & king_moves).len();
 					}
 				},
 				Piece::King => {}
 			}
 		}
 
-		if count > 14 {
-			count = 14;
-		}
-
-		KING_RING_ATTACKS[count as usize].eval(phase)
+		sum += RING_PAWN.eval(phase) * pawn_attacks as i32;
+		sum += RING_KNIGHT.eval(phase) * knight_attacks as i32;
+		sum += RING_BISHOP.eval(phase) * bishop_attacks as i32;
+		sum += RING_ROOK.eval(phase) * rook_attacks as i32;
+		sum += RING_QUEEN.eval(phase) * queen_attacks as i32;
+		
+		sum
 	}
 
 	fn king_on_risky_file(&self, phase: i32) -> i32 {

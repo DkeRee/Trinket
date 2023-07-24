@@ -41,9 +41,6 @@ pub const VIRTUAL_MOBILITY: [Score; 28] = [
     S!( -33,    7), S!(   1,    0), S!( -23,    0), S!( -14,   -3), S!(  -5,   -5), S!( -15,  -10), S!( -12,  -12), S!( -21,  -18), 
     S!( -20,  -30), S!( -13,  -31), S!( -22,  -22), S!( -36,  -33), 
 ];
-pub const KING_RING_ATTACKS: [Score; 15] = [
-S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0),S!(   0,    0)
-];
 
 pub const BISHOP_PAIR_BONUS: Score = S!(  33,   45);
 pub const PASSED_PAWN_BONUS: Score = S!(  11,   22);
@@ -54,6 +51,11 @@ pub const ROOK_SEMI_FILE_BONUS: Score = S!(  15,   16);
 pub const CONNECTED_PASSED_PAWN: Score = S!(  11,    5);
 pub const KING_ON_SEMI_OPEN_FILE: Score = S!(   3,    2);
 pub const KING_ON_OPEN_FILE: Score = S!( -54,   -3);
+pub const RING_PAWN: Score = S!(   0,    0);
+pub const RING_KNIGHT: Score = S!(   0,    0);
+pub const RING_BISHOP: Score = S!(   0,    0);
+pub const RING_ROOK: Score = S!(   0,    0);
+pub const RING_QUEEN: Score = S!(   0,    0);
  
 //PSTs
 pub const P: [Score; 64] = [

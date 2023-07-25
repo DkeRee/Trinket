@@ -276,7 +276,7 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
-		let mut quiets_to_check = Self::LMP_TABLE[usize::min((depth - 1) as usize, 2)];
+		let mut quiets_to_check = Self::LMP_TABLE[usize::min((depth - 1) as usize, 4)];
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -306,9 +306,11 @@ impl Searcher<'_> {
 					if quiets_to_check == 0 {
 						past_positions.pop();
 						break;
-					} else {
-						quiets_to_check -= 1;
 					}
+				}
+
+				if sm.movetype == MoveType::Quiet && quiets_to_check > 0 {
+					quiets_to_check -= 1;
 				}
 
 				//get initial value with reduction and pv-search null window
@@ -558,14 +560,13 @@ impl Searcher<'_> {
 }
 
 impl Searcher<'_> {
-	const LMP_TABLE: [i32; 3] = [7, 8, 17];
+	const LMP_TABLE: [i32; 5] = [0, 7, 8, 17, 49];
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
 	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 3;
-	const LMP_MULTIPLIER: i32 = 5;
+	const LMP_DEPTH_MAX: i32 = 5;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;

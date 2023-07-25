@@ -276,6 +276,7 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
+		let mut quiets_to_check = Self::LMP_TABLE[usize::min((depth - 1) as usize, 2)];
 		for mut sm in legal_moves {
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
@@ -301,9 +302,13 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
-					past_positions.pop();
-					break;
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && !in_check {
+					if quiets_to_check == 0 {
+						past_positions.pop();
+						break;
+					} else {
+						quiets_to_check -= 1;
+					}
 				}
 
 				//get initial value with reduction and pv-search null window
@@ -553,6 +558,7 @@ impl Searcher<'_> {
 }
 
 impl Searcher<'_> {
+	const LMP_TABLE: [i32; 3] = [7, 8, 17];
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;

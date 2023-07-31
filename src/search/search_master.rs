@@ -43,7 +43,6 @@ pub struct Engine {
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
 	seldepth: i32,
-	movegen: MoveGen,
 	tt: TT
 }
 
@@ -55,7 +54,6 @@ impl Engine {
 			my_past_positions: Vec::with_capacity(64),
 			nodes: 0,
 			seldepth: 0,
-			movegen: MoveGen::new(),
 			tt: TT::new(hash)
 		}
 	}
@@ -112,7 +110,7 @@ impl Engine {
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
-			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
+			let result = Searcher::new(&self.tt, MoveGen::new(), time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
 				alpha,

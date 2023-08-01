@@ -138,7 +138,7 @@ impl Searcher<'_> {
 				let mut iid_move = None;
 
 				//iid to replace hashmove in severely outdated or inaccurate positions in pv positions
-				if depth >= Self::IID_DEPTH_MIN && is_pv && (table_find.depth + 2 < depth || table_find.clone().node_kind != NodeKind::Exact) {
+				if depth >= Self::IID_DEPTH_MIN && is_pv && table_find.depth + 5 < depth {
 					let iid_max_depth = depth / 4;
 					let mut iid_depth = 1;
 

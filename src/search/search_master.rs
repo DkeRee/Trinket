@@ -105,12 +105,14 @@ impl Engine {
 
 		let mut depth_index = 0;
 
+		let mut movegen = MoveGen::new();
+
 		while depth_index < self.max_depth && depth_index < 250 {
 			self.seldepth = 0;
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
-			let result = Searcher::new(&self.tt, MoveGen::new(), time_control.handler.clone(), SearchInfo {
+			let result = Searcher::new(&self.tt, &mut movegen, time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
 				alpha,

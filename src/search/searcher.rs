@@ -22,13 +22,13 @@ pub struct Searcher<'a> {
 	tt: &'a TT,
 	nodes: u64,
 	seldepth: i32,
-	movegen: MoveGen,
+	movegen: &'a mut MoveGen,
 	searching_depth: i32,
 	evals: [i32; 250]
 }
 
 impl Searcher<'_> {
-	pub fn new(tt: &TT, movegen: MoveGen, abort: Arc<AtomicBool>, mut search_info: SearchInfo) -> Option<(Option<Move>, Eval, u64, i32)> {
+	pub fn new(tt: &TT, movegen: &mut MoveGen, abort: Arc<AtomicBool>, mut search_info: SearchInfo) -> Option<(Option<Move>, Eval, u64, i32)> {
 		let mut searcher = Searcher {
 			tt: tt,
 			nodes: 0,

@@ -116,7 +116,7 @@ impl Searcher<'_> {
 						false
 					};
 
-					match table_find.node_kind {
+					match table_find.clone().node_kind {
 						NodeKind::Exact => {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
 						},
@@ -134,7 +134,24 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				let mut table_find_output = Some(table_find.clone());
+				let mut iid_move = None;
+
+				//iid to replace hashmove in severely outdated or inaccurate positions in pv positions
+				if depth >= Self::IID_DEPTH_MIN && is_pv && (table_find.depth + 2 < depth || table_find.clone().node_kind != NodeKind::Exact) {
+					let iid_max_depth = depth / 4;
+					let mut iid_depth = 1;
+
+					table_find_output = None;
+
+					while iid_depth <= iid_max_depth {
+						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
+						iid_move = best_mv;
+						iid_depth += 1;
+					}
+				}
+
+				(table_find_output, iid_move)
 			},
 			None => {
 				let mut iid_move = None;

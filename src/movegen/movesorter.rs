@@ -148,5 +148,5 @@ impl MoveSorter {
 	const HISTORY_MOVE_OFFSET: i32 = -10000;
 	const LOSING_CAPTURE: i32 = -30000;
 
-	const HISTORY_MAX: i32 = 2000;
+	const HISTORY_MAX: i32 = 512;
 }

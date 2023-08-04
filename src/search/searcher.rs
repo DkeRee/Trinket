@@ -336,8 +336,13 @@ impl Searcher<'_> {
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
-					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
-						new_depth -= 1;
+					if mv.promotion.unwrap() != Piece::Queen {
+						if depth >= Self::UNDERPROMO_REDUC_DEPTH {
+							new_depth -= 1;
+						} else if depth < Self::UNDERPROMO_REDUC_DEPTH {
+							past_positions.pop();
+							break;
+						}
 					}
 				}
 

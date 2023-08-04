@@ -339,7 +339,7 @@ impl Searcher<'_> {
 					if mv.promotion.unwrap() != Piece::Queen {
 						if depth >= Self::UNDERPROMO_REDUC_DEPTH {
 							new_depth -= 1;
-						} else if depth < Self::UNDERPROMO_REDUC_DEPTH {
+						} else {
 							past_positions.pop();
 							break;
 						}

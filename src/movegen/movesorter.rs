@@ -31,43 +31,53 @@ impl MoveSorter {
 
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
-					mv_info.importance += Self::HASHMOVE_SCORE;
+					mv_info.importance = Self::HASHMOVE_SCORE;
+					continue;
 				}
 			}
 
-			if mv_info.movetype == MoveType::Quiet {
-				if self.is_killer(mv_info.mv, board, ply) {
-					mv_info.importance += Self::KILLER_MOVE_SCORE;
-					mv_info.is_killer = true;
-				}
+			mv_info.importance = match mv_info.mv.promotion {
+				Some(Piece::Queen) => Self::QUEEN_PROMOS,
+				Some(Piece::Rook) => Self::UNDERPROMOS,
+				Some(Piece::Bishop) => Self::UNDERPROMOS,
+				Some(Piece::Knight) => Self::UNDERPROMOS,
+				None => 0,
+				_ => unreachable!()
+			};
 
-				if self.is_countermove(mv_info.mv, last_move) {
-					mv_info.importance += Self::COUNTERMOVE_SCORE;
-					mv_info.is_countermove = true;
-				}
-
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
-				mv_info.history = history;
+			if mv_info.mv.promotion.is_some() {
+				continue;
 			}
 
 			if mv_info.movetype == MoveType::Loud {
 				let capture_score = self.see.see(board, mv_info.mv);
 
 				if capture_score >= 0 {
-					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
+					mv_info.importance = Self::WINNING_CAPTURES + capture_score;
 				} else {
-					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
+					mv_info.importance = Self::LOSING_CAPTURES + capture_score;
 				}
+				continue;
 			}
 
-			mv_info.importance += match mv_info.mv.promotion {
-				Some(Piece::Queen) => Self::QUEEN_PROMO,
-				Some(Piece::Rook) => Self::ROOK_PROMO,
-				Some(Piece::Bishop) => Self::BISHOP_PROMO,
-				Some(Piece::Knight) => Self::KNIGHT_PROMO,
-				None => 0,
-				_ => unreachable!()
+			if mv_info.movetype == MoveType::Quiet {
+				let history = self.get_history(mv_info.mv);
+
+				if self.is_killer(mv_info.mv, board, ply) {
+					mv_info.importance = Self::NOTABLE_QUIETS + history;
+					mv_info.is_killer = true;
+					continue;
+				}
+
+				if self.is_countermove(mv_info.mv, last_move) {
+					mv_info.importance = Self::NOTABLE_QUIETS + history;
+					mv_info.is_countermove = true;
+					continue;
+				}
+
+				mv_info.importance = Self::QUIETS + history;
+				mv_info.history = history;
+				continue;
 			}
 		}
 
@@ -137,9 +147,18 @@ impl MoveSorter {
 }
 
 impl MoveSorter {
-	const HASHMOVE_SCORE: i32 = 25000;
+	//ORDER: Hash, Queen, Winning Captures, Notable Quiets, Quiets, Losing Captures, Underpromo
+
+	const HASHMOVE_SCORE: i32 = 50000;
+	const QUEEN_PROMOS: i32 = 40000;
+	const WINNING_CAPTURES: i32 = 30000;
+	const NOTABLE_QUIETS: i32 = 20000;
+	const QUIETS: i32 = 5000;
+	const LOSING_CAPTURES: i32 = -10000;
+	const UNDERPROMOS: i32 = -20000;
+
+/*
 	const WINNING_CAPTURE: i32 = 10000;
-	const QUEEN_PROMO: i32 = 8000;
     const KILLER_MOVE_SCORE: i32 = 2000;
 	const COUNTERMOVE_SCORE: i32 = 1000;
    	const KNIGHT_PROMO: i32 = -5000;
@@ -147,6 +166,7 @@ impl MoveSorter {
 	const ROOK_PROMO: i32 = -7000;
 	const HISTORY_MOVE_OFFSET: i32 = -10000;
 	const LOSING_CAPTURE: i32 = -30000;
+*/
 
 	const HISTORY_MAX: i32 = 2000;
 }

@@ -83,11 +83,11 @@ impl See {
 
 	fn piece_pts(&self, piece: Piece) -> i32 {
 		match piece {
-			Piece::Pawn => 100,
-			Piece::Knight => 375,
-			Piece::Bishop => 375,
-			Piece::Rook => 500,
-			Piece::Queen => 1025,
+			Piece::Pawn => 80,
+			Piece::Knight => 350,
+			Piece::Bishop => 350,
+			Piece::Rook => 520,
+			Piece::Queen => 1031,
 			Piece::King => 10000
 		}
 	}

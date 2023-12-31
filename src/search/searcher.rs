@@ -226,57 +226,28 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
+		let mut staging = false;
 		if table_find_move.is_some() || iid_find_move.is_some() {
-			moves_searched += 1;
-
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
 			} else {
 				iid_find_move.clone().unwrap()
 			};
 
-			let mut board_cache = board.clone();
-			board_cache.play_unchecked(mv);
-
-			past_positions.push(board_cache.hash());
-
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
-			child_eval.score *= -1;
-
-			past_positions.pop();
-
-			eval = child_eval;
-			best_move = Some(mv);
-
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet
 			} else {
 				MoveType::Loud
 			};
-			let mut sm = SortedMove::new(mv, 0, movetype);
 
-			if eval.score > alpha {
-				alpha = eval.score;
-				if alpha >= beta {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-					sm.insert_killer(&mut self.movegen.sorter, ply, board);
-					sm.insert_history(&mut self.movegen.sorter, depth);
-					return Some((best_move, eval));
-				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
-				}
-			} else {
-				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
-			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth);
-
-			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
+			legal_moves.push(SortedMove::new(mv, 10000, movetype));
+			staging = true;
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
-		for mut sm in legal_moves {
+		while moves_searched < legal_moves.len() {
+			let sm = &mut legal_moves[moves_searched];
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -301,7 +272,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth as usize) - (!improving as usize * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -327,7 +298,7 @@ impl Searcher<'_> {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched as i32);
 
 					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
 						new_depth -= 1;
@@ -434,6 +405,11 @@ impl Searcher<'_> {
 
 			if do_spp {
 				break;
+			}
+
+			if staging {
+				legal_moves = self.movegen.move_gen(board, Some(mv), ply, false, last_move);
+				staging = false;
 			}
 
 			moves_searched += 1;
@@ -556,12 +532,12 @@ impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
-	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
+	const LMR_FULL_SEARCHED_MOVE_LIMIT: usize = 2;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
-	const LMP_MULTIPLIER: i32 = 5;
+	const LMP_MULTIPLIER: usize = 5;
 	const HISTORY_DEPTH_MIN: i32 = 5;
-	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
+	const HISTORY_PRUNE_MOVE_LIMIT: usize = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
 	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;

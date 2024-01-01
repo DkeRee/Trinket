@@ -341,7 +341,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Passed Pawn Extension
+				//Passed Pawn Nulling
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());
 				let enemy_pawns = all_pawns & board.colors(!board.side_to_move());
@@ -367,7 +367,7 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						new_depth += 1;
+						new_depth = depth;
 					} else {
 						new_depth -= 1;
 					}

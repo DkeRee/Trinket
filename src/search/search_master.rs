@@ -196,6 +196,6 @@ impl Engine {
 }
 
 impl Engine {
-	const ASPIRATION_STEP_BIG: i32 = 40;
-	const ASPIRATION_STEP_SMALL: i32 = 20;
+	const ASPIRATION_STEP_BIG: i32 = 90;
+	const ASPIRATION_STEP_SMALL: i32 = 15;
 }

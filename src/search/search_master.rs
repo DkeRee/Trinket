@@ -123,6 +123,15 @@ impl Engine {
 			if result != None {
 				let (best_mv, eval, nodes, seldepth) = result.unwrap();
 
+				let in_check = !board.checkers().is_empty();
+
+				//be more cautious with aspiration if position is in check
+				let check_factor = if !in_check {
+					1
+				} else {
+					2
+				};
+
 				self.nodes += nodes;
 				self.seldepth += seldepth;
 
@@ -134,8 +143,8 @@ impl Engine {
 					alpha -= Self::ASPIRATION_STEP_BIG;
 					continue;						
 				} else {
-					alpha = eval.score - Self::ASPIRATION_STEP_SMALL;
-					beta = eval.score + Self::ASPIRATION_STEP_SMALL;
+					alpha = eval.score - Self::ASPIRATION_STEP_SMALL / check_factor;
+					beta = eval.score + Self::ASPIRATION_STEP_SMALL / check_factor;
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}
@@ -196,6 +205,6 @@ impl Engine {
 }
 
 impl Engine {
-	const ASPIRATION_STEP_BIG: i32 = 90;
+	const ASPIRATION_STEP_BIG: i32 = 60;
 	const ASPIRATION_STEP_SMALL: i32 = 15;
 }

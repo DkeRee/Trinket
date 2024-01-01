@@ -128,14 +128,14 @@ impl Engine {
 
 				//MANAGE ASPIRATION WINDOWS
 				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW;
+					beta += Self::ASPIRATION_STEP_BIG;
 					continue;						
 				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW;
+					alpha -= Self::ASPIRATION_STEP_BIG;
 					continue;						
 				} else {
-					alpha = eval.score - Self::ASPIRATION_WINDOW;
-					beta = eval.score + Self::ASPIRATION_WINDOW;
+					alpha = eval.score - Self::ASPIRATION_STEP_SMALL;
+					beta = eval.score + Self::ASPIRATION_STEP_SMALL;
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}
@@ -196,5 +196,6 @@ impl Engine {
 }
 
 impl Engine {
-	const ASPIRATION_WINDOW: i32 = 40;
+	const ASPIRATION_STEP_BIG: i32 = 40;
+	const ASPIRATION_STEP_SMALL: i32 = 20;
 }

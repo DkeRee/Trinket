@@ -373,7 +373,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
+				if new_depth > depth || in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}
 

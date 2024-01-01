@@ -341,6 +341,11 @@ impl Searcher<'_> {
 					}
 				}
 
+				//Peculiar Check Extension
+				if sm.movetype == MoveType::Loud && sm.see < 0 && move_is_check {
+					new_depth += 1;
+				}
+
 				//Passed Pawn Extension
 				let all_pawns = board.pieces(Piece::Pawn);
 				let my_pawns = all_pawns & board.colors(board.side_to_move());

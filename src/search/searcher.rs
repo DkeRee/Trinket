@@ -517,15 +517,16 @@ impl Searcher<'_> {
 		let mut eval = stand_pat;
 
 		for sm in move_list {
-
-			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
-				break;
-			}
-
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
+
+			let move_is_check = !board_cache.checkers().is_empty();
+
+			//prune losing captures found through SEE swap algorithm
+			if !move_is_check && sm.importance < 0 {
+				break;
+			}
 
 			let (_, mut child_eval) = self.qsearch(&abort, &board_cache, -beta, -alpha, ply + 1)?;
 

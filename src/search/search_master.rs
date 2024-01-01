@@ -128,10 +128,10 @@ impl Engine {
 
 				//MANAGE ASPIRATION WINDOWS
 				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW * 4;
+					beta += Self::ASPIRATION_WINDOW;
 					continue;						
 				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW * 4;
+					alpha -= Self::ASPIRATION_WINDOW;
 					continue;						
 				} else {
 					alpha = eval.score - Self::ASPIRATION_WINDOW;
@@ -196,5 +196,5 @@ impl Engine {
 }
 
 impl Engine {
-	const ASPIRATION_WINDOW: i32 = 15;
+	const ASPIRATION_WINDOW: i32 = 40;
 }

@@ -102,8 +102,11 @@ impl Engine {
 		}
 
 		//ASPIRATION WINDOWS ALPHA BETA
-		let mut alpha = -i32::MAX;
-		let mut beta = i32::MAX;
+		let mut alpha = -100;
+		let mut beta = 100;
+
+		let mut alpha_nudge = 20;
+		let mut beta_nudge = 20;
 
 		let mut depth_index = 0;
 
@@ -122,29 +125,21 @@ impl Engine {
 
 			if result != None {
 				let (best_mv, eval, nodes, seldepth) = result.unwrap();
-
-				let in_check = !board.checkers().is_empty();
-
-				//be more cautious with aspiration if position is in check
-				let check_factor = if !in_check {
-					1
-				} else {
-					2
-				};
-
 				self.nodes += nodes;
 				self.seldepth += seldepth;
 
 				//MANAGE ASPIRATION WINDOWS
 				if eval.score >= beta {
-					beta += Self::ASPIRATION_STEP_BIG;
+					beta += beta_nudge;
+					beta_nudge *= 2;
 					continue;						
 				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_STEP_BIG;
+					alpha -= alpha_nudge;
+					alpha_nudge *= 2;
 					continue;						
 				} else {
-					alpha = eval.score - Self::ASPIRATION_STEP_SMALL / check_factor;
-					beta = eval.score + Self::ASPIRATION_STEP_SMALL / check_factor;
+					alpha = eval.score - 15;
+					beta = eval.score + 15;
 					best_move = best_mv.clone();
 					depth_index += 1;
 				}
@@ -202,9 +197,4 @@ impl Engine {
 
 		String::new()
 	}
-}
-
-impl Engine {
-	const ASPIRATION_STEP_BIG: i32 = 60;
-	const ASPIRATION_STEP_SMALL: i32 = 15;
 }

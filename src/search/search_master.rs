@@ -105,8 +105,8 @@ impl Engine {
 		let mut alpha = -100;
 		let mut beta = 100;
 
-		let mut alpha_nudge = 20;
-		let mut beta_nudge = 20;
+		let mut alpha_nudge = 2;
+		let mut beta_nudge = 2;
 
 		let mut depth_index = 0;
 

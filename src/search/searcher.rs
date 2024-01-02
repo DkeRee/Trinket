@@ -293,6 +293,8 @@ impl Searcher<'_> {
 
 				value = child_eval;
 			} else {
+				let mut extensions = 0;
+
 				//LMP
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV
@@ -367,14 +369,14 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						new_depth += 1;
+						extensions += 1;
 					} else {
 						new_depth -= 1;
 					}
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {
-					new_depth = depth;
+					new_depth = depth + extensions;
 				}
 
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;

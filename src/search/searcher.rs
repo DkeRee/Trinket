@@ -375,6 +375,8 @@ impl Searcher<'_> {
 					}
 				}
 
+				new_depth += extensions;
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth + extensions;
 				}

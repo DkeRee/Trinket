@@ -373,6 +373,24 @@ impl Searcher<'_> {
 					}
 				}
 
+				//King Pawn Shield Instability Extension
+				let enemy_king_square = board.king(!board.side_to_move());
+				let king_on_first = !(Rank::First.relative_to(!board.side_to_move()).bitboard() & enemy_king_square.bitboard()).is_empty();
+				let king_not_edging = ((File::A.bitboard() | File::H.bitboard()) & enemy_king_square.bitboard()).is_empty();
+				if king_on_first && king_not_edging {
+					let shield_diag = get_pawn_attacks(enemy_king_square, board.side_to_move());
+					let shield_forward = if !board.side_to_move() == Color::White {
+						enemy_king_square.offset(0, 1).bitboard()
+					} else {
+						enemy_king_square.offset(0, -1).bitboard()
+					};
+					let pawn_shield = (shield_diag | shield_forward) & (board.pieces(Piece::Pawn) & board.colors(!board.side_to_move()));
+
+					if sm.movetype == MoveType::Loud && !(mv.to.bitboard() & pawn_shield).is_empty() {
+						new_depth += 1;
+					}
+				}
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}

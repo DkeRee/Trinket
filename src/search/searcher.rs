@@ -373,6 +373,11 @@ impl Searcher<'_> {
 					}
 				}
 
+				//See Extension
+				if sm.movetype == MoveType::Loud && sm.see > 200 + moves_searched * 2 {
+					new_depth += 1;
+				}
+
 				if in_check || sm.is_killer || sm.is_countermove {
 					new_depth = depth;
 				}

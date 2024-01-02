@@ -319,7 +319,7 @@ impl Searcher<'_> {
 
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
+						new_depth -= 1;
 					}
 				}
 
@@ -339,6 +339,13 @@ impl Searcher<'_> {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
 						new_depth -= 1;
 					}
+				}
+
+				//Castle Reduction
+				let king_square = board.king(board.side_to_move());
+				if !(mv.from.bitboard() & king_square.bitboard()).is_empty() && (mv.to.bitboard() & get_king_moves(mv.from)).is_empty() {
+					//Castle Move
+					new_depth -= 1;
 				}
 
 				//Passed Pawn Extension
@@ -563,7 +570,6 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
 	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

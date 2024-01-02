@@ -374,7 +374,7 @@ impl Searcher<'_> {
 				}
 
 				//See Extension
-				if sm.movetype == MoveType::Loud && sm.see > 200 + moves_searched * 2 {
+				if sm.movetype == MoveType::Loud && sm.see < 0 && !(mv.to.bitboard() & Rank::Seventh.relative_to(board.side_to_move()).bitboard()).is_empty() {
 					new_depth += 1;
 				}
 

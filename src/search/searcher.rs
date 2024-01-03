@@ -306,6 +306,12 @@ impl Searcher<'_> {
 					break;
 				}
 
+				//See Prune
+				if sm.movetype == MoveType::Loud && sm.see < -200 * depth {
+					past_positions.pop();
+					break;
+				}
+
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 

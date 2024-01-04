@@ -309,6 +309,9 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
+				//Move is check extention
+				new_depth += move_is_check as i32;
+
 				//History Leaf Reduction
 				//IF sufficient depth
 				//IF ISNT PV

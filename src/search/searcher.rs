@@ -375,10 +375,11 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Far Rank Capture Extension
-				let capture_on_seventh = sm.movetype == MoveType::Loud && !(mv.to.bitboard() & seventh_rank).is_empty();
-				if capture_on_seventh {
-					new_depth += 1;
+				//Queen 
+				let check_on_seven_six = move_is_check && !(mv.to.bitboard() & (seventh_rank | sixth_rank)).is_empty();
+				let piece_is_queen = (board.pieces(Piece::Queen) & board.colors(board.side_to_move()) & mv.from.bitboard()).is_empty();
+				if check_on_seven_six && piece_is_queen {
+					new_depth += 2;
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {

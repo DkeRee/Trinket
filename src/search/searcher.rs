@@ -379,7 +379,7 @@ impl Searcher<'_> {
 				let check_on_seven_six = move_is_check && !(mv.to.bitboard() & (seventh_rank | sixth_rank)).is_empty();
 				let piece_is_queen = (board.pieces(Piece::Queen) & board.colors(board.side_to_move()) & mv.from.bitboard()).is_empty();
 				if check_on_seven_six && piece_is_queen {
-					new_depth += 2;
+					new_depth += 1;
 				}
 
 				if in_check || sm.is_killer || sm.is_countermove {

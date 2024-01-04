@@ -309,19 +309,8 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut new_depth = depth;
 
-				//History Leaf Reduction
-				//IF sufficient depth
-				//IF ISNT PV
-				//IF ISNT in check
-				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
-					let history_value = sm.history;
-
-					//History Leaf Reduction
-					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
-					}
-				}
+				//History Reduc-Extend
+				new_depth += sm.history / 1000;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth
@@ -560,10 +549,6 @@ impl Searcher<'_> {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
-	const HISTORY_DEPTH_MIN: i32 = 5;
-	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
-	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

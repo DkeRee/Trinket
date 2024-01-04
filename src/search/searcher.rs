@@ -314,12 +314,12 @@ impl Searcher<'_> {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				if sm.movetype == MoveType::Quiet && depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
 					let history_value = sm.history;
 
 					//History Leaf Reduction
-					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
+					if history_value < -100 {
+						new_depth -= 1;
 					}
 				}
 
@@ -328,7 +328,6 @@ impl Searcher<'_> {
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
 					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
-
 					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
 						new_depth -= 1;
 					}
@@ -562,8 +561,6 @@ impl Searcher<'_> {
 	const LMP_MULTIPLIER: i32 = 5;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const HISTORY_PRUNE_MOVE_LIMIT: i32 = 5;
-	const HISTORY_THRESHOLD: i32 = 100;
-	const HISTORY_REDUCTION: i32 = 1;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

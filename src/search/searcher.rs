@@ -286,7 +286,7 @@ impl Searcher<'_> {
 			new_depth += move_is_check as i32;
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;

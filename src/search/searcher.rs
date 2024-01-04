@@ -323,14 +323,12 @@ impl Searcher<'_> {
 					}
 				}
 
-				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+				//Late Move Reduction
+				if moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
+					new_depth -= 1;
 
-					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
-						new_depth -= 1;
+					if depth >= Self::LMR_DEPTH_LIMIT && !is_pv && !move_is_check {
+						new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);;
 					}
 				}
 
@@ -556,7 +554,7 @@ impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
-	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
+	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 4;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;

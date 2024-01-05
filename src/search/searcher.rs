@@ -310,7 +310,7 @@ impl Searcher<'_> {
 				let mut new_depth = depth;
 
 				//History Reduc-Extend
-				let history_diff = sm.history / 600;
+				let history_diff = sm.history / 800;
 				if history_diff > 0 {
 					new_depth += 1;
 				} else {

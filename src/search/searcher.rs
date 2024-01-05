@@ -307,7 +307,8 @@ impl Searcher<'_> {
 				}
 
 				//get initial value with reduction and pv-search null window
-				let mut new_depth = depth;
+				let mut extension = 0;
+				let mut reduction = 0;
 
 				//History Leaf Reduction
 				//IF sufficient depth
@@ -319,7 +320,7 @@ impl Searcher<'_> {
 
 					//History Leaf Reduction
 					if history_value < Self::HISTORY_THRESHOLD {
-						new_depth -= Self::HISTORY_REDUCTION;
+						reduction += Self::HISTORY_REDUCTION;
 					}
 				}
 
@@ -327,17 +328,17 @@ impl Searcher<'_> {
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT && moves_searched >= Self::LMR_FULL_SEARCHED_MOVE_LIMIT {
-					new_depth -= self.get_lmr_reduction_amount(depth, moves_searched);
+					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 
 					if !is_pv && sm.movetype == MoveType::Quiet && !move_is_check {
-						new_depth -= 1;
+						reduction += 1;
 					}
 				}
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
-						new_depth -= 1;
+						reduction += 1;
 					}
 				}
 
@@ -367,25 +368,25 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						new_depth += 1;
+						extension += 1;
 					} else {
-						new_depth -= 1;
+						reduction += 1;
 					}
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
-					new_depth = depth;
+				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
+					reduction = 0;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth + extension - reduction - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && new_depth < depth {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				if value.score > alpha && reduction > 0 {
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth + extension - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -394,7 +395,7 @@ impl Searcher<'_> {
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, depth + extension - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	

@@ -310,7 +310,12 @@ impl Searcher<'_> {
 				let mut new_depth = depth;
 
 				//History Reduc-Extend
-				new_depth += sm.history / 1000;
+				let history_diff = sm.history / 600;
+				if history_diff > 0 {
+					new_depth += 1;
+				} else {
+					new_depth += history_diff;
+				}
 
 				//LMR can be applied
 				//IF depth is above sufficient depth

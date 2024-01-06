@@ -287,24 +287,28 @@ impl Searcher<'_> {
 
 			let mut value: Eval;
 
+			//PRUNES
+
+			//LMP
+			//We can skip specific quiet moves that are very late in a node
+			//IF isn't PV
+			//IF low depth
+			//IF move is quiet
+			//IF alpha is NOT a losing mate
+			//IF IS late move
+			//IF is NOT a check
+			if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
+				past_positions.pop();
+				break;
+			}
+
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 			} else {
-				//LMP
-				//We can skip specific quiet moves that are very late in a node
-				//IF isn't PV
-				//IF low depth
-				//IF move is quiet
-				//IF alpha is NOT a losing mate
-				//IF IS late move
-				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
-					past_positions.pop();
-					break;
-				}
+				//REDUCTIONS
 
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;

@@ -306,7 +306,6 @@ impl Searcher<'_> {
 					break;
 				}
 
-				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 				let mut extension = 0;
 
@@ -374,23 +373,18 @@ impl Searcher<'_> {
 					}
 				}
 
-				if reduction < 0 {
+				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
 					reduction = 0;
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
-					extension = 0;
-					reduction = 0;
-				}
-
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - reduction + extension - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, depth + extension - reduction - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction - extension > 0 {
+				if value.score > alpha && reduction > 0 {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 

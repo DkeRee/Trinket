@@ -88,17 +88,30 @@ impl Engine {
 
 		//set up multithread for search abort
 		let abort = time_control.handler.clone();
+		let mut soft_timeout = None;
 		if time != u64::MAX {
 			thread::spawn(move || {
-				let search_time = if movetime.is_none() {
-					(time + timeinc / 2) / (movestogo.unwrap_or(20)) as u64
+				let hard_timeout = if movetime.is_none() {
+					let mut hard_timeout_div = 2;
+					if let Some(movestogo) = movestogo {
+						hard_timeout_div /= movestogo / 10;
+					}
+
+					(time + timeinc) / (hard_timeout_div) as u64
 				} else {
 					movetime.unwrap() as u64
 				};
 
-				thread::sleep(Duration::from_millis(search_time));
+				thread::sleep(Duration::from_millis(hard_timeout));
 				abort.store(true, Ordering::Relaxed);
 			});
+
+			let mut soft_timeout_div = 25;
+			if let Some(movestogo) = movestogo {
+				soft_timeout_div /= movestogo / 10;
+			}
+
+			soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
 		}
 
 		//ASPIRATION WINDOWS ALPHA BETA
@@ -163,6 +176,12 @@ impl Engine {
 				};
 
 				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, depth_index, 0));
+
+				if movetime.is_none() && !soft_timeout.is_none() {
+					if elapsed as u64 > soft_timeout.unwrap() {
+						break;
+					}
+				}
 			} else {
 				break;
 			}

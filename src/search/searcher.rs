@@ -286,7 +286,7 @@ impl Searcher<'_> {
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
-			let mut new_depth = depth - 1;
+			let mut mv_extension = 0;
 
 			//Passed Pawn Extension
 			let mut pp_passed = None;
@@ -315,11 +315,13 @@ impl Searcher<'_> {
 				//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 				let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 				if passed {
-					new_depth += 1;
+					mv_extension += 1;
 				} else {
 					pp_passed = Some(false);
 				}
 			}
+
+			let mut new_depth = depth + mv_extension - 1;
 
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
@@ -393,7 +395,7 @@ impl Searcher<'_> {
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction > 0 {
+				if value.score > alpha && reduction - mv_extension > 0 {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 

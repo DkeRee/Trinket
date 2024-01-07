@@ -286,9 +286,43 @@ impl Searcher<'_> {
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
+			let mut new_depth = depth - 1;
+
+			//Passed Pawn Extension
+			let mut pp_passed = None;
+			let all_pawns = board.pieces(Piece::Pawn);
+			let my_pawns = all_pawns & board.colors(board.side_to_move());
+			let enemy_pawns = all_pawns & board.colors(!board.side_to_move());
+			let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard() | Rank::Sixth.relative_to(board.side_to_move()).bitboard();
+			let pawn_on_ranks = my_pawns & ranks;
+			let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
+			if exists && is_pv {
+				//pawn exists, check if it's a passer
+				let promo_rank = Rank::Eighth.relative_to(board.side_to_move());
+				let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
+				let mut checking_file = get_between_rays(mv.from, pawn_goal);
+				let mut block_mask = checking_file;
+
+				//use this handy dandy attack function to add files to the right and left of pawn
+				for attack_location in get_pawn_attacks(mv.from, board.side_to_move()) {
+					pawn_goal = Square::new(attack_location.file(), promo_rank);
+					checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
+
+					//add file to the BB block mask
+					block_mask |= checking_file | attack_location.bitboard();
+				}
+
+				//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
+				let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
+				if passed {
+					new_depth += 1;
+				} else {
+					pp_passed = Some(false);
+				}
+			}
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -308,7 +342,6 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
-				let mut extension = 0;
 
 				//History Leaf Reduction
 				//IF sufficient depth
@@ -342,56 +375,26 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Passed Pawn Extension
-				let all_pawns = board.pieces(Piece::Pawn);
-				let my_pawns = all_pawns & board.colors(board.side_to_move());
-				let enemy_pawns = all_pawns & board.colors(!board.side_to_move());
-				let ranks = Rank::Seventh.relative_to(board.side_to_move()).bitboard() | Rank::Sixth.relative_to(board.side_to_move()).bitboard();
-				let pawn_on_ranks = my_pawns & ranks;
-				let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
-				if exists && is_pv {
-					//pawn exists, check if it's a passer
-					let promo_rank = Rank::Eighth.relative_to(board.side_to_move());
-					let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
-					let mut checking_file = get_between_rays(mv.from, pawn_goal);
-					let mut block_mask = checking_file;
-
-					//use this handy dandy attack function to add files to the right and left of pawn
-					for attack_location in get_pawn_attacks(mv.from, board.side_to_move()) {
-						pawn_goal = Square::new(attack_location.file(), promo_rank);
-						checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
-
-						//add file to the BB block mask
-						block_mask |= checking_file | attack_location.bitboard();
-					}
-
-					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
-					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
-					if passed {
-						extension += 1;
-					} else {
+				//Passed Pawn Reduction
+				if let Some(pp_passed) = pp_passed {
+					if !pp_passed {
 						reduction += 1;
 					}
 				}
 
-				if reduction < 0 {
+				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
 					reduction = 0;
 				}
 
-				if in_check || sm.is_killer || sm.is_countermove {
-					extension = 0;
-					reduction = 0;
-				}
-
-				let (_, mut child_eval) = self.search(&abort, &board_cache, depth - reduction + extension - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction - extension > 0 {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				if value.score > alpha && reduction > 0 {
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -400,7 +403,7 @@ impl Searcher<'_> {
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	

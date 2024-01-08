@@ -311,8 +311,8 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				if sm.movetype == MoveType::Quiet && !move_is_check {
-					reduction -= sm.history / 800;
+				if depth >= Self::HISTORY_DEPTH_MIN && sm.movetype == MoveType::Quiet && !move_is_check {
+					reduction -= sm.history / 1500;
 				}
 
 				//LMR can be applied
@@ -549,6 +549,7 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const LMR_FULL_SEARCHED_MOVE_LIMIT: i32 = 2;
+	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;

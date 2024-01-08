@@ -80,13 +80,6 @@ impl Searcher<'_> {
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
-		//CHECK EXTENSION
-		if in_check {
-			// https://www.chessprogramming.org/Check_Extensions
-			extended = true;
-			depth += 1;
-		}
-
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
 			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
@@ -288,6 +281,9 @@ impl Searcher<'_> {
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
+			//Extensions
+			new_depth += move_is_check as i32;
+
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
@@ -315,7 +311,7 @@ impl Searcher<'_> {
 				//IF ISNT PV
 				//IF ISNT in check
 				//IF ISNT extended
-				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT && !extended {
+				if depth >= Self::HISTORY_DEPTH_MIN && !is_pv && !in_check && moves_searched >= Self::HISTORY_PRUNE_MOVE_LIMIT {
 					let history_value = sm.history;
 
 					//History Leaf Reduction

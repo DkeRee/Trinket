@@ -76,7 +76,6 @@ impl Searcher<'_> {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
-		let mut extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 

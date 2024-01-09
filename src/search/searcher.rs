@@ -288,6 +288,14 @@ impl Searcher<'_> {
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
+			//Pruning
+			
+			//History Pruning
+			if depth <= Self::HISTORY_DEPTH_MIN && sm.history < -3500 * depth {
+				past_positions.pop();
+				continue;
+			}
+
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;

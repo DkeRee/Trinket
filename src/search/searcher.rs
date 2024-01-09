@@ -311,7 +311,7 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 5000;
+				reduction -= sm.history / 1500;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth

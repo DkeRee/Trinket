@@ -291,7 +291,7 @@ impl Searcher<'_> {
 			//Pruning
 			
 			//History Pruning
-			if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+			if depth >= Self::HISTORY_DEPTH_MIN && alpha > -Score::CHECKMATE_DEFINITE && sm.history < -500 * depth {
 				past_positions.pop();
 				continue;
 			}

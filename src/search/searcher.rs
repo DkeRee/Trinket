@@ -455,17 +455,6 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		let stand_pat = Eval::new(evaluate(board), false);
-
-		//beta cutoff
-		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false)));
-		}
-
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
-		}
-
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
@@ -505,6 +494,17 @@ impl Searcher<'_> {
 				None
 			}
 		};
+
+		let stand_pat = Eval::new(evaluate(board), false);
+
+		//beta cutoff
+		if stand_pat.score >= beta {
+			return Some((None, Eval::new(beta, false)));
+		}
+
+		if alpha < stand_pat.score {
+			alpha = stand_pat.score;
+		}
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {

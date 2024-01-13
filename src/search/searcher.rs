@@ -371,6 +371,8 @@ impl Searcher<'_> {
 					}
 				}
 
+				let keep_reduc = reduction > 3;
+
 				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
 					reduction = 0;
 				}
@@ -380,10 +382,10 @@ impl Searcher<'_> {
 
 				value = child_eval;
 
-				//check if reductions should be removed
+				//check if reductions should be removed, if there were a lot of reductions keep a little bit
 				//search with full depth and null window
 				if value.score > alpha && reduction > 0 {
-					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - keep_reduc as i32, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					value = child_eval;	

@@ -149,7 +149,7 @@ impl Searcher<'_> {
 					let mut iid_depth = 1;
 
 					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
+						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha + alpha / 4, beta - beta / 4, past_positions, last_move)?;
 						iid_move = best_mv;
 						iid_depth += 1;
 					}

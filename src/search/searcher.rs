@@ -361,10 +361,18 @@ impl Searcher<'_> {
 					}
 
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
-					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
-					if passed {
+					let no_enemy_block = (enemy_pawns & block_mask).is_empty();
+					let not_pawn_island = (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
+					
+					if no_enemy_block && not_pawn_island {
 						reduction -= 1;
-					} else {
+					}
+
+					if !no_enemy_block {
+						reduction += 1;
+					}
+
+					if !not_pawn_island {
 						reduction += 1;
 					}
 				}

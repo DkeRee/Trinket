@@ -373,7 +373,7 @@ impl Searcher<'_> {
 				//If this quiet pawn move is threatening other pieces, it may lead to more complications, should search more
 				let pawn_current = !(mv.from.bitboard() & my_pawns).is_empty();
 				if pawn_current && sm.movetype == MoveType::Quiet {
-					let mut attack_locations = get_pawn_attacks(mv.from, board.side_to_move());
+					let mut attack_locations = get_pawn_attacks(mv.to, board.side_to_move());
 					if !(attack_locations & (board.colors(!board.side_to_move()) ^ enemy_pawns)).is_empty() {
 						reduction -= 1;
 					}

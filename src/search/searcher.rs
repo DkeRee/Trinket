@@ -310,7 +310,13 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv 
+				&& depth <= Self::LMP_DEPTH_MAX 
+				&& sm.movetype == MoveType::Quiet 
+				&& alpha > -Score::CHECKMATE_DEFINITE 
+				&& moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) 
+				&& sm.history < 100
+				&& !in_check {
 					past_positions.pop();
 					break;
 				}

@@ -92,7 +92,7 @@ impl Engine {
 		if time != u64::MAX {
 			thread::spawn(move || {
 				let hard_timeout = if movetime.is_none() {
-					let mut hard_timeout_div = 2;
+					let mut hard_timeout_div = 6;
 					if let Some(movestogo) = movestogo {
 						hard_timeout_div /= movestogo / 10;
 					}

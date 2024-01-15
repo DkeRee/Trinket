@@ -139,27 +139,21 @@ impl Searcher<'_> {
 			None => {
 				let mut iid_move = None;
 
+				//Internal Iterative Reduction
+				//IF sufficient depth
+				//There is NO Hash Move
+				if depth >= ply / 4 + 2 {
+					depth -= depth / 10 + 1;
+				}
+
 				//Internal Iterative Deepening
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
 
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let iid_max_depth = depth / 4;
-					let mut iid_depth = 1;
-
-					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
-						iid_move = best_mv;
-						iid_depth += 1;
-					}
-				}
-
-				//Internal Iterative Reduction
-				//IF sufficient depth
-				//There is NO Hash Move
-				if depth >= ply / 4 + 2 {
-					depth -= depth / 10 + 1;
+					let (best_mv, _) = self.search(&abort, board, depth - 5, ply, alpha, beta, past_positions, last_move)?;
+					iid_move = best_mv;
 				}
 
 				(None, iid_move)

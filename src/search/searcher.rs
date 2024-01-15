@@ -288,20 +288,14 @@ impl Searcher<'_> {
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
-			//Pruning
-			
-			//History Pruning
-			if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
-				past_positions.pop();
-				continue;
-			}
-
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 			} else {
+				//Pruning
+
 				//LMP
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV
@@ -313,6 +307,12 @@ impl Searcher<'_> {
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
+				}
+
+				//History Pruning
+				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+					past_positions.pop();
+					continue;
 				}
 
 				//get initial value with reduction and pv-search null window

@@ -206,7 +206,7 @@ impl Searcher<'_> {
 		let mut eval = Eval::new(i32::MIN, false);
 
 		//if we have a TT hit and it is of node kind exact we'll use that move as our hash move
-		let hashmv = if tt_hit.as_ref().is_some() && tt_hit.as_ref().unwrap().node_kind == NodeKind::Exact {
+		let hashmv = if tt_hit.as_ref().is_some() {
 			Some(tt_hit.as_ref().unwrap().best_move.unwrap())
 		} else {
 			//Internal Iterative Deepening
@@ -221,7 +221,7 @@ impl Searcher<'_> {
 			//if sufficient depth
 			//if PV node
 			if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-				let (iid_best_mv, _) = self.search(&abort, board, depth - 5, ply, alpha, beta, past_positions, last_move)?;
+				let (iid_best_mv, _) = self.search(&abort, board, depth - 2, ply, alpha, beta, past_positions, last_move)?;
 				iid = iid_best_mv;
 			}
 

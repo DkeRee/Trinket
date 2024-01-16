@@ -105,9 +105,8 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let tt_hit = match self.tt.find(board, ply) {
 			Some(table_find) => {
-				//if sufficient depth
 				if table_find.depth >= depth {
 					//check if position from TT is a mate
 					let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_DEFINITE || table_find.eval > Score::CHECKMATE_DEFINITE {
@@ -134,11 +133,9 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				Some(table_find)
 			},
 			None => {
-				let mut iid_move = None;
-
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
@@ -146,23 +143,13 @@ impl Searcher<'_> {
 					depth -= depth / 10 + 1;
 				}
 
-				//Internal Iterative Deepening
-				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
-
-				//if sufficient depth
-				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, board, depth - 5, ply, alpha, beta, past_positions, last_move)?;
-					iid_move = best_mv;
-				}
-
-				(None, iid_move)
+				None
 			}
 		};
 
 		//static eval for tuning methods
-		let static_eval = if table_find_move.as_ref().is_some() {
-			table_find_move.as_ref().unwrap().eval
+		let static_eval = if tt_hit.as_ref().is_some() {
+			tt_hit.as_ref().unwrap().eval
 		} else {
 			evaluate(board)
 		};
@@ -218,16 +205,31 @@ impl Searcher<'_> {
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 
+		//if we have a TT hit and it is of node kind exact we'll use that move as our hash move
+		let hashmv = if tt_hit.as_ref().is_some() && tt_hit.as_ref().unwrap().node_kind == NodeKind::Exact {
+			Some(tt_hit.as_ref().unwrap().best_move.unwrap())
+		} else {
+			//Internal Iterative Deepening
+			//if we do not have a tt hit or it is a lower or upper bound we'll use IID to find a new hash move
+			//if this position is not pv or the depth is too low we will not have a hash move
+			let mut iid = None;
+
+			//if sufficient depth
+			//if PV node
+			if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				let (iid_best_mv, _) = self.search(&abort, board, depth - 5, ply, alpha, beta, past_positions, last_move)?;
+				iid = iid_best_mv;
+			}
+
+			iid
+		};
+
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		if table_find_move.is_some() || iid_find_move.is_some() {
+		if hashmv.is_some() {
 			moves_searched += 1;
 
-			let mv = if table_find_move.is_some() {
-				table_find_move.clone().unwrap().best_move.unwrap()
-			} else {
-				iid_find_move.clone().unwrap()
-			};
+			let mv = hashmv.unwrap();
 
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -265,7 +267,7 @@ impl Searcher<'_> {
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
-			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
+			legal_moves = self.movegen.move_gen(board, hashmv, ply, true, last_move);
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}

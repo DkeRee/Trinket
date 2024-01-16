@@ -212,7 +212,11 @@ impl Searcher<'_> {
 			//Internal Iterative Deepening
 			//if we do not have a tt hit or it is a lower or upper bound we'll use IID to find a new hash move
 			//if this position is not pv or the depth is too low we will not have a hash move
-			let mut iid = None;
+			let mut iid = if tt_hit.as_ref().is_some() {
+				Some(tt_hit.as_ref().unwrap().best_move.unwrap())
+			} else {
+				None
+			};
 
 			//if sufficient depth
 			//if PV node

@@ -114,11 +114,9 @@ impl Engine {
 			soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
 		}
 
-		//ASPIRATION WINDOWS ALPHA BETA
-		let mut alpha = -i32::MAX;
-		let mut beta = i32::MAX;
-
+		let mut last_result = 0;
 		let mut depth_index = 0;
+		let mut window = 10;
 
 		while depth_index < self.max_depth && depth_index < 250 {
 			self.seldepth = 0;
@@ -128,8 +126,8 @@ impl Engine {
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
-				alpha,
-				beta,
+				alpha: last_result - window,
+				beta: last_result + window,
 				past_positions
 			});
 
@@ -140,18 +138,15 @@ impl Engine {
 				self.seldepth += seldepth;
 
 				//MANAGE ASPIRATION WINDOWS
-				if eval.score >= beta {
-					beta += Self::ASPIRATION_WINDOW * 4;
-					continue;						
-				} else if eval.score <= alpha {
-					alpha -= Self::ASPIRATION_WINDOW * 4;
-					continue;						
-				} else {
-					alpha = eval.score - Self::ASPIRATION_WINDOW;
-					beta = eval.score + Self::ASPIRATION_WINDOW;
-					best_move = best_mv.clone();
-					depth_index += 1;
+				if eval.score <= last_result - window || eval.score >= last_result + window {
+					window *= 2;
+					continue;
 				}
+
+				window = 10;
+				last_result = eval.score;
+				best_move = best_mv.clone();
+				depth_index += 1;
 
 				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
 
@@ -212,8 +207,4 @@ impl Engine {
 
 		String::new()
 	}
-}
-
-impl Engine {
-	const ASPIRATION_WINDOW: i32 = 15;
 }

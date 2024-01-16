@@ -326,8 +326,8 @@ impl Searcher<'_> {
 				//IF the first X searched are searched
 				if depth >= Self::LMR_DEPTH_LIMIT 
 				&& moves_searched >= 2 
-				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
-					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
+				&& (!is_pv || !move_is_check) {
+					reduction += (sm.movetype == MoveType::Quiet && moves_searched > 7) as i32 + self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
 				//Underpromo Reduction

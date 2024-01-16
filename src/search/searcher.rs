@@ -221,8 +221,17 @@ impl Searcher<'_> {
 			//if sufficient depth
 			//if PV node
 			if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-				let (iid_best_mv, _) = self.search(&abort, board, depth - 5, ply, alpha, beta, past_positions, last_move)?;
-				iid = iid_best_mv;
+				let (iid_best_mv, iid_eval) = self.search(&abort, board, depth - 4, ply, alpha, beta, past_positions, last_move)?;
+
+				//If there is a TT hit but it is not PV
+				if iid.is_some() {
+					//Only use the resulting best move if it is REALLY good
+					if iid_eval.score >= beta {
+						iid = iid_best_mv;
+					}
+				} else {
+					iid = iid_best_mv;
+				}
 			}
 
 			iid

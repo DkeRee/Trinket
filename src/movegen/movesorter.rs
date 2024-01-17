@@ -28,6 +28,7 @@ impl MoveSorter {
 	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32, last_move: Option<Move>) {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
+			mv_info.history = self.get_history(mv_info.mv);
 
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
@@ -46,9 +47,7 @@ impl MoveSorter {
 					mv_info.is_countermove = true;
 				}
 
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
-				mv_info.history = history;
+				mv_info.importance += Self::HISTORY_MOVE_OFFSET + mv_info.history;
 			}
 
 			if mv_info.movetype == MoveType::Loud {

@@ -318,6 +318,9 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 
+				//See Reduction
+				reduction += (sm.movetype == MoveType::Loud && sm.see < -800) as i32;
+
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;
 

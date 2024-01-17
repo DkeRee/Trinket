@@ -556,6 +556,6 @@ impl Searcher<'_> {
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
-	const SPP_DEPTH_CAP: i32 = 3;
+	const SPP_DEPTH_CAP: i32 = 6;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

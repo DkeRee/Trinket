@@ -315,6 +315,12 @@ impl Searcher<'_> {
 					continue;
 				}
 
+				//Futility Pruning
+				if depth < 8 && depth > 0 && !move_is_check && static_eval + 100 * depth <= alpha {
+					past_positions.pop();
+					continue;
+				}
+
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 

@@ -183,10 +183,8 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
-				return Some((None, Eval::new(static_eval, false)));
-			}
+		if depth > 0 && !in_check && static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
+			return Some((None, Eval::new(static_eval, false)));
 		}
 
 		//Null Move Pruning
@@ -549,7 +547,6 @@ impl Searcher<'_> {
 }
 
 impl Searcher<'_> {
-	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const HISTORY_DEPTH_MIN: i32 = 5;

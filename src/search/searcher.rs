@@ -416,14 +416,11 @@ impl Searcher<'_> {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					//SPP
-					//IF is NOT PV
-					//IF is of reasonable depth
-					//IF move does NOT give check
-					//IF is quiet move
 					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
+			} else {
+				do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);

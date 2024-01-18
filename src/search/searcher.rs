@@ -412,6 +412,7 @@ impl Searcher<'_> {
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
+						sm.decay_history(&mut self.movegen.sorter, depth, 0);
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
@@ -421,7 +422,7 @@ impl Searcher<'_> {
 					//IF move does NOT give check
 					//IF is quiet move
 					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
-					sm.decay_history(&mut self.movegen.sorter, depth, 0);
+					sm.decay_history(&mut self.movegen.sorter, depth, 0 + do_spp as i32 * 15);
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			} else {

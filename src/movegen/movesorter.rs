@@ -97,9 +97,9 @@ impl MoveSorter {
 		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
 	}
 
-	pub fn decay_history(&mut self, mv: Move, depth: i32) {
+	pub fn decay_history(&mut self, mv: Move, depth: i32, factor: i32) {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
-		let change = depth * depth;
+		let change = depth * depth + factor;
 
 		if !change.checked_mul(history).is_none() {
 			self.history_table[mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares

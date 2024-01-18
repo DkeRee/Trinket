@@ -266,10 +266,9 @@ impl Searcher<'_> {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 				}
 			} else {
+				sm.decay_history(&mut self.movegen.sorter, depth, 0);
 				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 		} else {
@@ -422,11 +421,12 @@ impl Searcher<'_> {
 					//IF move does NOT give check
 					//IF is quiet move
 					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
+					sm.decay_history(&mut self.movegen.sorter, depth, 0);
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
+			} else {
+				sm.decay_history(&mut self.movegen.sorter, depth, 0);
 			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			if do_spp {
 				break;

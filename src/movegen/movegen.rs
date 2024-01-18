@@ -41,9 +41,9 @@ impl SortedMove {
 		}
 	}
 
-	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
+	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, factor: i32) {
 		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_history(self.mv, depth);
+			move_sorter.decay_history(self.mv, depth, factor);
 		}
 	}
 }

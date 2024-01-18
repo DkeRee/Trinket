@@ -399,7 +399,7 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
+			let mut fail_low_prune = false;
 
 			if value.score > eval.score {
 				eval = value;
@@ -417,18 +417,14 @@ impl Searcher<'_> {
 					}
 				} else {
 					//SPP
-					//IF is NOT PV
-					//IF is of reasonable depth
-					//IF move does NOT give check
-					//IF is quiet move
-					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
+					fail_low_prune = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet && eval.score + 300 <= alpha;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
-			if do_spp {
+			if fail_low_prune {
 				break;
 			}
 

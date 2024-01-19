@@ -211,12 +211,12 @@ impl Searcher<'_> {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = board.clone().null_move().unwrap();
-			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, &nulled_board, depth - r - 1, ply + 1, -beta, -beta + 1, past_positions, None)?;
 
 			null_score.score *= -1;
 		
 			if null_score.score >= beta {
-				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+				return Some((None, Eval::new(null_score.score, false)));
 			}
 		}
 

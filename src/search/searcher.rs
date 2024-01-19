@@ -316,7 +316,7 @@ impl Searcher<'_> {
 				}
 
 				//Futility Pruning
-				if depth < 4 && depth > 0 && !move_is_check && static_eval + 100 * depth <= alpha {
+				if depth < 4 && depth > 0 && !move_is_check && sm.movetype == MoveType::Quiet && static_eval + 100 * depth <= alpha {
 					past_positions.pop();
 					continue;
 				}

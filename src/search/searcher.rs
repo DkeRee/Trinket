@@ -330,6 +330,9 @@ impl Searcher<'_> {
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
+				//Reduce less if PV node
+				reduction -= is_pv as i32;
+
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {

@@ -174,7 +174,7 @@ impl Searcher<'_> {
 		};
 
 		self.evals[ply as usize] = static_eval;
-		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
+		let improving = ply > 1 && !in_check && self.evals[ply as usize] > self.evals[ply as usize - 2];
 
 		//Reverse Futility Pruning
 		/*

@@ -329,6 +329,9 @@ impl Searcher<'_> {
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;
 
+				//Move Check Reduction
+				reduction -= move_is_check as i32;
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched

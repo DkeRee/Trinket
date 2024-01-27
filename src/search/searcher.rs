@@ -288,6 +288,14 @@ impl Searcher<'_> {
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
+			//Extensions
+
+			//King Pawn Endgame Extension
+			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() {
+				new_depth += 1;
+			}
+
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;

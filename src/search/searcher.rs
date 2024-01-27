@@ -343,7 +343,7 @@ impl Searcher<'_> {
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
-					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
+					if mv.promotion.unwrap() != Piece::Queen {
 						reduction += 1;
 					}
 				}
@@ -568,5 +568,4 @@ impl Searcher<'_> {
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
 	const SPP_DEPTH_CAP: i32 = 3;
-	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

@@ -89,7 +89,7 @@ impl MoveSorter {
 		let change = depth * depth;
 
 		if !change.checked_mul(history).is_none() {
-			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / 1500; //add quiet score into history table based on from and to squares
+			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / 1800; //add quiet score into history table based on from and to squares
 		}
 	}
 

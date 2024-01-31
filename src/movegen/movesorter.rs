@@ -86,10 +86,10 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
-		let change = depth * depth;
+		let change = 2 * depth * depth;
 
 		if !change.checked_mul(history).is_none() {
-			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / 1800; //add quiet score into history table based on from and to squares
+			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / 2000; //add quiet score into history table based on from and to squares
 		}
 	}
 
@@ -99,7 +99,7 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32) {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
-		let change = depth * depth;
+		let change = 2 * depth * depth;
 
 		if !change.checked_mul(history).is_none() {
 			self.history_table[mv.from as usize][mv.to as usize] -= change + change * history / 2000; //decay quiet score into history table based on from and to squares

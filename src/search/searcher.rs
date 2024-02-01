@@ -42,12 +42,15 @@ impl Searcher<'_> {
 		return Some((mv, eval, searcher.nodes, searcher.seldepth));
 	}
 
-	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
+	fn is_repetition(&self, board: &Board, ply: i32, past_positions: &mut Vec<u64>) -> bool {
 		if past_positions.len() > 0 {
-			for i in 0..past_positions.len() - 1 {
-				if past_positions[i] == board.hash() {
+			let mut i = ply - 2;
+
+			while i >= 0 {
+				if past_positions[i as usize] == board.hash() {
 					return true;
 				}
+				i -= 2;
 			}
 		}
 		return false;
@@ -97,8 +100,10 @@ impl Searcher<'_> {
 			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
 		}
 
+		past_positions.push(board.hash());
+
 		//check for three move repetition
-		if self.is_repetition(board, past_positions) && ply > 0 {
+		if self.is_repetition(board, ply, past_positions) && ply > 0 && depth > 0 {
 			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
@@ -238,12 +243,8 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			past_positions.push(board_cache.hash());
-
 			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 			child_eval.score *= -1;
-
-			past_positions.pop();
 
 			eval = child_eval;
 			best_move = Some(mv);
@@ -283,8 +284,6 @@ impl Searcher<'_> {
 
 			let move_is_check = !board_cache.checkers().is_empty();
 
-			past_positions.push(board_cache.hash());
-
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
@@ -313,13 +312,11 @@ impl Searcher<'_> {
 				//IF IS late move
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
-					past_positions.pop();
 					break;
 				}
 
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
-					past_positions.pop();
 					continue;
 				}
 
@@ -407,8 +404,6 @@ impl Searcher<'_> {
 					value = child_eval;	
 				}
 			}
-
-			past_positions.pop();
 
 			let mut do_spp = false;
 

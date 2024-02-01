@@ -304,24 +304,21 @@ impl Searcher<'_> {
 			} else {
 				//Pruning
 
-				//LMP
-				//We can skip specific quiet moves that are very late in a node
-				//IF isn't PV
-				//IF low depth
-				//IF move is quiet
-				//IF alpha is NOT a losing mate
-				//IF IS late move
-				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
-					past_positions.pop();
-					break;
+				if alpha > -Score::CHECKMATE_DEFINITE {
+					//Late Move Pruning
+					if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && moves_searched > (Self::LMP_MULTIPLIER * depth) - (!improving as i32 * 3) && !in_check {
+						past_positions.pop();
+						break;
+					}
+
+					//History Pruning
+					if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+						past_positions.pop();
+						continue;
+					}
 				}
 
-				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
-					past_positions.pop();
-					continue;
-				}
+				//Reductions
 
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;

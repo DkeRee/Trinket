@@ -88,18 +88,8 @@ impl MoveSorter {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
 		let change = depth * depth + 10;
 
-		if !change.checked_mul(history).is_none() {
+		if history < 30000  {
 			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX;
-
-			if history > 30000 {
-				let bb = BitBoard::FULL;
-
-				for s1 in bb {
-					for s2 in bb {
-						self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
-					}
-				}
-			}
 		}
 	}
 
@@ -111,18 +101,8 @@ impl MoveSorter {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
 		let change = depth * depth;
 
-		if !change.checked_mul(history).is_none() {
+		if history > -30000  {
 			self.history_table[mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX;
-
-			if history < -30000 {
-				let bb = BitBoard::FULL;
-
-				for s1 in bb {
-					for s2 in bb {
-						self.history_table[s1 as usize][s2 as usize] >>= 1; //divide by two
-					}
-				}
-			}
 		}
 	}
 

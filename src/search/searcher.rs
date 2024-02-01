@@ -44,7 +44,7 @@ impl Searcher<'_> {
 
 	fn is_repetition(&self, board: &Board, ply: i32, past_positions: &mut Vec<u64>) -> bool {
 		if past_positions.len() > 0 {
-			let mut i = ply - 2;
+			let mut i = ply - 1;
 
 			while i >= 0 {
 				if past_positions[i as usize] == board.hash() {

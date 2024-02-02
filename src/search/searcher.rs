@@ -292,7 +292,7 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && alpha > -Score::CHECKMATE_DEFINITE {
 				new_depth += 1;
 			}
 

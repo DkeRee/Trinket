@@ -30,7 +30,7 @@ impl SortedMove {
 	}
 
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
-		if self.movetype == MoveType::Quiet {
+		if self.movetype == MoveType::Quiet && depth > 0 {
 			move_sorter.add_history(self.mv, depth);
 		}
 	}

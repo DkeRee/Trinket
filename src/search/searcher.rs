@@ -380,7 +380,11 @@ impl Searcher<'_> {
 					}
 				}
 
-				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
+				if in_check || sm.is_killer || sm.is_countermove {
+					reduction -= 1;
+				}
+
+				if reduction < 0 {
 					reduction = 0;
 				}
 

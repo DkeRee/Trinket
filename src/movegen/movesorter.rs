@@ -86,7 +86,7 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32) {
 		let history = self.history_table[mv.from as usize][mv.to as usize];
-		let change = depth * depth + 10;
+		let change = depth * depth + 1;
 
 		if !change.checked_mul(history).is_none() {
 			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares

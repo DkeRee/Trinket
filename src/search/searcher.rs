@@ -558,7 +558,7 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const LMR_DEPTH_LIMIT: i32 = 2;
 	const HISTORY_DEPTH_MIN: i32 = 5;
-	const IID_DEPTH_MIN: i32 = 6;
+	const IID_DEPTH_MIN: i32 = 2;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const LMP_MULTIPLIER: i32 = 5;
 	const SPP_DEPTH_CAP: i32 = 3;

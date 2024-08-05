@@ -68,7 +68,7 @@ dependencies = [
 
 [[package]]
 name = "trinket"
-version = "4.0.0"
+version = "3.5.0"
 dependencies = [
  "bytemuck",
  "cozy-chess",

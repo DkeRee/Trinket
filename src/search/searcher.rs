@@ -234,7 +234,15 @@ impl Searcher<'_> {
 
 			past_positions.push(board_cache.hash());
 
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+			let mut new_depth = depth;
+
+			//King Pawn Endgame Extension
+			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() {
+				new_depth += 1;
+			}
+
+			let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 			child_eval.score *= -1;
 
 			past_positions.pop();

@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (table_find_move, table_find_flag) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -134,21 +134,9 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				(Some(table_find.clone()), table_find.node_kind)
 			},
 			None => {
-				let mut iid_move = None;
-
-				//Internal Iterative Deepening
-				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
-
-				//if sufficient depth
-				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
-					iid_move = best_mv;
-				}
-
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
@@ -156,9 +144,23 @@ impl Searcher<'_> {
 					depth -= depth / 10 + 1;
 				}
 
-				(None, iid_move)
+				(None, NodeKind::Null)
 			}
 		};
+
+		//Internal Iterative Reduction
+		let mut iid_move = None;
+		if table_find_move.is_none() || (!table_find_move.is_none() && table_find_flag != NodeKind::Exact) {
+			//Internal Iterative Deepening
+			//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
+
+			//if sufficient depth
+			//if PV node
+			if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				let (best_mv, _) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+				iid_move = best_mv;
+			}
+		}
 
 		//static eval for tuning methods
 		let static_eval = if table_find_move.as_ref().is_some() {
@@ -220,13 +222,13 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		if table_find_move.is_some() || iid_find_move.is_some() {
+		if table_find_move.is_some() || iid_move.is_some() {
 			moves_searched += 1;
 
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
 			} else {
-				iid_find_move.clone().unwrap()
+				iid_move.clone().unwrap()
 			};
 
 			let mut board_cache = board.clone();

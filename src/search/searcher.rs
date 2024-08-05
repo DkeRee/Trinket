@@ -412,13 +412,13 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, new_depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+						self.tt.insert(best_move, eval.score, board.hash(), ply, new_depth, NodeKind::Exact);
 					}
 				} else {
 					//SPP
@@ -427,7 +427,7 @@ impl Searcher<'_> {
 					//IF move does NOT give check
 					//IF is quiet move
 					do_spp = !is_pv && depth <= Self::SPP_DEPTH_CAP && !move_is_check && sm.movetype == MoveType::Quiet;
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, new_depth, NodeKind::UpperBound);
 				}
 			}
 

@@ -145,14 +145,8 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let iid_max_depth = depth / 4;
-					let mut iid_depth = 1;
-
-					while iid_depth <= iid_max_depth {
-						let (best_mv, _) = self.search(&abort, board, iid_depth, ply, alpha, beta, past_positions, last_move)?;
-						iid_move = best_mv;
-						iid_depth += 1;
-					}
+					let (best_mv, _) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+					iid_move = best_mv;
 				}
 
 				//Internal Iterative Reduction

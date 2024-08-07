@@ -326,8 +326,7 @@ impl Searcher<'_> {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if depth >= Self::LMR_DEPTH_LIMIT 
-				&& moves_searched >= 2 
+				if moves_searched >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 				}
@@ -556,7 +555,6 @@ impl Searcher<'_> {
 impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
-	const LMR_DEPTH_LIMIT: i32 = 2;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;

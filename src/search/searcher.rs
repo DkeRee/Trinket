@@ -370,7 +370,8 @@ impl Searcher<'_> {
 					if passed {
 						reduction -= 1;
 					} else {
-						reduction += 1;
+						//extend, not just reducing reduction
+						new_depth += 1;
 					}
 				}
 

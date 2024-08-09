@@ -24,7 +24,7 @@ pub struct Searcher<'a> {
 	seldepth: i32,
 	movegen: &'a mut MoveGen,
 	searching_depth: i32,
-	evals: [i32; 250]
+	evals: [i32; 300]
 }
 
 impl Searcher<'_> {
@@ -35,7 +35,7 @@ impl Searcher<'_> {
 			seldepth: 0,
 			movegen: movegen,
 			searching_depth: search_info.depth,
-			evals: [0; 250]
+			evals: [0; 300]
 		};
 		let (mv, eval) = searcher.search(&abort, &search_info.board, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions, None)?;
 	

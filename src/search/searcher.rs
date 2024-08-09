@@ -281,13 +281,24 @@ impl Searcher<'_> {
 			past_positions.push(board_cache.hash());
 
 			let mut value: Eval;
+			let mut locally_extended = false;
 			let mut new_depth = depth - 1;
 
 			//Extensions
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && !locally_extended {
+				locally_extended = true;
+				new_depth += 1;
+			}
+
+			//MVP Node Extension
+			if sm.is_killer 
+			&& sm.is_countermove 
+			&& !globally_extended 
+			&& !locally_extended {
+				locally_extended = true;
 				new_depth += 1;
 			}
 

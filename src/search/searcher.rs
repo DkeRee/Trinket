@@ -300,14 +300,7 @@ impl Searcher<'_> {
 				//Pruning
 
 				//LMP
-				//We can skip specific quiet moves that are very late in a node
-				//IF isn't PV
-				//IF low depth
-				//IF move is quiet
-				//IF alpha is NOT a losing mate
-				//IF IS late move
-				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_DEFINITE && moves_searched > ((mvlen / 6) * depth) + (is_pv as i32 * 4) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}

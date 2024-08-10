@@ -77,6 +77,7 @@ impl Searcher<'_> {
 		}
 
 		let mut globally_extended = false;
+		let old_depth = depth;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
@@ -217,6 +218,11 @@ impl Searcher<'_> {
 		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
+
+		//Check if global extension has been nullified by global reduction
+		if depth == old_depth {
+			globally_extended = false;
+		}
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time

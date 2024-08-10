@@ -150,11 +150,7 @@ impl Searcher<'_> {
 				}
 
 				//Internal Iterative Reduction
-				//IF sufficient depth
-				//There is NO Hash Move
-				if depth >= ply / 4 + 2 {
-					depth -= depth / 10 + 1;
-				}
+				depth -= 1;
 
 				(None, iid_move)
 			}

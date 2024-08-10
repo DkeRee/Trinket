@@ -143,7 +143,7 @@ impl Engine {
 					continue;
 				}
 
-				window = 10;
+				window = 20;
 				last_result = eval.score;
 				best_move = best_mv.clone();
 				depth_index += 1;

@@ -427,6 +427,7 @@ impl Searcher<'_> {
 					&& !move_is_check 
 					&& !sm.is_killer
 					&& !sm.is_countermove
+					&& sm.history < 0
 					&& sm.movetype == MoveType::Quiet;
 
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);

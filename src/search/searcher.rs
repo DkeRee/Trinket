@@ -325,12 +325,7 @@ impl Searcher<'_> {
 				reduction -= sm.history / 1500;
 
 				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
-				if moves_searched >= 2 
-				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
-					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
-				}
+				reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 
 				//Reduce less if PV node
 				reduction -= is_pv as i32;

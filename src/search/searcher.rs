@@ -169,6 +169,11 @@ impl Searcher<'_> {
 
 		self.evals[ply as usize] = static_eval;
 		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
+		let improving_factor = if ply > 1 {
+			self.evals[ply as usize] - self.evals[ply as usize -2]
+		} else {
+			0
+		};
 
 		//Reverse Futility Pruning
 		/*
@@ -320,6 +325,9 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
+
+				//Eval Improving Reduction
+				reduction -= improving_factor / 300;
 
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;

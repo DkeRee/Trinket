@@ -333,7 +333,7 @@ impl Searcher<'_> {
 				}
 
 				//Reduce less if PV node
-				reduction -= is_pv as i32;
+				reduction -= is_pv as i32 * (sm.movetype == MoveType::Quiet) as i32;
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {

@@ -322,7 +322,7 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				reduction -= sm.history / 1500 * (sm.movetype == MoveType::Quiet) as i32;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth

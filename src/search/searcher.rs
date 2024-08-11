@@ -370,7 +370,7 @@ impl Searcher<'_> {
 					if passed {
 						reduction -= 1;
 					} else {
-						reduction += 1;
+						reduction += 1 * (sm.movetype == MoveType::Quiet) as i32;
 					}
 				}
 

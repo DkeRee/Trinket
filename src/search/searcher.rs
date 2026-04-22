@@ -270,6 +270,8 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
+		legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
+
 		let mvlen = legal_moves.len() as i32;
 		for mut sm in legal_moves {
 			let mv = sm.mv;
@@ -460,17 +462,6 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		let stand_pat = Eval::new(evaluate(board), false);
-
-		//beta cutoff
-		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false)));
-		}
-
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
-		}
-
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
@@ -511,13 +502,18 @@ impl Searcher<'_> {
 			}
 		};
 
-		//no more loud moves to be checked anymore, it can be returned safely
-		if move_list.len() == 0 {
-			return Some((None, stand_pat));
+		let mut eval: Eval = Eval::new(evaluate(board), false);
+		let mut best_move = None;
+
+		//Stand Pat
+		if eval.score >= beta {
+			return Some((None, Eval::new(beta, false)));
 		}
 
-		let mut best_move = None;
-		let mut eval = stand_pat;
+		//no more loud moves to be checked anymore, it can be returned safely
+		if move_list.len() == 0 {
+			return Some((None, eval));
+		}
 
 		for sm in move_list {
 
@@ -541,7 +537,7 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
-						return Some((None, Eval::new(beta, false)));
+						break;
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 					}

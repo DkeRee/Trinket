@@ -556,7 +556,7 @@ impl Searcher<'_> {
 }
 
 impl Searcher<'_> {
-	const MAX_DEPTH_RFP: i32 = 6;
+	const MAX_DEPTH_RFP: i32 = 12;
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;

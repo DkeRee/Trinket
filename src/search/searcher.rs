@@ -467,10 +467,6 @@ impl Searcher<'_> {
 			return Some((None, Eval::new(beta, false)));
 		}
 
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
-		}
-
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT

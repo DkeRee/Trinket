@@ -404,8 +404,6 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
-
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -421,23 +419,11 @@ impl Searcher<'_> {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					//SPP
-					do_spp = !is_pv 
-					&& depth <= Self::SPP_DEPTH_CAP 
-					&& !move_is_check 
-					&& !sm.is_killer
-					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet;
-
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
-
-			if do_spp {
-				break;
-			}
 
 			moves_searched += 1;
 		}
@@ -561,6 +547,5 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
-	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

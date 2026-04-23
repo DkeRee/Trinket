@@ -177,12 +177,13 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
-			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
-				return Some((None, Eval::new(static_eval, false)));
-			}
+		if depth <= Self::MAX_DEPTH_RFP 
+		&& !in_check
+		&& static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta
+		&& static_eval < Score::CHECKMATE_BASE - ply {
+			return Some((None, Eval::new(static_eval, false)));
 		}
-
+		
 		//Null Move Pruning
 		/*
 		// if NOT root node

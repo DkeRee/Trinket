@@ -48,12 +48,14 @@ impl Searcher<'_> {
 			for i in 0..past_positions.len() - 1 {
 				if past_positions[i] == board.hash() {
 					times += 1;
-					if times >= 2 {
-						return true;
-					}
 				}
 			}
 		}
+
+		if times >= 3 {
+			return true;
+		}
+
 		return false;
 	}
 

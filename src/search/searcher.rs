@@ -170,6 +170,15 @@ impl Searcher<'_> {
 		self.evals[ply as usize] = static_eval;
 		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
 
+		//Razoring
+		if !is_pv 
+		&& !in_check 
+		&& depth < 15 
+		&& static_eval + depth * 200 < alpha
+		&& !improving {
+			depth = 0;
+		}
+
 		//Reverse Futility Pruning
 		/*
 		// if depth isn't too deep

@@ -76,6 +76,17 @@ impl Searcher<'_> {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
+		match board.status() {
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
+			GameStatus::Ongoing => {}
+		}
+		
+		//check for three move repetition
+		if self.is_repetition(board, past_positions) && ply > 0 {
+			return Some((None, Eval::new(Score::DRAW, false)));
+		}
+
 		let mut globally_extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
@@ -87,19 +98,8 @@ impl Searcher<'_> {
 			depth += 1;
 		}
 
-		match board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
-			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
-			GameStatus::Ongoing => {}
-		}
-
 		if depth <= 0 {
 			return self.qsearch(&abort, board, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
-		}
-
-		//check for three move repetition
-		if self.is_repetition(board, past_positions) && ply > 0 {
-			return Some((None, Eval::new(Score::DRAW, false)));
 		}
 
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);

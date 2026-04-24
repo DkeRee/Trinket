@@ -170,6 +170,14 @@ impl Searcher<'_> {
 		self.evals[ply as usize] = static_eval;
 		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
 
+		//Psuedo Standpat
+		if !in_check 
+		&& !is_pv 
+		&& !improving
+		&& static_eval - depth * 50 >= beta {
+			return Some((None, Eval::new(static_eval, false)));
+		}
+
 		//Reverse Futility Pruning
 		/*
 		// if depth isn't too deep

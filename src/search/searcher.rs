@@ -270,7 +270,6 @@ impl Searcher<'_> {
 				if staged_movegen {
 					legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
 					legal_moves.remove(0);
-					i = 0;
 				}
 			} else {
 				//Pruning
@@ -411,12 +410,16 @@ impl Searcher<'_> {
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
+			moves_searched += 1;
+			i += 1;
+
+			if staged_movegen && moves_searched == 0 {
+				i = 0;
+			}
+
 			if do_spp {
 				break;
 			}
-
-			moves_searched += 1;
-			i += 1;
 		}
 
 		return Some((best_move, eval));

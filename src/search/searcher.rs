@@ -214,7 +214,6 @@ impl Searcher<'_> {
 			}
 		}
 
-		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 
@@ -261,7 +260,7 @@ impl Searcher<'_> {
 				new_depth += 1;
 			}
 
-			if moves_searched == 0 {
+			if i == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
@@ -269,7 +268,6 @@ impl Searcher<'_> {
 
 				if staged_movegen {
 					legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
-					legal_moves.remove(0);
 				}
 			} else {
 				//Pruning
@@ -282,7 +280,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > ((legal_moves.len() as i32 / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && i as i32 > ((legal_moves.len() as i32 / 6) * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -302,9 +300,9 @@ impl Searcher<'_> {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if moves_searched >= 2 
+				if i >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
-					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
+					reduction += self.get_lmr_reduction_amount(depth, i as i32);
 				}
 
 				//Reduce less if PV node
@@ -410,12 +408,7 @@ impl Searcher<'_> {
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
-			moves_searched += 1;
 			i += 1;
-
-			if staged_movegen && moves_searched == 0 {
-				i = 0;
-			}
 
 			if do_spp {
 				break;

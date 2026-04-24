@@ -238,9 +238,9 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(board, None, ply, last_move);
 		}
 
-		let mut i = 0;
-		while i < legal_moves.len() {
-			let mut sm = legal_moves[i].clone();
+		let mut moves_searched = 0;
+		while moves_searched < legal_moves.len() {
+			let mut sm = legal_moves[moves_searched].clone();
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -260,15 +260,11 @@ impl Searcher<'_> {
 				new_depth += 1;
 			}
 
-			if i == 0 {
+			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
-
-				if staged_movegen {
-					legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
-				}
 			} else {
 				//Pruning
 
@@ -280,7 +276,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && i as i32 > ((legal_moves.len() as i32 / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched as i32 > ((legal_moves.len() as i32 / 6) * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -300,9 +296,9 @@ impl Searcher<'_> {
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if i >= 2 
+				if moves_searched >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
-					reduction += self.get_lmr_reduction_amount(depth, i as i32);
+					reduction += self.get_lmr_reduction_amount(depth, moves_searched as i32);
 				}
 
 				//Reduce less if PV node
@@ -408,10 +404,14 @@ impl Searcher<'_> {
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
-			i += 1;
+			moves_searched += 1;
 
 			if do_spp {
 				break;
+			}
+
+			if staged_movegen && moves_searched == 1 {
+				legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
 			}
 		}
 

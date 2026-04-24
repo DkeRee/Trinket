@@ -270,6 +270,7 @@ impl Searcher<'_> {
 				if staged_movegen {
 					legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
 					legal_moves.remove(0);
+					i -= 1;
 				}
 			} else {
 				//Pruning

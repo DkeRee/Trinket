@@ -174,7 +174,8 @@ impl Searcher<'_> {
 		if !in_check 
 		&& !is_pv 
 		&& !improving
-		&& static_eval - depth * 50 >= beta {
+		&& table_find_move.as_ref().is_some()
+		&& static_eval - depth * 10 >= beta {
 			return Some((None, Eval::new(static_eval, false)));
 		}
 

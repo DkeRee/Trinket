@@ -173,8 +173,8 @@ impl Searcher<'_> {
 		//Razoring
 		if !is_pv 
 		&& !in_check 
-		&& depth < 15 
-		&& static_eval + depth * 200 < alpha
+		&& depth < 5 
+		&& static_eval + depth * 250 < alpha
 		&& !improving {
 			depth = 0;
 		}

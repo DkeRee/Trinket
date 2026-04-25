@@ -69,6 +69,10 @@ impl MoveGen {
 			let mut capture_moves = moves;
 			capture_moves.to &= their_pieces;
 			for mv in capture_moves {
+				if Some(mv) == tt_move {
+					continue;
+				}
+
 				move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
 			}
 			false
@@ -79,6 +83,10 @@ impl MoveGen {
 			let mut quiet_moves = moves;
 			quiet_moves.to &= !their_pieces;
 			for mv in quiet_moves {
+				if Some(mv) == tt_move {
+					continue;
+				}
+
 				move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
 			}
 			false

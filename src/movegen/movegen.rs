@@ -59,7 +59,7 @@ impl MoveGen {
 		}
 	}
 
-	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, ply: i32, last_move: Option<Move>) -> Vec<SortedMove> {
+	pub fn move_gen(&mut self, board: &Board, tt_move: Option<Move>, skip_hash: bool, ply: i32, last_move: Option<Move>) -> Vec<SortedMove> {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
@@ -69,7 +69,7 @@ impl MoveGen {
 			let mut capture_moves = moves;
 			capture_moves.to &= their_pieces;
 			for mv in capture_moves {
-				if Some(mv) == tt_move {
+				if Some(mv) == tt_move && skip_hash {
 					continue;
 				}
 
@@ -83,7 +83,7 @@ impl MoveGen {
 			let mut quiet_moves = moves;
 			quiet_moves.to &= !their_pieces;
 			for mv in quiet_moves {
-				if Some(mv) == tt_move {
+				if Some(mv) == tt_move && skip_hash {
 					continue;
 				}
 

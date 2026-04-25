@@ -235,7 +235,7 @@ impl Searcher<'_> {
 
 			legal_moves.push(SortedMove::new(mv, 10000, movetype));
 		} else {
-			legal_moves = self.movegen.move_gen(board, None, ply, last_move);
+			legal_moves = self.movegen.move_gen(board, None, staged_movegen, ply, last_move);
 		}
 
 		let mut moves_searched = 0;
@@ -256,7 +256,7 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && (staged_movegen && moves_searched > 0 || !staged_movegen) {
 				new_depth += 1;
 			}
 
@@ -412,7 +412,7 @@ impl Searcher<'_> {
 			}
 
 			if staged_movegen && moves_searched == 1 {
-				legal_moves = self.movegen.move_gen(board, Some(mv), ply, last_move);
+				legal_moves = self.movegen.move_gen(board, Some(mv), staged_movegen, ply, last_move);
 			}
 		}
 

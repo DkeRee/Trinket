@@ -392,6 +392,7 @@ impl Searcher<'_> {
 				} else {
 					//SPP
 					do_spp = !is_pv 
+					&& (staged_movegen && moves_searched > 0 || !staged_movegen)
 					&& depth <= Self::SPP_DEPTH_CAP 
 					&& !move_is_check 
 					&& !sm.is_killer

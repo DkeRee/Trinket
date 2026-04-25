@@ -288,6 +288,7 @@ impl Searcher<'_> {
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();
 					legal_index += 1;
+					moves_searched += 1;
 					continue;
 				}
 

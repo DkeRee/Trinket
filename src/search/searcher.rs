@@ -259,7 +259,7 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
 				new_depth += 1;
 			}
 
@@ -279,7 +279,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > (((mvlen + (moves_searched - legal_index as i32)) / 6) * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -401,7 +401,8 @@ impl Searcher<'_> {
 					&& !move_is_check 
 					&& !sm.is_killer
 					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet;
+					&& sm.movetype == MoveType::Quiet
+					&& !staged_movegen;
 
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
@@ -418,8 +419,9 @@ impl Searcher<'_> {
 
 			if staged_movegen {
 				staged_movegen = false;
-				legal_index = 0;
-				legal_moves =  self.movegen.move_gen(board, Some(mv), ply, true, last_move);
+				moves_searched = 1; 
+				legal_index = 0; 
+				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 			}
 		}
 

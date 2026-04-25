@@ -219,7 +219,7 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = false;
+		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
 		if staged_movegen {
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
@@ -242,7 +242,8 @@ impl Searcher<'_> {
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
 		while legal_index < legal_moves.len() {
-			let mut sm = legal_moves[legal_index].clone();
+			let mut mvlen = legal_moves.len() as i32;
+			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -278,7 +279,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > ((legal_moves.len() as i32 / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3) && !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -286,6 +287,7 @@ impl Searcher<'_> {
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();
+					legal_index += 1;
 					continue;
 				}
 

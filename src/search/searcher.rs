@@ -219,7 +219,7 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
 		if staged_movegen {
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
@@ -235,12 +235,13 @@ impl Searcher<'_> {
 
 			legal_moves.push(SortedMove::new(mv, 10000, movetype));
 		} else {
-			legal_moves = self.movegen.move_gen(board, None, staged_movegen, ply, last_move);
+			legal_moves = self.movegen.move_gen(board, None, false, ply, last_move);
 		}
 
 		let mut moves_searched = 0;
-		while moves_searched < legal_moves.len() {
-			let mut sm = legal_moves[moves_searched].clone();
+		let mut moves_index = 0;
+		while moves_index < legal_moves.len() {
+			let mut sm = legal_moves[moves_index].clone();
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -256,7 +257,7 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && (staged_movegen && moves_searched > 0 || !staged_movegen) {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended {
 				new_depth += 1;
 			}
 
@@ -392,7 +393,6 @@ impl Searcher<'_> {
 				} else {
 					//SPP
 					do_spp = !is_pv 
-					&& (staged_movegen && moves_searched > 0 || !staged_movegen)
 					&& depth <= Self::SPP_DEPTH_CAP 
 					&& !move_is_check 
 					&& !sm.is_killer
@@ -406,13 +406,16 @@ impl Searcher<'_> {
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			moves_searched += 1;
+			moves_index += 1;
 
 			if do_spp {
 				break;
 			}
 
-			if staged_movegen && moves_searched == 1 {
-				legal_moves = self.movegen.move_gen(board, Some(mv), staged_movegen, ply, last_move);
+			if staged_movegen {
+				legal_moves = self.movegen.move_gen(board, Some(mv), true, ply, last_move);
+				staged_movegen = false;
+				moves_index = 0;
 			}
 		}
 

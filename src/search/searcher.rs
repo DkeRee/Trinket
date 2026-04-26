@@ -279,7 +279,11 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > (((mvlen + (moves_searched - legal_index as i32)) / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				&& sm.movetype == MoveType::Quiet 
+				&& alpha > -Score::CHECKMATE_BASE 
+				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
+				&& !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -288,7 +292,6 @@ impl Searcher<'_> {
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();
 					legal_index += 1;
-					moves_searched += 1;
 					continue;
 				}
 
@@ -417,9 +420,8 @@ impl Searcher<'_> {
 			moves_searched += 1;
 			legal_index += 1;
 
-			if staged_movegen {
+			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
-				moves_searched = 1; 
 				legal_index = 0; 
 				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 			}

@@ -294,9 +294,8 @@ impl Searcher<'_> {
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
-				
+
 				value = child_eval;
-				best_move = Some(mv);
 			} else {
 				//Pruning
 
@@ -405,35 +404,33 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let v = value.score;
-			if v > eval.score {
-				eval = value;
-				best_move = Some(mv);
-			}
-
 			let mut do_spp = false;
 
-			if v > alpha {
-				alpha = v;
-				if alpha >= beta {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-					sm.insert_killer(&mut self.movegen.sorter, ply, board);
-					sm.insert_history(&mut self.movegen.sorter, depth);
-					sm.insert_countermove(&mut self.movegen.sorter, last_move);
-					break;
+			if value.score > eval.score {
+				eval = value;
+				best_move = Some(mv);
+				if eval.score > alpha {
+					alpha = eval.score;
+					if alpha >= beta {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						sm.insert_killer(&mut self.movegen.sorter, ply, board);
+						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_countermove(&mut self.movegen.sorter, last_move);
+						break;
+					} else {
+						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+					}
 				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
-				}
-			} else {
-				//SPP
-				do_spp = !is_pv 
-				&& depth <= Self::SPP_DEPTH_CAP 
-				&& !move_is_check 
-				&& !sm.is_killer
-				&& !sm.is_countermove
-				&& sm.movetype == MoveType::Quiet;
+					//SPP
+					do_spp = !is_pv 
+					&& depth <= Self::SPP_DEPTH_CAP 
+					&& !move_is_check 
+					&& !sm.is_killer
+					&& !sm.is_countermove
+					&& sm.movetype == MoveType::Quiet;
 
-				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+				}
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);

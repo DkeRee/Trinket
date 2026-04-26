@@ -407,7 +407,8 @@ impl Searcher<'_> {
 				&& !move_is_check 
 				&& !sm.is_killer
 				&& !sm.is_countermove
-				&& sm.movetype == MoveType::Quiet;
+				&& sm.movetype == MoveType::Quiet
+				&& !staged_movegen;
 
 				self.tt.insert(best_move, best_eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}

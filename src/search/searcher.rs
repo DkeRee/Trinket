@@ -215,7 +215,7 @@ impl Searcher<'_> {
 		}
 
 		let mut best_move = None;
-		let mut eval = Eval::new(i32::MIN, false);
+		let mut best_eval = Eval::new(i32::MIN, false);
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
@@ -252,7 +252,7 @@ impl Searcher<'_> {
 
 			past_positions.push(board_cache.hash());
 
-			let mut value: Eval;
+			let mut node_eval: Eval;
 			let mut new_depth = depth - 1;
 
 			//Extensions
@@ -267,7 +267,7 @@ impl Searcher<'_> {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
-				value = child_eval;
+				node_eval = child_eval;
 			} else {
 				//Pruning
 
@@ -358,58 +358,60 @@ impl Searcher<'_> {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
-				value = child_eval;
+				node_eval = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction > 0 {
+				if node_eval.score > alpha && reduction > 0 {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
-					value = child_eval;	
+					node_eval = child_eval;	
 				}
 
 				//if PV
 				//search with full depth and full window
-				if value.score > alpha && value.score < beta {
+				if node_eval.score > alpha && node_eval.score < beta {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;		
 
-					value = child_eval;	
+					node_eval = child_eval;	
 				}
 			}
 
 			past_positions.pop();
 
+			let v = node_eval.score;
+			if v > best_eval.score {
+				best_eval = node_eval;
+				best_move = Some(mv);
+			}
+
 			let mut do_spp = false;
 
-			if value.score > eval.score {
-				eval = value;
-				best_move = Some(mv);
-				if eval.score > alpha {
-					alpha = eval.score;
-					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-						sm.insert_killer(&mut self.movegen.sorter, ply, board);
-						sm.insert_history(&mut self.movegen.sorter, depth);
-						sm.insert_countermove(&mut self.movegen.sorter, last_move);
-						break;
-					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
-					}
+			if v > alpha {
+				alpha = v;
+				if alpha >= beta {
+					self.tt.insert(best_move, best_eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+					sm.insert_killer(&mut self.movegen.sorter, ply, board);
+					sm.insert_history(&mut self.movegen.sorter, depth);
+					sm.insert_countermove(&mut self.movegen.sorter, last_move);
+					break;
 				} else {
-					//SPP
-					do_spp = !is_pv 
-					&& depth <= Self::SPP_DEPTH_CAP 
-					&& !move_is_check 
-					&& !sm.is_killer
-					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet
-					&& !staged_movegen;
-
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
+					self.tt.insert(best_move, best_eval.score, board.hash(), ply, depth, NodeKind::Exact);
 				}
+			} else {
+				//SPP
+				do_spp = !is_pv 
+				&& depth <= Self::SPP_DEPTH_CAP 
+				&& !move_is_check 
+				&& !sm.is_killer
+				&& !sm.is_countermove
+				&& sm.movetype == MoveType::Quiet;
+
+				self.tt.insert(best_move, best_eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
+
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
@@ -427,7 +429,7 @@ impl Searcher<'_> {
 			}
 		}
 
-		return Some((best_move, eval));
+		return Some((best_move, best_eval));
 	}
 
 	fn qsearch(&mut self, abort: &AtomicBool, board: &Board, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {

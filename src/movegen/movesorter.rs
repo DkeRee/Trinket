@@ -70,7 +70,11 @@ impl MoveSorter {
 				}
 	
 				if is_promo {
-					base = Self::PROMO;
+					base = if mv_info.mv.promotion.unwrap() == Piece::Queen { 
+						Self::PROMO
+					} else { 
+						Self::UNDER_PROMO
+					};
 				}
 
 				mv_info.importance = base + increment;
@@ -151,9 +155,10 @@ impl MoveSorter {
 	const BEST_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 
+	const UNDER_PROMO: i32 = -50000;
 	const LOSING_CAPTURE: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
 }
-//Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves
+//Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

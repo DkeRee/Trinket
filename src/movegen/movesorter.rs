@@ -45,13 +45,15 @@ impl MoveSorter {
 				if mv_info.movetype == MoveType::Loud {
 					let capture_score = self.see.see(board, mv_info.mv);
 
-					if capture_score >= 0 {
-						base = Self::WINNING_CAPTURE;
-						increment = capture_score;
+					base = if capture_score > 0 {
+						Self::WINNING_CAPTURE
+					} else if capture_score == 0 {
+						Self::NEUTRAL_CAPTURE
 					} else {
-						base = Self::LOSING_CAPTURE;
-						increment = capture_score;
-					}
+						Self::LOSING_CAPTURE
+					};
+
+					increment = capture_score;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {
@@ -61,7 +63,17 @@ impl MoveSorter {
 					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
 	
 					if mv_info.is_killer || mv_info.is_countermove {
-						base = Self::BEST_QUIET;
+						base += if mv_info.is_killer {
+							Self::KILLER_QUIET
+						} else {
+							0
+						};
+
+						base += if mv_info.is_countermove {
+							Self::COUNTER_QUIET
+						} else {
+							0
+						};
 					} else {
 						let history = self.get_history(mv_info.mv);
 						increment = history;
@@ -147,16 +159,19 @@ impl MoveSorter {
 }
 
 impl MoveSorter {
-	const HASHMOVE_SCORE: i32 = 1000000;
+	const HASHMOVE_SCORE: i32 = 2000000;
 
-	const PROMO: i32 = 50000;
-	const WINNING_CAPTURE: i32 = 50000;
+	const PROMO: i32 = 900000;
+	const WINNING_CAPTURE: i32 = 800000;
 
-	const BEST_QUIET: i32 = 10000;
+	const NEUTRAL_CAPTURE: i32 = 700000;
+
+	const KILLER_QUIET: i32 = 600000;
+	const COUNTER_QUIET: i32 = 550000;
 	const QUIET_MOVE: i32 = 0;
 
-	const UNDER_PROMO: i32 = -50000;
-	const LOSING_CAPTURE: i32 = -50000;
+	const LOSING_CAPTURE: i32 = -200000;
+	const UNDER_PROMO: i32 = -500000;
 
 	const HISTORY_MAX: i32 = 2000;
 }

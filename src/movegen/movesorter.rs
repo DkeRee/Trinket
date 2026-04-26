@@ -31,7 +31,7 @@ impl MoveSorter {
 
 			if tt_move != None {
 				if Some(mv_info.mv) == tt_move {
-					mv_info.importance += Self::HASHMOVE_SCORE;
+					mv_info.importance = Self::HASHMOVE_SCORE;
 				}
 			}
 
@@ -42,7 +42,7 @@ impl MoveSorter {
 
 				if mv_info.movetype == MoveType::Loud {
 					let capture_score = self.see.see(board, mv_info.mv);
-	
+
 					if capture_score >= 0 {
 						mv_info.importance = Self::WINNING_CAPTURE + capture_score;
 					} else {
@@ -66,7 +66,11 @@ impl MoveSorter {
 				}
 	
 				if is_promo {
-					mv_info.importance = Self::WINNING_CAPTURE;
+					mv_info.importance = if mv_info.mv.promotion.unwrap() == Piece::Queen {
+						Self::PROMO
+					} else {
+						Self::UNDER_PROMO
+					};
 				}
 			}
 		}
@@ -139,18 +143,18 @@ impl MoveSorter {
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 1000000;
 
+	const PROMO: i32 = 80000;
 	const WINNING_CAPTURE: i32 = 50000; //and also promos!
 
 	const BEST_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 
 	const LOSING_CAPTURE: i32 = -50000;
-
+	const UNDER_PROMO: i32 = -80000;
 
 
 
 	const HISTORY_MAX: i32 = 2000;
 }
-//Ranking: TT, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves
-//TT will have no specifity
-//Promos are lumped into good loud moves with no specifity
+//Ranking: TT, Good Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves, Under Promo
+//TT will have no specifity, Good Promo and Under Promo have no specifity

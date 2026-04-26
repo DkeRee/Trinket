@@ -214,33 +214,18 @@ impl Searcher<'_> {
 			}
 		}
 
-		let mut moves_searched = 0;
 		let mut best_move = None;
 		let mut eval = Eval::new(i32::MIN, false);
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		if table_find_move.is_some() || iid_find_move.is_some() {
-			moves_searched += 1;
-
+		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		if staged_movegen {
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
 			} else {
 				iid_find_move.clone().unwrap()
 			};
-
-			let mut board_cache = board.clone();
-			board_cache.play_unchecked(mv);
-
-			past_positions.push(board_cache.hash());
-
-			let (_, mut child_eval) = self.search(&abort, &board_cache, depth - 1, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
-			child_eval.score *= -1;
-
-			past_positions.pop();
-
-			eval = child_eval;
-			best_move = Some(mv);
 
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet
@@ -249,29 +234,16 @@ impl Searcher<'_> {
 			};
 			let mut sm = SortedMove::new(mv, 0, movetype);
 
-			if eval.score > alpha {
-				alpha = eval.score;
-				if alpha >= beta {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
-					sm.insert_killer(&mut self.movegen.sorter, ply, board);
-					sm.insert_history(&mut self.movegen.sorter, depth);
-					return Some((best_move, eval));
-				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
-				}
-			} else {
-				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
-			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth);
-
-			legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
+			legal_moves.push(sm);
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
 
-		let mvlen = legal_moves.len() as i32;
-		for mut sm in legal_moves {
+		let mut moves_searched = 0;
+		let mut legal_index = 0;
+		while legal_index < legal_moves.len() {
+			let mut mvlen = legal_moves.len() as i32;
+			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
@@ -287,7 +259,7 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
 				new_depth += 1;
 			}
 
@@ -307,7 +279,11 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX && sm.movetype == MoveType::Quiet && alpha > -Score::CHECKMATE_BASE && moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3) && !in_check {
+				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				&& sm.movetype == MoveType::Quiet 
+				&& alpha > -Score::CHECKMATE_BASE 
+				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
+				&& !in_check {
 					past_positions.pop();
 					break;
 				}
@@ -315,6 +291,7 @@ impl Searcher<'_> {
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();
+					legal_index += 1;
 					continue;
 				}
 
@@ -427,7 +404,8 @@ impl Searcher<'_> {
 					&& !move_is_check 
 					&& !sm.is_killer
 					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet;
+					&& sm.movetype == MoveType::Quiet
+					&& !staged_movegen;
 
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
@@ -440,6 +418,13 @@ impl Searcher<'_> {
 			}
 
 			moves_searched += 1;
+			legal_index += 1;
+
+			if staged_movegen && legal_index >= legal_moves.len() {
+				staged_movegen = false;
+				legal_index = 0; 
+				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
+			}
 		}
 
 		return Some((best_move, eval));

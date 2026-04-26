@@ -63,7 +63,19 @@ impl MoveSorter {
 					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
 	
 					if mv_info.is_killer || mv_info.is_countermove {
-						base = Self::BEST_QUIET;
+						base = 0;
+
+						base += if mv_info.is_killer {
+							Self::KILLER_QUIET
+						} else {
+							0
+						};
+
+						base += if mv_info.is_countermove {
+							Self::COUNTER_QUIET
+						} else {
+							0
+						};
 					} else {
 						let history = self.get_history(mv_info.mv);
 						increment = history;
@@ -156,11 +168,12 @@ impl MoveSorter {
 
 	const NEUTRAL_CAPTURE: i32 = 30000;
 
-	const BEST_QUIET: i32 = 10000;
+	const KILLER_QUIET: i32 = 15000;
+	const COUNTER_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 
-	const UNDER_PROMO: i32 = -50000;
 	const LOSING_CAPTURE: i32 = -50000;
+	const UNDER_PROMO: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
 }

@@ -45,13 +45,15 @@ impl MoveSorter {
 				if mv_info.movetype == MoveType::Loud {
 					let capture_score = self.see.see(board, mv_info.mv);
 
-					if capture_score >= 0 {
-						base = Self::WINNING_CAPTURE;
-						increment = capture_score;
+					base = if capture_score > 0 {
+						Self::WINNING_CAPTURE
+					} else if capture_score == 0{
+						Self::NEUTRAL_CAPTURE
 					} else {
-						base = Self::LOSING_CAPTURE;
-						increment = capture_score;
-					}
+						Self::LOSING_CAPTURE
+					};
+
+					increment = capture_score;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {
@@ -151,6 +153,8 @@ impl MoveSorter {
 
 	const PROMO: i32 = 50000;
 	const WINNING_CAPTURE: i32 = 50000;
+
+	const NEUTRAL_CAPTURE: i32 = 30000;
 
 	const BEST_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;

@@ -35,23 +35,27 @@ impl MoveSorter {
 				}
 			}
 
-			if mv_info.movetype == MoveType::Quiet {
-				if self.is_killer(mv_info.mv, board, ply) {
-					mv_info.importance += Self::KILLER_MOVE_SCORE;
-					mv_info.is_killer = true;
-				}
+			let is_tt = mv_info.importance == Self::HASHMOVE_SCORE;
+			let is_promo = mv_info.mv.promotion != None;
 
-				if self.is_countermove(mv_info.mv, last_move) {
-					mv_info.importance += Self::COUNTERMOVE_SCORE;
-					mv_info.is_countermove = true;
+			if !is_tt {
+				mv_info.importance = match mv_info.mv.promotion {
+					Some(Piece::Queen) => Self::QUEEN_PROMO,
+					Some(Piece::Rook) => Self::UNDER_PROMO,
+					Some(Piece::Bishop) => Self::UNDER_PROMO,
+					Some(Piece::Knight) => Self::UNDER_PROMO,
+					None => 0,
+					_ => unreachable!()
 				}
-
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += Self::HISTORY_MOVE_OFFSET + history;
-				mv_info.history = history;
 			}
 
 			if mv_info.movetype == MoveType::Loud {
+				mv_info.importance = if !is_tt && !is_promo { 
+					Self::LOUD_MOVE
+				} else {
+					0
+				};
+
 				let capture_score = self.see.see(board, mv_info.mv);
 
 				if capture_score >= 0 {
@@ -61,13 +65,26 @@ impl MoveSorter {
 				}
 			}
 
-			mv_info.importance += match mv_info.mv.promotion {
-				Some(Piece::Queen) => Self::QUEEN_PROMO,
-				Some(Piece::Rook) => Self::ROOK_PROMO,
-				Some(Piece::Bishop) => Self::BISHOP_PROMO,
-				Some(Piece::Knight) => Self::KNIGHT_PROMO,
-				None => 0,
-				_ => unreachable!()
+			if mv_info.movetype == MoveType::Quiet {
+				mv_info.importance = if !is_tt && !is_promo { 
+					Self::QUIET_MOVE
+				} else {
+					0
+				};
+
+				if self.is_killer(mv_info.mv, board, ply) {
+					mv_info.importance = Self::SPECIAL_QUIET;
+					mv_info.is_killer = true;
+				}
+
+				if self.is_countermove(mv_info.mv, last_move) {
+					mv_info.importance = Self::SPECIAL_QUIET;
+					mv_info.is_countermove = true;
+				}
+
+				let history = self.get_history(mv_info.mv);
+				mv_info.importance += history;
+				mv_info.history = history;
 			}
 		}
 
@@ -137,16 +154,18 @@ impl MoveSorter {
 }
 
 impl MoveSorter {
-	const HASHMOVE_SCORE: i32 = 25000;
+	const HASHMOVE_SCORE: i32 = 1000000;
+	const QUEEN_PROMO: i32 = 80000;
+	const UNDER_PROMO: i32 = -80000;
+
+	const LOUD_MOVE: i32 = 50000;
 	const WINNING_CAPTURE: i32 = 10000;
-	const QUEEN_PROMO: i32 = 8000;
-    const KILLER_MOVE_SCORE: i32 = 2000;
-	const COUNTERMOVE_SCORE: i32 = 1000;
-   	const KNIGHT_PROMO: i32 = -5000;
-	const BISHOP_PROMO: i32 = -6000;
-	const ROOK_PROMO: i32 = -7000;
-	const HISTORY_MOVE_OFFSET: i32 = -10000;
-	const LOSING_CAPTURE: i32 = -30000;
+	const LOSING_CAPTURE: i32 = -10000;
+
+	const SPECIAL_QUIET: i32 = -30000;
+	const QUIET_MOVE: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
 }
+//Ranking: TT, Queen Promo, Good Loud Move<Loud Move>Bad Loud Move [further specifity by SEE], Special Quiet<Quiet [further specifity by history], Under Promo
+//TT, Queen Promo, and Under Promo will have their respective specifities determined in their respective loud/quiet move rankings, but their general area will remain

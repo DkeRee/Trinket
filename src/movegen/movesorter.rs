@@ -36,55 +36,38 @@ impl MoveSorter {
 			}
 
 			let is_tt = mv_info.importance == Self::HASHMOVE_SCORE;
-			let is_promo = mv_info.mv.promotion != None;
 
 			if !is_tt {
-				mv_info.importance = match mv_info.mv.promotion {
-					Some(Piece::Queen) => Self::QUEEN_PROMO,
-					Some(Piece::Rook) => Self::UNDER_PROMO,
-					Some(Piece::Bishop) => Self::UNDER_PROMO,
-					Some(Piece::Knight) => Self::UNDER_PROMO,
-					None => 0,
-					_ => unreachable!()
+				let is_promo = mv_info.mv.promotion != None;
+
+				if mv_info.movetype == MoveType::Loud {
+					let capture_score = self.see.see(board, mv_info.mv);
+	
+					if capture_score >= 0 {
+						mv_info.importance = Self::WINNING_CAPTURE + capture_score;
+					} else {
+						mv_info.importance = Self::LOSING_CAPTURE + capture_score;
+					}
 				}
-			}
-
-			if mv_info.movetype == MoveType::Loud {
-				mv_info.importance = if !is_tt && !is_promo { 
-					Self::LOUD_MOVE
-				} else {
-					0
-				};
-
-				let capture_score = self.see.see(board, mv_info.mv);
-
-				if capture_score >= 0 {
-					mv_info.importance += capture_score + Self::WINNING_CAPTURE;
-				} else {
-					mv_info.importance += capture_score + Self::LOSING_CAPTURE;
+	
+				if mv_info.movetype == MoveType::Quiet {
+					mv_info.importance = Self::QUIET_MOVE;
+	
+					mv_info.is_killer = self.is_killer(mv_info.mv, board, ply);
+					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
+	
+					if mv_info.is_killer || mv_info.is_countermove {
+						mv_info.importance = Self::BEST_QUIET;
+					} else {
+						let history = self.get_history(mv_info.mv);
+						mv_info.importance += history;
+						mv_info.history = history;
+					}
 				}
-			}
-
-			if mv_info.movetype == MoveType::Quiet {
-				mv_info.importance = if !is_tt && !is_promo { 
-					Self::QUIET_MOVE
-				} else {
-					0
-				};
-
-				if self.is_killer(mv_info.mv, board, ply) {
-					mv_info.importance = Self::SPECIAL_QUIET;
-					mv_info.is_killer = true;
+	
+				if is_promo {
+					mv_info.importance = Self::WINNING_CAPTURE;
 				}
-
-				if self.is_countermove(mv_info.mv, last_move) {
-					mv_info.importance = Self::SPECIAL_QUIET;
-					mv_info.is_countermove = true;
-				}
-
-				let history = self.get_history(mv_info.mv);
-				mv_info.importance += history;
-				mv_info.history = history;
 			}
 		}
 
@@ -155,17 +138,19 @@ impl MoveSorter {
 
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 1000000;
-	const QUEEN_PROMO: i32 = 80000;
-	const UNDER_PROMO: i32 = -80000;
 
-	const LOUD_MOVE: i32 = 50000;
-	const WINNING_CAPTURE: i32 = 10000;
-	const LOSING_CAPTURE: i32 = -10000;
+	const WINNING_CAPTURE: i32 = 50000; //and also promos!
 
-	const SPECIAL_QUIET: i32 = -30000;
-	const QUIET_MOVE: i32 = -50000;
+	const BEST_QUIET: i32 = 10000;
+	const QUIET_MOVE: i32 = 0;
+
+	const LOSING_CAPTURE: i32 = -50000;
+
+
+
 
 	const HISTORY_MAX: i32 = 2000;
 }
-//Ranking: TT, Queen Promo, Good Loud Move<Loud Move>Bad Loud Move [further specifity by SEE], Special Quiet<Quiet [further specifity by history], Under Promo
-//TT, Queen Promo, and Under Promo will have their respective specifities determined in their respective loud/quiet move rankings, but their general area will remain
+//Ranking: TT, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves
+//TT will have no specifity
+//Promos are lumped into good loud moves with no specifity

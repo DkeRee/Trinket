@@ -63,6 +63,8 @@ impl MoveSorter {
 					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
 	
 					if mv_info.is_killer || mv_info.is_countermove {
+						base = 0;
+
 						base += if mv_info.is_killer {
 							Self::KILLER_QUIET
 						} else {

@@ -183,7 +183,7 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 5000;
+	const HISTORY_MAX: i32 = 1000;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

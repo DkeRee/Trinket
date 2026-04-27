@@ -26,12 +26,14 @@ impl SortedMove {
 	pub fn insert_killer(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.add_killer(self.mv, ply, board);
-		}
+		} 
 	}
 
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
-			move_sorter.add_history(self.mv, depth);
+			move_sorter.add_quiet_history(self.mv, depth);
+		} else if self.movetype == MoveType::Loud {
+			move_sorter.add_loud_history(self.mv, depth);
 		}
 	}
 
@@ -43,7 +45,9 @@ impl SortedMove {
 
 	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32) {
 		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_history(self.mv, depth);
+			move_sorter.decay_quiet_history(self.mv, depth);
+		} else if self.movetype == MoveType::Loud {
+			move_sorter.decay_loud_history(self.mv, depth);
 		}
 	}
 }

@@ -64,29 +64,35 @@ impl MoveGen {
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
 
-		//capture move
 		board.generate_moves(|moves| {
-			let mut capture_moves = moves;
-			capture_moves.to &= their_pieces;
-			for mv in capture_moves {
-				if Some(mv) == tt_move && skip_hash {
-					continue;
-				}
-				move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
-			}
-			false
-		});
+			let mut quiet_moves = moves.clone();
+			let mut loud_moves = moves.clone();
 
-		//quiet move
-		board.generate_moves(|moves| {
-			let mut quiet_moves = moves;
 			quiet_moves.to &= !their_pieces;
+			loud_moves.to &= their_pieces;
+
 			for mv in quiet_moves {
 				if Some(mv) == tt_move && skip_hash {
 					continue;
 				}
-				move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
+
+				let mut board_cache = board.clone();
+				board_cache.play_unchecked(mv);
+				if !board_cache.checkers().is_empty() {
+					move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
+				} else {
+					move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
+				}
 			}
+
+			for mv in loud_moves {
+				if Some(mv) == tt_move && skip_hash {
+					continue;
+				}
+
+				move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
+			}
+
 			false
 		});
 
@@ -99,12 +105,26 @@ impl MoveGen {
 		let mut move_list: Vec<SortedMove> = Vec::with_capacity(64);
 		let color = board.side_to_move();
 		let their_pieces = board.colors(!color);
+
 		board.generate_moves(|moves| {
-			let mut capture_moves = moves;
-			capture_moves.to &= their_pieces;
-			for mv in capture_moves {
+			let mut quiet_moves = moves.clone();
+			let mut loud_moves = moves.clone();
+
+			quiet_moves.to &= !their_pieces;
+			loud_moves.to &= their_pieces;
+
+			for mv in quiet_moves {
+				let mut board_cache = board.clone();
+				board_cache.play_unchecked(mv);
+				if !board_cache.checkers().is_empty() {
+					move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
+				}
+			}
+
+			for mv in loud_moves {
 				move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
 			}
+
 			false
 		});
 

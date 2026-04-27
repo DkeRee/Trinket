@@ -76,13 +76,7 @@ impl MoveGen {
 					continue;
 				}
 
-				let mut board_cache = board.clone();
-				board_cache.play_unchecked(mv);
-				if !board_cache.checkers().is_empty() {
-					move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
-				} else {
-					move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
-				}
+				move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
 			}
 
 			for mv in loud_moves {
@@ -117,7 +111,7 @@ impl MoveGen {
 				let mut board_cache = board.clone();
 				board_cache.play_unchecked(mv);
 				if !board_cache.checkers().is_empty() {
-					move_list.push(SortedMove::new(mv, 0, MoveType::Loud));
+					move_list.push(SortedMove::new(mv, 0, MoveType::Quiet));
 				}
 			}
 

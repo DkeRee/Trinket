@@ -166,9 +166,8 @@ impl MoveSorter {
 	const PROMO: i32 = 50000;
 	const WINNING_CAPTURE: i32 = 50000;
 
-	const NEUTRAL_CAPTURE: i32 = 30000;
-
 	const KILLER_QUIET: i32 = 15000;
+	const NEUTRAL_CAPTURE: i32 = 13000;
 	const COUNTER_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 

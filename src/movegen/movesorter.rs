@@ -120,7 +120,7 @@ impl MoveSorter {
 	}
 
 	pub fn add_loud_history(&mut self, mv: Move, depth: i32) {
-		let history = self.quiet_history_table[mv.from as usize][mv.to as usize];
+		let history = self.loud_history_table[mv.from as usize][mv.to as usize];
 		let change = depth * depth + 10;
 
 		if !change.checked_mul(history).is_none() {
@@ -142,7 +142,7 @@ impl MoveSorter {
 	}
 
 	pub fn decay_loud_history(&mut self, mv: Move, depth: i32) {
-		let history = self.quiet_history_table[mv.from as usize][mv.to as usize];
+		let history = self.loud_history_table[mv.from as usize][mv.to as usize];
 		let change = depth * depth;
 
 		if !change.checked_mul(history).is_none() {

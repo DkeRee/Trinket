@@ -336,8 +336,7 @@ pub fn evaluate(board: &Board) -> i32 {
 	}
 
 	if oracle_lookup(board) {
-		//scale eval down in the case of a known draw
-		eval /= Evaluator::ORACLE_SCALE;
+		eval = 0;
 	}
 
 	if board.side_to_move() == Color::White {

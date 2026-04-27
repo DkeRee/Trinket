@@ -9,7 +9,7 @@ pub enum MoveType {
 }
 
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 2]; 100]; 2],
+	killer_table: [[[Option<Move>; 2]; 1000]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
 	see: See
@@ -18,7 +18,7 @@ pub struct MoveSorter {
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
-			killer_table: [[[None; 2]; 100]; 2],
+			killer_table: [[[None; 2]; 1000]; 2],
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
 			see: See::new()
@@ -131,7 +131,7 @@ impl MoveSorter {
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
-		if ply < 100 {
+		if ply < 1000 {
 			let color = board.side_to_move();
 			let ply_slot = self.killer_table[color as usize][ply as usize];
 

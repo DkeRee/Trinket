@@ -336,7 +336,7 @@ pub fn evaluate(board: &Board) -> i32 {
 	}
 
 	if oracle_lookup(board) {
-		eval = 0;
+		eval /= Evaluator::ORACLE_SCALE;
 	}
 
 	if board.side_to_move() == Color::White {

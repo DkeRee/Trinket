@@ -391,7 +391,7 @@ impl Searcher<'_> {
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
-						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_history(&mut self.movegen.sorter, depth, self.evals[ply as usize]);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
@@ -411,7 +411,7 @@ impl Searcher<'_> {
 				}
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth);
+			sm.decay_history(&mut self.movegen.sorter, depth, self.evals[ply as usize]);
 
 			if do_spp {
 				break;

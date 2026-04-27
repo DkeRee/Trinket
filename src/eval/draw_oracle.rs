@@ -6,24 +6,24 @@ pub fn oracle_lookup(board: &Board) -> bool {
 	let mut draw = false;
 
 	//one knight one bishop + one bishop one knight
-	draw = draw || one_knight_king(board, Color::White) && one_bishop_king(board, Color::Black);
-	draw = draw || one_knight_king(board, Color::Black) && one_bishop_king(board, Color::White);
+	draw = draw || (one_knight_king(board, Color::White) && one_bishop_king(board, Color::Black));
+	draw = draw || (one_knight_king(board, Color::Black) && one_bishop_king(board, Color::White));
 
 	//one bishop + one bishop
-	draw = draw || one_bishop_king(board, Color::White) && one_bishop_king(board, Color::Black);
+	draw = draw || (one_bishop_king(board, Color::White) && one_bishop_king(board, Color::Black));
 
 	//one knight + one knight
-	draw = draw || one_knight_king(board, Color::White) && one_knight_king(board, Color::Black);
+	draw = draw || (one_knight_king(board, Color::White) && one_knight_king(board, Color::Black));
 
 	//two knights + lone king
-	draw = draw || two_knight_king(board, Color::White) && black_only_king;
-	draw = draw || two_knight_king(board, Color::Black) && white_only_king;
+	draw = draw || (two_knight_king(board, Color::White) && black_only_king);
+	draw = draw || (two_knight_king(board, Color::Black) && white_only_king);
 
 	//one rook + one rook
-	draw = draw || one_rook_king(board, Color::White) && one_rook_king(board, Color::Black);
+	draw = draw || (one_rook_king(board, Color::White) && one_rook_king(board, Color::Black));
 
 	//one queen + one queen
-	draw = draw || one_queen_king(board, Color::White) && one_queen_king(board, Color::Black);
+	draw = draw || (one_queen_king(board, Color::White) && one_queen_king(board, Color::Black));
 
 	draw
 }

@@ -47,7 +47,7 @@ impl MoveSorter {
 
 					base = if capture_score > 0 {
 						Self::WINNING_CAPTURE
-					} else if capture_score == 0{
+					} else if capture_score == 0 {
 						Self::NEUTRAL_CAPTURE
 					} else {
 						Self::LOSING_CAPTURE
@@ -87,7 +87,15 @@ impl MoveSorter {
 					base = if mv_info.mv.promotion.unwrap() == Piece::Queen { 
 						Self::PROMO
 					} else { 
-						Self::UNDER_PROMO
+						let punish_inc = match mv_info.mv.promotion {
+							Some(Piece::Rook) => 3000,
+							Some(Piece::Bishop) => 6000,
+							Some(Piece::Knight) => 6000,
+							None => 0,
+							_ => unreachable!()
+						};
+
+						Self::UNDER_PROMO - punish_inc
 					};
 				}
 
@@ -175,7 +183,7 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 2000;
+	const HISTORY_MAX: i32 = 5000;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

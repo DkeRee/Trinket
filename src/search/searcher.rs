@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (table_find_move, iid_find_move, iid_find_score) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -134,10 +134,11 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				(Some(table_find), None, None)
 			},
 			None => {
 				let mut iid_move = None;
+				let mut iid_score = None;
 
 				//Internal Iterative Deepening
 				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
@@ -145,8 +146,9 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+					let (best_mv, score) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
 					iid_move = best_mv;
+					iid_score = Some(score);
 				}
 
 				//Internal Iterative Reduction
@@ -156,7 +158,7 @@ impl Searcher<'_> {
 					depth -= depth / 10 + 1;
 				}
 
-				(None, iid_move)
+				(None, iid_move, iid_score)
 			}
 		};
 
@@ -226,6 +228,12 @@ impl Searcher<'_> {
 			} else {
 				iid_find_move.clone().unwrap()
 			};
+
+			if iid_find_move.is_some() {
+				if iid_find_score.unwrap().score >= beta + depth * (depth / 2) {
+					return Some((None, Eval::new(beta, false)));
+				}
+			}
 
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet

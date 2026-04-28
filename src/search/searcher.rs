@@ -360,9 +360,8 @@ impl Searcher<'_> {
 
 				value = child_eval;
 
-				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction > 0 {
+				if value.score > alpha {
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 

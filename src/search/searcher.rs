@@ -281,8 +281,8 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
-				&& alpha > -Score::CHECKMATE_BASE 
-				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
+				&& eval.score > -Score::CHECKMATE_BASE + ply
+				&& moves_searched > ((mvlen / 3) - (!improving as i32 * 3) + depth / 10)
 				&& !in_check {
 					past_positions.pop();
 					break;
@@ -381,8 +381,6 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
-
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -398,24 +396,11 @@ impl Searcher<'_> {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
-					//SPP
-					do_spp = !is_pv 
-					&& depth <= Self::SPP_DEPTH_CAP 
-					&& !move_is_check 
-					&& !sm.is_killer
-					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet
-					&& !staged_movegen;
-
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
-
-			if do_spp {
-				break;
-			}
 
 			moves_searched += 1;
 			legal_index += 1;
@@ -545,7 +530,6 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 3;
-	const SPP_DEPTH_CAP: i32 = 3;
+	const LMP_DEPTH_MAX: i32 = 10;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

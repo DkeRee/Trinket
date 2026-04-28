@@ -8,7 +8,7 @@ pub const ROOK: Score = S!( 508,  532);
 pub const QUEEN: Score = S!(1032, 1031);
  
 //EXTRA CALCS
-pub const TEMPO: Score = S!(  20,   20);
+pub const TEMPO: Score = S!(  50,   100);
 
 pub const PAWN_MOBILITY: [Score; 5] = [
     S!(   2,    4), S!(   1,   -4), S!(   0,    1), S!(   4,    2), S!(  -5,   -4), 

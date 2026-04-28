@@ -47,13 +47,34 @@ impl MoveSorter {
 
 					base = if capture_score > 0 {
 						Self::WINNING_CAPTURE
-					} else if capture_score == 0{
+					} else if capture_score == 0 {
 						Self::NEUTRAL_CAPTURE
 					} else {
 						Self::LOSING_CAPTURE
 					};
 
 					increment = capture_score;
+
+					//MVV_LVA
+					increment += match board.piece_on(mv_info.mv.to) {
+						Some(Piece::Pawn) => 100,
+						Some(Piece::Knight) => 375,
+						Some(Piece::Bishop) => 375,
+						Some(Piece::Rook) => 500,
+						Some(Piece::Queen) => 1025,
+						Some(Piece::King) => 0,
+						None => 0
+					};
+
+					increment -= match board.piece_on(mv_info.mv.from) {
+						Some(Piece::Pawn) => 100,
+						Some(Piece::Knight) => 375,
+						Some(Piece::Bishop) => 375,
+						Some(Piece::Rook) => 500,
+						Some(Piece::Queen) => 1025,
+						Some(Piece::King) => 0,
+						None => 0
+					};
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

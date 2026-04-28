@@ -76,16 +76,8 @@ impl Searcher<'_> {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
-		let mut globally_extended = false;
 		let in_check = !board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
-
-		//CHECK EXTENSION
-		if in_check {
-			// https://www.chessprogramming.org/Check_Extensions
-			globally_extended = true;
-			depth += 1;
-		}
 
 		match board.status() {
 			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
@@ -256,10 +248,13 @@ impl Searcher<'_> {
 			let mut new_depth = depth - 1;
 
 			//Extensions
+			if move_is_check && improving {
+				new_depth += 1;
+			}
 
 			//King Pawn Endgame Extension
 			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
+			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !staged_movegen {
 				new_depth += 1;
 			}
 

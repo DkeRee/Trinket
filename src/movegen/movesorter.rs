@@ -47,13 +47,13 @@ impl MoveSorter {
 
 					base = if capture_score > 0 {
 						Self::WINNING_CAPTURE
-					} else if capture_score == 0{
+					} else if capture_score == 0 {
 						Self::NEUTRAL_CAPTURE
 					} else {
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score;
+					increment = capture_score * 150;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

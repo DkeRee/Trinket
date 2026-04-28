@@ -504,7 +504,8 @@ impl Searcher<'_> {
 		let mut best_move = None;
 		let mut eval = stand_pat;
 
-		for sm in move_list {
+		for mut m in move_list {
+			let mut sm = &mut m;
 
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {
@@ -526,6 +527,7 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
+						sm.insert_history(&mut self.movegen.sorter, 0);
 						return Some((None, Eval::new(beta, false)));
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
@@ -534,6 +536,8 @@ impl Searcher<'_> {
 					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 				}
 			}
+
+			sm.decay_history(&mut self.movegen.sorter, 0);
 		}
 
 		return Some((best_move, eval));

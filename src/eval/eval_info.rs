@@ -48,7 +48,7 @@ pub const PAWN_ISLAND_PENALTY: Score = S!(  -6,  -12);
 pub const PAWN_ISOLATION_PENALTY: Score = S!( -10,  -10);
 pub const ROOK_OPEN_FILE_BONUS: Score = S!(  25,   26);
 pub const ROOK_SEMI_FILE_BONUS: Score = S!(  15,   16);
-pub const CONNECTED_PASSED_PAWN: Score = S!(  11,    5);
+pub const CONNECTED_PASSED_PAWN: Score = S!(  11,   35);
 pub const KING_ON_SEMI_OPEN_FILE: Score = S!(   3,    2);
 pub const KING_ON_OPEN_FILE: Score = S!( -54,   -3);
  

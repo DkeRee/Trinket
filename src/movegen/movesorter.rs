@@ -46,16 +46,20 @@ impl MoveSorter {
 
 				if mv_info.movetype == MoveType::Loud {
 					let capture_score = self.see.see(board, mv_info.mv);
+					mv_info.see = capture_score;
 
 					base = if capture_score > 0 {
+						increment += self.get_loud_history(mv_info.mv) / 6;
 						Self::WINNING_CAPTURE
 					} else if capture_score == 0 {
+						increment += self.get_loud_history(mv_info.mv);
 						Self::NEUTRAL_CAPTURE
 					} else {
+						increment += self.get_loud_history(mv_info.mv) / 6;
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score + self.get_loud_history(mv_info.mv);
+					increment += capture_score;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

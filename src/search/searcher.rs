@@ -241,6 +241,7 @@ impl Searcher<'_> {
 
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
+		let mut quiets = 0;
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
@@ -272,17 +273,10 @@ impl Searcher<'_> {
 				//Pruning
 
 				//LMP
-				//We can skip specific quiet moves that are very late in a node
-				//IF isn't PV
-				//IF low depth
-				//IF move is quiet
-				//IF alpha is NOT a losing mate
-				//IF IS late move
-				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				if !is_pv
 				&& sm.movetype == MoveType::Quiet 
 				&& eval.score > -Score::CHECKMATE_BASE + ply
-				&& moves_searched > ((mvlen / 3) - (!improving as i32 * 3) + depth / 10)
+				&& quiets > 1 + depth * depth + improving as i32
 				&& !in_check {
 					past_positions.pop();
 					break;
@@ -404,6 +398,7 @@ impl Searcher<'_> {
 
 			moves_searched += 1;
 			legal_index += 1;
+			quiets += (sm.movetype == MoveType::Quiet) as i32;
 
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
@@ -530,6 +525,5 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 10;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

@@ -50,7 +50,7 @@ pub const ROOK_OPEN_FILE_BONUS: Score = S!(  25,   26);
 pub const ROOK_SEMI_FILE_BONUS: Score = S!(  15,   16);
 pub const CONNECTED_PASSED_PAWN: Score = S!(  11,    5);
 pub const KING_ON_SEMI_OPEN_FILE: Score = S!(   3,    2);
-pub const KING_ON_OPEN_FILE: Score = S!( -54,   -3);
+pub const KING_ON_OPEN_FILE: Score = S!( -105,   15);
  
 //PSTs
 pub const P: [Score; 64] = [

@@ -78,7 +78,7 @@ impl Searcher<'_> {
 
 		let mut globally_extended = false;
 		let in_check = !board.checkers().is_empty();
-		let is_pv = beta > alpha + 1;
+		let is_pv: bool = beta > alpha + 1;
 
 		//CHECK EXTENSION
 		if in_check {
@@ -144,7 +144,7 @@ impl Searcher<'_> {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if depth <= 6 {
 					let (best_mv, _) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
 					iid_move = best_mv;
 				}
@@ -544,7 +544,6 @@ impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
-	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;

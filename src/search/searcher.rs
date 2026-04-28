@@ -145,7 +145,7 @@ impl Searcher<'_> {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if depth >= Self::IID_DEPTH_MIN {
 					let (best_mv, score) = self.search(&abort, board, depth - 10, ply, alpha, beta, past_positions, last_move)?;
 					iid_move = best_mv;
 					iid_score = Some(score);
@@ -222,18 +222,13 @@ impl Searcher<'_> {
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
 		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+
 		if staged_movegen {
 			let mv = if table_find_move.is_some() {
 				table_find_move.clone().unwrap().best_move.unwrap()
 			} else {
 				iid_find_move.clone().unwrap()
 			};
-
-			if iid_find_move.is_some() {
-				if iid_find_score.unwrap().score >= beta + depth * (depth / 2) {
-					return Some((None, Eval::new(beta, false)));
-				}
-			}
 
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
 				MoveType::Quiet

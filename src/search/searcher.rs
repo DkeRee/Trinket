@@ -288,6 +288,15 @@ impl Searcher<'_> {
 					break;
 				}
 
+				//See Pruning
+				if !is_pv
+				&& sm.see < -80 * depth 
+				&& sm.movetype == MoveType::Loud 
+				&& alpha > -Score::CHECKMATE_BASE + ply {
+					past_positions.pop();
+					break;
+				}
+
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();

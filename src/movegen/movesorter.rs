@@ -54,6 +54,7 @@ impl MoveSorter {
 					};
 
 					increment = capture_score;
+					mv_info.see = capture_score;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

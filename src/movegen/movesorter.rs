@@ -56,7 +56,7 @@ impl MoveSorter {
 					increment = capture_score;
 
 					//MVV_LVA
-					increment += match board.piece_on(mv_info.mv.to) {
+					increment += 16 * match board.piece_on(mv_info.mv.to) {
 						Some(Piece::Pawn) => 100,
 						Some(Piece::Knight) => 375,
 						Some(Piece::Bishop) => 375,

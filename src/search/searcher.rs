@@ -383,7 +383,8 @@ impl Searcher<'_> {
 
 			let mut do_spp = false;
 
-			if value.score > eval.score {
+			let v_score = value.score;
+			if v_score > eval.score {
 				eval = value;
 				best_move = Some(mv);
 				if eval.score > alpha {
@@ -406,9 +407,11 @@ impl Searcher<'_> {
 					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
 					&& !staged_movegen;
-
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
+			}
+
+			if (v_score < eval.score || eval.score < alpha) && best_move.is_some() {
+				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth);
@@ -519,7 +522,8 @@ impl Searcher<'_> {
 
 			child_eval.score *= -1;
 
-			if child_eval.score > eval.score {
+			let v_score = child_eval.score;
+			if v_score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
 				if eval.score > alpha {
@@ -530,9 +534,11 @@ impl Searcher<'_> {
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 					}
-				} else {
-					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 				}
+			}
+
+			if (v_score < eval.score || eval.score < alpha) && best_move.is_some() {
+				self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 			}
 		}
 

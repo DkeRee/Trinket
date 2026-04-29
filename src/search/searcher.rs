@@ -281,7 +281,7 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
-				&& alpha > -Score::CHECKMATE_BASE 
+				&& eval.score > -Score::CHECKMATE_BASE + ply
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& !in_check {
 					past_positions.pop();
@@ -289,7 +289,9 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				if depth >= Self::HISTORY_DEPTH_MIN 
+				&& eval.score > -Score::CHECKMATE_BASE + ply
+				&& sm.history < -500 * depth {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -405,6 +407,7 @@ impl Searcher<'_> {
 					&& !sm.is_killer
 					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
+					&& eval.score > -Score::CHECKMATE_BASE + ply
 					&& !staged_movegen;
 
 					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
@@ -507,7 +510,7 @@ impl Searcher<'_> {
 		for sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
+			if sm.importance < 0 && eval.score > -Score::CHECKMATE_BASE + ply {
 				break;
 			}
 

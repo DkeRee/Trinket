@@ -299,7 +299,13 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				if moves_searched >= 3
+				&& sm.movetype == MoveType::Quiet 
+				&& !move_is_check
+				&& sm.history > 0 {
+					let hist_reduction = (sm.history / 2000).clamp(-1, 1);
+					reduction -= hist_reduction;
+				}
 
 				//LMR can be applied
 				//IF depth is above sufficient depth

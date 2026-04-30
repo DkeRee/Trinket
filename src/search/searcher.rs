@@ -290,14 +290,12 @@ impl Searcher<'_> {
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& (!in_check || !move_is_check) {
-					past_positions.pop();
 					legal_index += 1;
 					continue;
 				}
 
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -650 * depth {
-					past_positions.pop();
 					legal_index += 1;
 					continue;
 				}

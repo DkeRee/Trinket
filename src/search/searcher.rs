@@ -250,8 +250,6 @@ impl Searcher<'_> {
 
 			let move_is_check: bool = !board_cache.checkers().is_empty();
 
-			past_positions.push(board_cache.hash());
-
 			let mut value: Eval;
 			let mut new_depth = depth - 1;
 
@@ -264,8 +262,12 @@ impl Searcher<'_> {
 			}
 
 			if moves_searched == 0 {
+				past_positions.push(board_cache.hash());
+
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
+
+				past_positions.pop();
 
 				value = child_eval;
 			} else {
@@ -363,31 +365,41 @@ impl Searcher<'_> {
 					reduction = 0;
 				}
 
+				past_positions.push(board_cache.hash());
+
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
+				past_positions.pop();
+
 				//check if reductions should be removed
 				//search with full depth and null window
 				if value.score > alpha && reduction > 0 {
+					past_positions.push(board_cache.hash());
+
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
+
+					past_positions.pop();
 				}
 
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
+					past_positions.push(board_cache.hash());
+
 					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
+
+					past_positions.pop();
 				}
 			}
-
-			past_positions.pop();
 
 			let mut do_spp = false;
 

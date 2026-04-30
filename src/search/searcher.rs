@@ -248,7 +248,7 @@ impl Searcher<'_> {
 			let mut board_cache = board.clone();
 			board_cache.play_unchecked(mv);
 
-			let move_is_check = !board_cache.checkers().is_empty();
+			let move_is_check: bool = !board_cache.checkers().is_empty();
 
 			past_positions.push(board_cache.hash());
 
@@ -271,6 +271,9 @@ impl Searcher<'_> {
 			} else {
 				//Pruning
 
+				//get initial value with reduction and pv-search null window
+				let mut reduction = 0;
+
 				//LMP
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV
@@ -279,27 +282,32 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				if !is_pv 
+				&& depth > Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
-				&& !in_check {
-					past_positions.pop();
-					break;
-				}
-
-				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				&& (!in_check || !move_is_check) {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
 				}
 
-				//get initial value with reduction and pv-search null window
-				let mut reduction = 0;
+				//History Pruning
+				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -650 * depth {
+					past_positions.pop();
+					legal_index += 1;
+					continue;
+				}
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				if moves_searched >= 3
+				&& sm.movetype == MoveType::Quiet 
+				&& !move_is_check
+				&& sm.history > 0 {
+					let hist_reduction = (sm.history / 2000).clamp(-1, 1);
+					reduction -= hist_reduction;
+				}
 
 				//LMR can be applied
 				//IF depth is above sufficient depth

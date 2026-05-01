@@ -118,28 +118,28 @@ impl Engine {
 		let mut depth_index = 0;
 		let mut window = 10;
 
+		let mut alpha = -i32::MAX;
+		let mut beta = i32::MAX ;
+
 		while depth_index < self.max_depth && depth_index < 250 {
 			self.seldepth = 0;
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
-			let new_alpha = if depth_index + 1 > 3 {
-				last_result - window
-			} else {
-				-i32::MAX
-			};
-
-			let new_beta = if depth_index + 1 > 3 {
-				last_result + window
-			} else {
-				i32::MAX
-			};
+			if depth_index + 1 > 3 {
+				if last_result <= alpha {
+					beta = (alpha + beta) / 2;
+					alpha = last_result - window;
+				} else if last_result >= beta {
+					beta = last_result + window;
+				}
+			}
 
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
-				alpha: new_alpha,
-				beta: new_beta,
+				alpha: alpha,
+				beta: beta,
 				past_positions
 			});
 

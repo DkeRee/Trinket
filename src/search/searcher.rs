@@ -263,12 +263,12 @@ impl Searcher<'_> {
 				new_depth += 1;
 			}
 
-			//Singular Extension
-			if depth > 3 && table.as_ref().is_some() && moves_searched == 0 {
+			//TT Singular Extension
+			if !globally_extended && depth > 3 && table.as_ref().is_some() && moves_searched == 0 {
 				if table.as_ref().unwrap().depth > depth - 4 {
 					let singular_beta = table.as_ref().unwrap().eval - depth;
 
-					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth / 4, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					if child_eval.score < singular_beta { 

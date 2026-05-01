@@ -257,12 +257,6 @@ impl Searcher<'_> {
 
 			//Extensions
 
-			//King Pawn Endgame Extension
-			let non_pawns = board.pieces(Piece::Rook) | board.pieces(Piece::Bishop) | board.pieces(Piece::Queen) | board.pieces(Piece::Knight);
-			if !(board.occupied() & non_pawns).is_empty() && (board_cache.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
-				new_depth += 1;
-			}
-
 			//TT Singular Extension
 			if depth > 3 && table.as_ref().is_some() && moves_searched == 0 {
 				if table.as_ref().unwrap().depth > depth - 4 
@@ -270,7 +264,7 @@ impl Searcher<'_> {
 				&& table.as_ref().unwrap().node_kind != NodeKind::UpperBound {
 					let singular_beta = table.as_ref().unwrap().eval - depth;
 
-					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth / 3, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 
 					if child_eval.score < singular_beta { 

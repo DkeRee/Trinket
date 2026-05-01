@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (table, iid_find_move) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -161,8 +161,8 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if table_find_move.as_ref().is_some() {
-			table_find_move.as_ref().unwrap().eval
+		let static_eval = if table.as_ref().is_some() {
+			table.as_ref().unwrap().eval
 		} else {
 			evaluate(board)
 		};
@@ -219,10 +219,10 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		let mut staged_movegen = table.is_some() || iid_find_move.is_some();
 		if staged_movegen {
-			let mv = if table_find_move.is_some() {
-				table_find_move.clone().unwrap().best_move.unwrap()
+			let mv = if table.is_some() {
+				table.clone().unwrap().best_move.unwrap()
 			} else {
 				iid_find_move.clone().unwrap()
 			};
@@ -263,6 +263,22 @@ impl Searcher<'_> {
 				new_depth += 1;
 			}
 
+			//TT Singular Extension
+			if depth > 3 && table.as_ref().is_some() && moves_searched == 0 {
+				if table.as_ref().unwrap().depth > depth - 4 
+				&& i32::abs(table.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
+				&& table.as_ref().unwrap().node_kind != NodeKind::UpperBound {
+					let singular_beta = table.as_ref().unwrap().eval - depth;
+
+					let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
+					child_eval.score *= -1;
+
+					if child_eval.score < singular_beta { 
+						new_depth += 1;
+					}
+				}
+			}
+
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
@@ -286,6 +302,15 @@ impl Searcher<'_> {
 				&& !in_check {
 					past_positions.pop();
 					break;
+				}
+
+				//See Pruning
+				if !is_pv 
+				&& sm.movetype == MoveType::Loud 
+				&& sm.see < -70 * depth {
+					past_positions.pop();
+					legal_index += 1;
+					continue;
 				}
 
 				//History Pruning

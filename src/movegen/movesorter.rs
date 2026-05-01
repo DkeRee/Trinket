@@ -53,6 +53,7 @@ impl MoveSorter {
 						Self::LOSING_CAPTURE
 					};
 
+					mv_info.see = capture_score;
 					increment = capture_score;
 				}
 	

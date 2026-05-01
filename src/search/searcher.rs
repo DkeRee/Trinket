@@ -288,6 +288,17 @@ impl Searcher<'_> {
 					break;
 				}
 
+				//Futility Pruning
+				if depth < 10 
+				&& !in_check 
+				&& alpha > -Score::CHECKMATE_BASE
+				&& static_eval + 80 * depth + sm.importance / 32 + 90 < alpha
+				&& sm.movetype == MoveType::Quiet {
+					past_positions.pop();
+					legal_index += 1;
+					continue;
+				}
+
 				//History Pruning
 				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
 					past_positions.pop();

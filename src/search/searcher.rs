@@ -410,10 +410,6 @@ impl Searcher<'_> {
 				}
 			}
 
-			if (v_score < eval.score || eval.score < alpha) && best_move.is_some() {
-				self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
-			}
-
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			if do_spp {
@@ -428,6 +424,10 @@ impl Searcher<'_> {
 				legal_index = 0; 
 				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 			}
+		}
+
+		if best_move.is_some() {
+			self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 		}
 
 		return Some((best_move, eval));
@@ -536,10 +536,10 @@ impl Searcher<'_> {
 					}
 				}
 			}
+		}
 
-			if (v_score < eval.score || eval.score < alpha) && best_move.is_some() {
-				self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
-			}
+		if best_move.is_some() {
+			self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 		}
 
 		return Some((best_move, eval));

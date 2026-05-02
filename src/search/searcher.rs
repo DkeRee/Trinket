@@ -527,20 +527,17 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
 						tt_nodetype = NodeKind::LowerBound;
-						return Some((None, Eval::new(beta, false)));
+						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
 						tt_nodetype = NodeKind::Exact
 					}
 				} else {
 					tt_nodetype = NodeKind::UpperBound;
-					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 				}
 			}
 
-			if (v_score < eval.score || eval.score < alpha) { 
+			if v_score < eval.score || eval.score < alpha { 
 				tt_nodetype = NodeKind::UpperBound;
 			}
 		}

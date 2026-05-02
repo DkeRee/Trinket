@@ -292,7 +292,7 @@ impl Searcher<'_> {
 				if depth < 10 
 				&& !in_check 
 				&& alpha > -Score::CHECKMATE_BASE
-				&& static_eval + 80 * depth + sm.importance / 32 + 90 < alpha
+				&& static_eval + 80 * depth + sm.importance / 32 + 250 < alpha
 				&& sm.movetype == MoveType::Quiet {
 					past_positions.pop();
 					legal_index += 1;

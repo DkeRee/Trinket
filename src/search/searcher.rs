@@ -503,6 +503,7 @@ impl Searcher<'_> {
 
 		let mut best_move = None;
 		let mut eval = stand_pat;
+		let mut tt_nodetype = NodeKind::UpperBound;
 
 		for sm in move_list {
 
@@ -519,21 +520,34 @@ impl Searcher<'_> {
 
 			child_eval.score *= -1;
 
-			if child_eval.score > eval.score {
+			let mut v_score = child_eval.score;
+			if v_score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
+						tt_nodetype = NodeKind::LowerBound;
 						return Some((None, Eval::new(beta, false)));
 					} else {
 						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
+						tt_nodetype = NodeKind::Exact
 					}
 				} else {
+					tt_nodetype = NodeKind::UpperBound;
 					self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
 				}
 			}
+
+			if (v_score < eval.score || eval.score < alpha) { 
+				tt_nodetype = NodeKind::UpperBound;
+			}
+		}
+
+
+		if best_move.is_some() {
+			self.tt.insert(best_move, eval.score, board.hash(), ply, 0, tt_nodetype);
 		}
 
 		return Some((best_move, eval));

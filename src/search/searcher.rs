@@ -553,14 +553,14 @@ impl Searcher<'_> {
 		}
 
 		let mut tt_mv_insertion = None;
-		if tt_hit.as_ref().is_some() {
-			if tt_hit.as_ref().unwrap().best_move.is_none() {
-				tt_mv_insertion = best_move;
-			} else {
-				tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
-			}
-		} else {
+		if best_move.is_some() {
 			tt_mv_insertion = best_move;
+		} else {
+			if tt_hit.as_ref().is_some() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+				}
+			}
 		}
 
 		self.tt.insert(tt_mv_insertion, eval.score, board.hash(), ply, 0, tt_nodetype);

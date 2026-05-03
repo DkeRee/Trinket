@@ -123,11 +123,23 @@ impl Engine {
 			let board = &mut self.board.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
+			let new_alpha = if depth_index + 1 > 3 {
+				last_result - window
+			} else {
+				-i32::MAX
+			};
+
+			let new_beta = if depth_index + 1 > 3 {
+				last_result + window
+			} else {
+				i32::MAX
+			};
+
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
 				board: board.clone(),
 				depth: depth_index + 1,
-				alpha: last_result - window,
-				beta: last_result + window,
+				alpha: new_alpha,
+				beta: new_beta,
 				past_positions
 			});
 
@@ -137,7 +149,6 @@ impl Engine {
 				self.nodes += nodes;
 				self.seldepth += seldepth;
 
-				//MANAGE ASPIRATION WINDOWS
 				if eval.score <= last_result - window || eval.score >= last_result + window {
 					window *= 2;
 					continue;

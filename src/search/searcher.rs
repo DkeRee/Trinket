@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (tt_hit, iid) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -161,8 +161,8 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if table_find_move.as_ref().is_some() {
-			table_find_move.as_ref().unwrap().eval
+		let static_eval = if tt_hit.as_ref().is_some() {
+			tt_hit.as_ref().unwrap().eval
 		} else {
 			evaluate(board)
 		};
@@ -219,22 +219,32 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		let mut staged_movegen = tt_hit.is_some() || iid.is_some();
 		if staged_movegen {
-			let mv = if table_find_move.is_some() {
-				table_find_move.clone().unwrap().best_move.unwrap()
-			} else {
-				iid_find_move.clone().unwrap()
-			};
+			let mut mv = None;
 
-			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
-				MoveType::Quiet
-			} else {
-				MoveType::Loud
-			};
-			let mut sm = SortedMove::new(mv, 0, movetype);
+			if tt_hit.is_some() {
+				mv = tt_hit.as_ref().unwrap().best_move;
 
-			legal_moves.push(sm);
+				if mv == None {
+					mv = iid.clone();
+				}
+			} else {
+				mv = iid.clone();
+			}
+
+			if mv.is_some() {
+				let movetype = if (mv.unwrap().to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
+					MoveType::Quiet
+				} else {
+					MoveType::Loud
+				};
+				let mut sm = SortedMove::new(mv.unwrap(), 0, movetype);
+
+				legal_moves.push(sm);
+			} else {
+				legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
+			}
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
@@ -459,7 +469,7 @@ impl Searcher<'_> {
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
-		let table_find = match self.tt.find(board, ply) {
+		let tt_hit = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
 				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
@@ -542,10 +552,18 @@ impl Searcher<'_> {
 			}
 		}
 
-
-		if best_move.is_some() {
-			self.tt.insert(best_move, eval.score, board.hash(), ply, 0, tt_nodetype);
+		let mut tt_mv_insertion = None;
+		if tt_hit.as_ref().is_some() {
+			if tt_hit.as_ref().unwrap().best_move.is_none() {
+				tt_mv_insertion = best_move;
+			} else {
+				tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+			}
+		} else {
+			tt_mv_insertion = best_move;
 		}
+
+		self.tt.insert(tt_mv_insertion, eval.score, board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

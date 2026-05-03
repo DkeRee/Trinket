@@ -392,14 +392,12 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						tt_nodetype = NodeKind::LowerBound;
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
 						tt_nodetype = NodeKind::Exact;
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
 					//SPP
@@ -413,7 +411,7 @@ impl Searcher<'_> {
 				}
 			}
 
-			if (v_score < eval.score || eval.score < alpha) { 
+			if v_score < eval.score || eval.score < alpha { 
 				tt_nodetype = NodeKind::UpperBound;
 			 }
 

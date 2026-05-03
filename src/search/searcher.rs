@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (tt_hit, iid) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -161,8 +161,8 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if table_find_move.as_ref().is_some() {
-			table_find_move.as_ref().unwrap().eval
+		let static_eval = if tt_hit.as_ref().is_some() {
+			tt_hit.as_ref().unwrap().eval
 		} else {
 			evaluate(board)
 		};
@@ -219,22 +219,32 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		let mut staged_movegen = tt_hit.is_some() || iid.is_some();
 		if staged_movegen {
-			let mv = if table_find_move.is_some() {
-				table_find_move.clone().unwrap().best_move.unwrap()
-			} else {
-				iid_find_move.clone().unwrap()
-			};
+			let mut mv = None;
 
-			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
-				MoveType::Quiet
-			} else {
-				MoveType::Loud
-			};
-			let mut sm = SortedMove::new(mv, 0, movetype);
+			if tt_hit.is_some() {
+				mv = tt_hit.as_ref().unwrap().best_move;
 
-			legal_moves.push(sm);
+				if mv == None {
+					mv = iid.clone();
+				}
+			} else {
+				mv = iid.clone();
+			}
+
+			if mv.is_some() {
+				let movetype = if (mv.unwrap().to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
+					MoveType::Quiet
+				} else {
+					MoveType::Loud
+				};
+				let mut sm = SortedMove::new(mv.unwrap(), 0, movetype);
+
+				legal_moves.push(sm);
+			} else {
+				legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
+			}
 		} else {
 			legal_moves = self.movegen.move_gen(board, None, ply, false, last_move);
 		}
@@ -242,6 +252,7 @@ impl Searcher<'_> {
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
 		let mut tt_nodetype = NodeKind::UpperBound;
+		
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
@@ -431,9 +442,7 @@ impl Searcher<'_> {
 			}
 		}
 
-		if best_move.is_some() {
-			self.tt.insert(best_move, eval.score, board.hash(), ply, depth, tt_nodetype);
-		}
+		self.tt.insert(best_move, eval.score, board.hash(), ply, depth, tt_nodetype);
 
 		return Some((best_move, eval));
 	}
@@ -511,6 +520,7 @@ impl Searcher<'_> {
 
 		let mut best_move = None;
 		let mut eval = stand_pat;
+		let mut tt_nodetype: NodeKind = NodeKind::UpperBound;
 
 		for sm in move_list {
 
@@ -534,18 +544,20 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::LowerBound);
-						return Some((None, Eval::new(beta, false)));
+						tt_nodetype = NodeKind::LowerBound;
+						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::Exact);
+						tt_nodetype = NodeKind::Exact;
 					}
 				}
 			}
+
+			if v_score < eval.score || eval.score < alpha { 
+				tt_nodetype = NodeKind::UpperBound;
+			}
 		}
 
-		if best_move.is_some() {
-			self.tt.insert(best_move, eval.score, board.hash(), ply, 0, NodeKind::UpperBound);
-		}
+		self.tt.insert(best_move, eval.score, board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

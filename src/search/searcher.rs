@@ -422,10 +422,6 @@ impl Searcher<'_> {
 				}
 			}
 
-			if v_score < eval.score || eval.score < alpha { 
-				tt_nodetype = NodeKind::UpperBound;
-			 }
-
 			sm.decay_history(&mut self.movegen.sorter, depth);
 
 			if do_spp {
@@ -550,10 +546,6 @@ impl Searcher<'_> {
 						tt_nodetype = NodeKind::Exact;
 					}
 				}
-			}
-
-			if v_score < eval.score || eval.score < alpha { 
-				tt_nodetype = NodeKind::UpperBound;
 			}
 		}
 

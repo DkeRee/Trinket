@@ -532,8 +532,6 @@ impl Searcher<'_> {
 					} else {
 						tt_nodetype = NodeKind::Exact
 					}
-				} else {
-					tt_nodetype = NodeKind::UpperBound;
 				}
 			}
 		}

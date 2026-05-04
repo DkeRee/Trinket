@@ -241,6 +241,8 @@ impl Searcher<'_> {
 
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
+		let mut tt_nodetype = NodeKind::UpperBound;
+
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
@@ -389,13 +391,13 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
+						tt_nodetype = NodeKind::LowerBound;
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
-						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
+						tt_nodetype = NodeKind::Exact;
 					}
 				} else {
 					//SPP
@@ -406,8 +408,6 @@ impl Searcher<'_> {
 					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
 					&& !staged_movegen;
-
-					self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
@@ -426,6 +426,8 @@ impl Searcher<'_> {
 				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 			}
 		}
+
+		self.tt.insert(best_move, eval.score, board.hash(), ply, depth, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

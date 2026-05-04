@@ -12,6 +12,7 @@ pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
+	pawn_corrhist: [[i32; Self::CORRHIST_SIZE]; 2],
 	see: See
 }
 
@@ -21,6 +22,7 @@ impl MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
+			pawn_corrhist: [[0; Self::CORRHIST_SIZE]; 2],
 			see: See::new()
 		}
 	}
@@ -147,6 +149,39 @@ impl MoveSorter {
 		return false;
 	}
 
+	pub fn add_pawn_corrhist(&mut self, board: &Board, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx = (self.pawn_hash(board) % Self::CORRHIST_SIZE as u64) as usize;
+		let side = board.side_to_move() as usize;
+	
+		let entry = &mut self.pawn_corrhist[side][idx];
+	
+		let bonus = ((best_alpha - static_eval) * depth)
+			.clamp(-550, 550)
+			* 8;
+	
+		*entry += bonus - (*entry * bonus.abs() / Self::HISTORY_MAX);
+	}
+
+	pub fn read_pawn_corrhist(&mut self, board: &Board) -> i32 {
+		let pawn_hist = self.pawn_corrhist[board.side_to_move() as usize][(self.pawn_hash(board) % Self::CORRHIST_SIZE as u64) as usize];
+		pawn_hist / 107
+	}
+
+	fn pawn_hash(&self, board: &Board) -> u64 {
+		let white_pawns = board.colored_pieces(Color::White, Piece::Pawn).0;
+		let black_pawns = board.colored_pieces(Color::Black, Piece::Pawn).0;
+
+		let mut hash = white_pawns ^ black_pawns.rotate_left(32);
+
+		hash ^= hash >> 33;
+		hash = hash.wrapping_mul(0xff51afd7ed558ccd);
+		hash ^= hash >> 33;
+		hash = hash.wrapping_mul(0xc4ceb9fe1a85ec53);
+		hash ^= hash >> 33;
+
+		hash
+	}
+
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
 		if last_move.is_none() {
 			return false;
@@ -176,6 +211,7 @@ impl MoveSorter {
 	const UNDER_PROMO: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
+	const CORRHIST_SIZE: usize = 16384;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

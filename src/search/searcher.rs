@@ -164,7 +164,10 @@ impl Searcher<'_> {
 		let static_eval = if table_find_move.as_ref().is_some() {
 			table_find_move.as_ref().unwrap().eval
 		} else {
-			evaluate(board)
+			let base_eval = evaluate(board);
+			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(board);
+
+			base_eval + pawn_corrhist
 		};
 
 		self.evals[ply as usize] = static_eval;
@@ -425,6 +428,10 @@ impl Searcher<'_> {
 				legal_index = 0; 
 				legal_moves = self.movegen.move_gen(board, Some(mv), ply, true, last_move);
 			}
+		}
+
+		if !board.checkers().is_empty() {
+			self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
 		}
 
 		return Some((best_move, eval));

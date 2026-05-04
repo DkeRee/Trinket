@@ -452,7 +452,8 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		let stand_pat = Eval::new(evaluate(board), false);
+		let static_eval = evaluate(board) + self.movegen.sorter.read_pawn_corrhist(board);
+		let stand_pat = Eval::new(static_eval, false);
 
 		//beta cutoff
 		if stand_pat.score >= beta {
@@ -544,7 +545,6 @@ impl Searcher<'_> {
 				}
 			}
 		}
-
 
 		if best_move.is_some() {
 			self.tt.insert(best_move, eval.score, board.hash(), ply, 0, tt_nodetype);

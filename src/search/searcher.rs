@@ -536,10 +536,6 @@ impl Searcher<'_> {
 					tt_nodetype = NodeKind::UpperBound;
 				}
 			}
-
-			if v_score < eval.score || eval.score < alpha { 
-				tt_nodetype = NodeKind::UpperBound;
-			}
 		}
 
 

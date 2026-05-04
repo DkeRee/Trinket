@@ -552,10 +552,7 @@ impl Searcher<'_> {
 			}
 		}
 
-		let tt_mv_insertion = best_move
-		.or_else(|| tt_hit.as_ref()?.best_move);
-
-		self.tt.insert(tt_mv_insertion, eval.score, board.hash(), ply, 0, tt_nodetype);
+		self.tt.insert(best_move, eval.score, board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

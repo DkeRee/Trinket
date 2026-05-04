@@ -156,7 +156,7 @@ impl MoveSorter {
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
 		let bonus = ((best_alpha - static_eval) * depth)
-			.clamp(-550, 550)
+			.clamp(-30, 30)
 			* 8;
 	
 		*entry += bonus - (*entry * bonus.abs() / Self::HISTORY_MAX);

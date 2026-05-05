@@ -170,12 +170,12 @@ impl MoveSorter {
 	fn pawn_hash(&self, board: &Board) -> u64 {
 		let mut hash = 0u64;
 	
-		for sq in board.colored_pieces(Color::White, Piece::Pawn) {
-			hash ^= Self::PAWN_KEYS[0][sq as usize];
+		for square in board.colored_pieces(Color::White, Piece::Pawn) {
+			hash ^= Self::PAWN_KEYS[0][square as usize];
 		}
 	
-		for sq in board.colored_pieces(Color::Black, Piece::Pawn) {
-			hash ^= Self::PAWN_KEYS[1][sq as usize];
+		for square in board.colored_pieces(Color::Black, Piece::Pawn) {
+			hash ^= Self::PAWN_KEYS[1][square as usize];
 		}
 	
 		hash

@@ -218,6 +218,7 @@ impl Searcher<'_> {
 		}
 
 		let mut best_move = None;
+		let mut best_move_type = None;
 		let mut eval = Eval::new(i32::MIN, false);
 
 		//STAGED MOVEGEN
@@ -389,6 +390,7 @@ impl Searcher<'_> {
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
+				best_move_type = Some(sm.movetype.clone());
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
@@ -430,7 +432,8 @@ impl Searcher<'_> {
 			}
 		}
 
-		if !board.checkers().is_empty() {
+		if !board.checkers().is_empty()
+		&& (best_move.is_none() || matches!(best_move_type, Some(MoveType::Quiet))) {
 			self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
 		}
 

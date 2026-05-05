@@ -245,6 +245,8 @@ impl Searcher<'_> {
 
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
+		let mut tt_nodetype = NodeKind::UpperBound;
+
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
@@ -394,12 +396,14 @@ impl Searcher<'_> {
 				if eval.score > alpha {
 					alpha = eval.score;
 					if alpha >= beta {
+						tt_nodetype = NodeKind::LowerBound;
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
+						tt_nodetype = NodeKind::Exact;
 						self.tt.insert(best_move, eval.score, board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
@@ -432,13 +436,9 @@ impl Searcher<'_> {
 			}
 		}
 
-		if tt_hit.is_some() {
-			let tt_flag = tt_hit.unwrap().node_kind;
-
-			if best_move_type.unwrap() == MoveType::Quiet
-			&& ( (tt_flag == NodeKind::UpperBound && eval.score < static_eval) || (tt_flag == NodeKind::LowerBound && eval.score > static_eval) ) {
-				self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
-			}
+		if best_move_type.unwrap() == MoveType::Quiet
+		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
+			self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
 		}
 
 		return Some((best_move, eval));

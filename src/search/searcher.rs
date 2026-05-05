@@ -432,7 +432,7 @@ impl Searcher<'_> {
 			}
 		}
 
-		if !in_check
+		if in_check
 		&& (best_move.is_none() || matches!(best_move_type, Some(MoveType::Quiet))) {
 			self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
 		}

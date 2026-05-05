@@ -105,7 +105,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (table_find_move, iid_find_move) = match self.tt.find(board, ply) {
+		let (tt_hit, iid) = match self.tt.find(board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -161,8 +161,8 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if table_find_move.as_ref().is_some() {
-			table_find_move.as_ref().unwrap().eval
+		let static_eval = if tt_hit.as_ref().is_some() {
+			tt_hit.as_ref().unwrap().eval
 		} else {
 			let base_eval = evaluate(board);
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(board);
@@ -223,12 +223,12 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = table_find_move.is_some() || iid_find_move.is_some();
+		let mut staged_movegen = tt_hit.is_some() || tt_hit.is_some();
 		if staged_movegen {
-			let mv = if table_find_move.is_some() {
-				table_find_move.clone().unwrap().best_move.unwrap()
+			let mv = if tt_hit.is_some() {
+				tt_hit.clone().unwrap().best_move.unwrap()
 			} else {
-				iid_find_move.clone().unwrap()
+				iid.clone().unwrap()
 			};
 
 			let movetype = if (mv.to.bitboard() & board.colors(!board.side_to_move())).is_empty() {
@@ -432,9 +432,13 @@ impl Searcher<'_> {
 			}
 		}
 
-		if !in_check
-		&& (best_move.is_none() || matches!(best_move_type, Some(MoveType::Quiet))) {
-			self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
+		if tt_hit.is_some() {
+			let tt_flag = tt_hit.unwrap().node_kind;
+
+			if best_move_type.unwrap() == MoveType::Quiet
+			&& ( (tt_flag == NodeKind::UpperBound && eval.score < static_eval) || (tt_flag == NodeKind::LowerBound && eval.score > static_eval) ) {
+				self.movegen.sorter.add_pawn_corrhist(board, depth, eval.score, static_eval);
+			}
 		}
 
 		return Some((best_move, eval));

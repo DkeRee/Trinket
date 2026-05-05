@@ -156,15 +156,14 @@ impl MoveSorter {
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
 		let bonus = ((best_alpha - static_eval) * depth)
-			.clamp(-81, 81)
-			* 20;
+			.clamp(-32, 32);
 	
-		*entry += bonus - (*entry * bonus.abs() / Self::HISTORY_MAX);
+		*entry += bonus * Self::CORRHIST_GRAIN - *entry * bonus.abs() / 64;
 	}
 
 	pub fn read_pawn_corrhist(&mut self, board: &Board) -> i32 {
 		let pawn_hist = self.pawn_corrhist[board.side_to_move() as usize][(self.pawn_hash(board) % Self::CORRHIST_SIZE as u64) as usize];
-		pawn_hist / 198
+		pawn_hist / Self::CORRHIST_GRAIN
 	}
 
 	fn pawn_hash(&self, board: &Board) -> u64 {
@@ -210,7 +209,8 @@ impl MoveSorter {
 	const UNDER_PROMO: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
-	const CORRHIST_SIZE: usize = 16384;
+	const CORRHIST_SIZE: usize = 8192;
+	const CORRHIST_GRAIN: i32 = 256;
 
 	pub const PAWN_KEYS: [[u64; 64]; 2] = [
 		[

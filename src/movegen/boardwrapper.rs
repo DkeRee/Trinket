@@ -94,9 +94,10 @@ impl BoardWrapper {
         if moving == Some(Piece::Pawn) {
             self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.from as usize];
 
-            if mv.promotion.is_some() {
-                let promo = mv.promotion.unwrap();
+            if mv.promotion.is_none() {
                 self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.to as usize];
+            } else {
+                let promo = mv.promotion.unwrap();
 
                 //update material hash for promos
                 let pawn_count = self.board.colored_pieces(us, Piece::Pawn).len() as usize;

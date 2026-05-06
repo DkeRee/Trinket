@@ -164,10 +164,10 @@ impl Searcher<'_> {
 		let static_eval = if tt_hit.as_ref().is_some() {
 			tt_hit.as_ref().unwrap().eval
 		} else {
-			let base_eval = evaluate(board);
+			let base_eval = evaluate(board) as f32;
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(board);
 
-			base_eval + pawn_corrhist
+			(base_eval + pawn_corrhist) as i32
 		};
 
 		self.evals[ply as usize] = static_eval;

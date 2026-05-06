@@ -12,7 +12,7 @@ pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
-	pawn_corrhist: [[i32; Self::CORRHIST_SIZE]; 2],
+	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	see: See
 }
 
@@ -22,7 +22,7 @@ impl MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
-			pawn_corrhist: [[0; Self::CORRHIST_SIZE]; 2],
+			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			see: See::new()
 		}
 	}
@@ -155,13 +155,13 @@ impl MoveSorter {
 	
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
-		let weight = i32::min(depth * depth + 2, 62) / 596;
-		*entry = *entry * (1 - weight) + (best_alpha - static_eval).clamp(-81, 81) * 280 * weight;
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
-	pub fn read_pawn_corrhist(&mut self, board: &Board) -> i32 {
+	pub fn read_pawn_corrhist(&mut self, board: &Board) -> f32 {
 		let pawn_hist = self.pawn_corrhist[board.side_to_move() as usize][(self.pawn_hash(board) % Self::CORRHIST_SIZE as u64) as usize];
-		pawn_hist / 198
+		pawn_hist / 198.0
 	}
 
 	fn pawn_hash(&self, board: &Board) -> u64 {

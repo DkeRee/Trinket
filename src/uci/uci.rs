@@ -100,20 +100,20 @@ impl UCIMaster {
 										println!("bestmove {}", best_move);
 									},
 									UCICmd::PositionFen(fen) => {
-										engine.board = Board::from_fen(&*fen.trim(), false).unwrap();
+										engine.boardwrapper.update_fen(fen);
 
 										engine.my_past_positions = Vec::with_capacity(64);
-										engine.my_past_positions.push(engine.board.hash());
+										engine.my_past_positions.push(engine.boardwrapper.board.hash());
 									},
 									UCICmd::PositionPgn(pgn_vec, default) => {
 										if default {
-											engine.board = Board::default();
+											engine.boardwrapper.board = Board::default();
 											engine.my_past_positions = Vec::with_capacity(64);
 										}
 
 										for i in 0..pgn_vec.len() {
-											engine.board.play_unchecked(_regular_to_960_(pgn_vec[i].clone(), &engine.board).parse().unwrap());
-											engine.my_past_positions.push(engine.board.hash());
+											engine.boardwrapper.board.play_unchecked(_regular_to_960_(pgn_vec[i].clone(), &engine.boardwrapper.board).parse().unwrap());
+											engine.my_past_positions.push(engine.boardwrapper.board.hash());
 										}
 									},
 									UCICmd::Quit => {

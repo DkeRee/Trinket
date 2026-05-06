@@ -8,7 +8,9 @@ use std::time::{Instant, Duration};
 use crate::search::tt::*;
 use crate::eval::score::*;
 use crate::search::searcher::*;
+use crate::movegen::boardwrapper::*;
 use crate::movegen::movegen::*;
+use crate::movegen::boardwrapper::*;
 use crate::uci::castle_parse::*;
 
 pub struct TimeControl {
@@ -38,7 +40,7 @@ impl TimeControl {
 }
 
 pub struct Engine {
-	pub board: Board,
+	pub boardwrapper: BoardWrapper,
 	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
@@ -50,7 +52,7 @@ pub struct Engine {
 impl Engine {
 	pub fn new(hash: u32) -> Engine {
 		Engine {
-			board: Board::default(),
+			boardwrapper: BoardWrapper::new(),
 			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
 			nodes: 0,
@@ -75,7 +77,7 @@ impl Engine {
 
 		self.nodes = 0;
 
-		match self.board.side_to_move() {
+		match self.boardwrapper.board.side_to_move() {
 			Color::White => {
 				time = time_control.wtime as u64;
 				timeinc = time_control.winc as u64;
@@ -120,7 +122,7 @@ impl Engine {
 
 		while depth_index < self.max_depth && depth_index < 250 {
 			self.seldepth = 0;
-			let board = &mut self.board.clone();
+			let boardwrapper = &mut self.boardwrapper.clone();
 			let mut past_positions = self.my_past_positions.clone();
 
 			let new_alpha = if depth_index + 1 > 3 {
@@ -136,7 +138,7 @@ impl Engine {
 			};
 
 			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
-				board: board.clone(),
+				boardwrapper: boardwrapper.clone(),
 				depth: depth_index + 1,
 				alpha: new_alpha,
 				beta: new_beta,
@@ -181,7 +183,7 @@ impl Engine {
 					format!("cp {}", eval.score)
 				};
 
-				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(board, depth_index, 0));
+				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
 
 				if movetime.is_none() && !soft_timeout.is_none() {
 					if elapsed as u64 > soft_timeout.unwrap() {
@@ -193,7 +195,7 @@ impl Engine {
 			}
 		}
 
-		_960_to_regular_(best_move, &self.board)
+		_960_to_regular_(best_move, &self.boardwrapper.board)
 	}
 
 	//fish PV from TT

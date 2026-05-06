@@ -1,6 +1,7 @@
 use cozy_chess::*;
 use crate::movegen::movegen::*;
 use crate::movegen::see::*;
+use crate::movegen::boardwrapper::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum MoveType {
@@ -12,6 +13,7 @@ pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
+	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	see: See
 }
 
@@ -21,6 +23,7 @@ impl MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
+			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			see: See::new()
 		}
 	}
@@ -147,6 +150,21 @@ impl MoveSorter {
 		return false;
 	}
 
+	pub fn add_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx = (boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let side = boardwrapper.board.side_to_move() as usize;
+	
+		let entry = &mut self.pawn_corrhist[side][idx];
+	
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
+	pub fn read_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
+		let pawn_hist = self.pawn_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize];
+		pawn_hist / 198.0
+	}
+
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
 		if last_move.is_none() {
 			return false;
@@ -176,6 +194,7 @@ impl MoveSorter {
 	const UNDER_PROMO: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
+	const CORRHIST_SIZE: usize = 16384;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

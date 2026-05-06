@@ -49,7 +49,7 @@ pub fn bench() {
     for i in 0..POSITIONS.len() {
         let now = Instant::now();
 
-        engine.board = Board::from_fen(POSITIONS[i], false).unwrap();
+        engine.boardwrapper.board = Board::from_fen(POSITIONS[i], false).unwrap();
 
         let mut time_control = TimeControl::new(placeholder_abort.clone());
         time_control.depth = DEPTH;

@@ -55,8 +55,6 @@ impl BoardWrapper {
     }
 
     pub fn play_unchecked(&mut self, mv: Move) {
-        self.board.play_unchecked(mv);
-
         //update pawn hash
         if self.board.piece_on(mv.from) == Some(Piece::Pawn) {
             self.pawn_hash ^= Self::KEYS[self.board.side_to_move() as usize][mv.from as usize];
@@ -65,6 +63,8 @@ impl BoardWrapper {
                 self.pawn_hash ^= Self::KEYS[self.board.side_to_move() as usize][mv.to as usize];
             }
         }
+
+        self.board.play_unchecked(mv);
     }
 }
 

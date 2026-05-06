@@ -315,7 +315,6 @@ impl Evaluator<'_> {
 	const ROOK_PHASE: i32 = 2;
 	const QUEEN_PHASE: i32 = 4;
 	const TOTAL_PIECE_PHASE: i32 = 24;
-	const ORACLE_SCALE: i32 = 100;
 }
 
 pub fn evaluate(board: &Board) -> i32 {
@@ -337,7 +336,7 @@ pub fn evaluate(board: &Board) -> i32 {
 
 	if oracle_lookup(board) {
 		//scale eval down in the case of a known draw
-		eval /= Evaluator::ORACLE_SCALE;
+		eval = 0;
 	}
 
 	if board.side_to_move() == Color::White {

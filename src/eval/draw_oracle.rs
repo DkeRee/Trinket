@@ -1,45 +1,77 @@
 use cozy_chess::*;
 
 pub fn oracle_lookup(board: &Board) -> bool {
-	let white_only_king = (board.king(Color::White).bitboard() ^ board.colors(Color::White)).is_empty();
-	let black_only_king = (board.king(Color::Black).bitboard() ^ board.colors(Color::Black)).is_empty();
+	let white = Color::White;
+	let black = Color::Black;
 
-	((knight_lone_king(board, Color::White) || white_only_king) && (bishop_lone_king(board, Color::Black) || black_only_king))
-	|| ((knight_lone_king(board, Color::Black) || black_only_king) && (bishop_lone_king(board, Color::White) || white_only_king))
-	//|| ((knight_lone_king(board, Color::White) || white_only_king) && (knight_lone_king(board, Color::Black) || black_only_king))
-	/*
-	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White))
-	|| (minor_piece_king(board, Color::White) && bishop_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && bishop_lone_king(board, Color::White))
-	*/
-}
+	let white_num_queens = board.colored_pieces(white, Piece::Queen).len();
+	let white_num_rooks = board.colored_pieces(white, Piece::Rook).len();
+	let white_num_bishops = board.colored_pieces(white, Piece::Bishop).len();
+	let white_num_knights = board.colored_pieces(white, Piece::Knight).len();
+	let white_num_pawns = board.colored_pieces(white, Piece::Pawn).len();
 
-fn knight_lone_king(board: &Board, color: Color) -> bool {
-	let my_pieces = board.colors(color);
+	let black_num_queens = board.colored_pieces(black, Piece::Queen).len();
+	let black_num_rooks = board.colored_pieces(black, Piece::Rook).len();
+	let black_num_bishops = board.colored_pieces(black, Piece::Bishop).len();
+	let black_num_knights = board.colored_pieces(black, Piece::Knight).len();
+	let black_num_pawns = board.colored_pieces(black, Piece::Pawn).len();
 
-	let me_two_or_one_knights = (my_pieces & board.pieces(Piece::Knight)).len() == 2 || (my_pieces & board.pieces(Piece::Knight)).len() == 1;
-	let me_only_knights = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Knight))).is_empty();
+	let total_pieces = white_num_queens
+	+ white_num_rooks
+	+ white_num_bishops
+	+ white_num_knights
+	+ white_num_pawns
+	+ black_num_queens
+	+ black_num_rooks
+	+ black_num_knights
+	+ black_num_pawns;
 
-	me_two_or_one_knights && me_only_knights
-}
+	let mut draw = false;
 
-fn bishop_lone_king(board: &Board, color: Color) -> bool {
-	let my_pieces = board.colors(color);
+    if total_pieces == 2 {
+		draw = true;
+    }
 
-	let me_only_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 1;
-	let me_only_have_bishops = ((board.king(color).bitboard() ^ my_pieces) ^ (my_pieces & board.pieces(Piece::Bishop))).is_empty();
+    if total_pieces == 3 && (white_num_knights != 0 || white_num_bishops != 0
+        || black_num_knights != 0 || black_num_bishops != 0)
+    {
+		draw = true;
+    }
 
-	me_only_bishop && me_only_have_bishops
-}
+    if total_pieces == 4
+        && (white_num_knights != 0 || white_num_bishops != 0)
+        && (black_num_knights != 0 || black_num_bishops != 0)
+    {
+		draw = true;
+    }
 
-fn minor_piece_king(board: &Board, color: Color) -> bool {
-	let my_pieces = board.colors(color);
-	let opponent_pieces = board.colors(!color);
+    if total_pieces == 4 && (white_num_knights == 2 || black_num_knights == 2) {
+		draw = true;
+    }
 
-	let me_only_one_knight = (my_pieces & board.pieces(Piece::Knight)).len() == 1;
-	let me_only_one_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 1;	
-    let me_only_minor = ((my_pieces & (board.pieces(Piece::Bishop) | board.pieces(Piece::Knight))) ^ (board.king(color).bitboard() ^ my_pieces)).is_empty();
+    if total_pieces == 5 && white_num_knights == 2 && (black_num_knights != 0 || black_num_bishops != 0) {
+		draw = true;
+    }
 
-	me_only_one_knight && me_only_one_bishop && me_only_minor
+    if total_pieces == 5 && black_num_knights == 2 && (white_num_knights != 0 || white_num_bishops != 0) {
+		draw = true;
+    }
+
+    if total_pieces == 5 && white_num_bishops == 2 && black_num_bishops != 0 {
+		draw = true;
+    }
+
+    if total_pieces == 5 && black_num_bishops == 2 && white_num_bishops != 0 {
+		draw = true;
+    }
+
+    if total_pieces == 4 && white_num_rooks != 0 && black_num_rooks != 0 {
+		draw = true;
+    }
+
+    if total_pieces == 4 && white_num_queens != 0 && black_num_queens != 0 {
+		draw = true;
+    }
+
+	draw
 }

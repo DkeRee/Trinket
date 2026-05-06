@@ -167,8 +167,9 @@ impl Searcher<'_> {
 		} else {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
+			let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
 
-			(base_eval + pawn_corrhist) as i32
+			(base_eval + pawn_corrhist + material_corrhist) as i32
 		};
 
 		self.evals[ply as usize] = static_eval;
@@ -442,6 +443,7 @@ impl Searcher<'_> {
 		if best_move_type.unwrap() == MoveType::Quiet
 		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
 		}
 
 		return Some((best_move, eval));

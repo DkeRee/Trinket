@@ -158,8 +158,8 @@ impl MoveSorter {
 	
 		let entry = &mut self.material_corrhist[side][idx];
 	
-		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, Self::CORRHIST_WEIGHT_CAP) / Self::CORRHIST_WEIGHT_DIV;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-Self::CORRHIST_BONUS_BOUNDS, Self::CORRHIST_BONUS_BOUNDS) * Self::CORRHIST_UNIT * weight;
 	}
 
 	pub fn add_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
@@ -168,8 +168,8 @@ impl MoveSorter {
 	
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
-		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, Self::CORRHIST_WEIGHT_CAP) / Self::CORRHIST_WEIGHT_DIV;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-Self::CORRHIST_BONUS_BOUNDS, Self::CORRHIST_BONUS_BOUNDS) * Self::CORRHIST_UNIT * weight;
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
@@ -212,6 +212,10 @@ impl MoveSorter {
 
 	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
+	const CORRHIST_BONUS_BOUNDS: f32 = 81.0;
+	const CORRHIST_UNIT: f32 = 450.0;
+	const CORRHIST_WEIGHT_DIV: f32 = 596.0;
+	const CORRHIST_WEIGHT_CAP: f32 = 62.0;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

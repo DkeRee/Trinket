@@ -115,7 +115,7 @@ impl BoardWrapper {
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_count - 1];
 
                 let promo_count = self.board.colored_pieces(us, promo).len() as usize;
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_count];
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_count + 1];
             }
         }
 

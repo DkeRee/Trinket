@@ -55,16 +55,37 @@ impl BoardWrapper {
     }
 
     pub fn play_unchecked(&mut self, mv: Move) {
-        self.board.play_unchecked(mv);
+        let us = self.board.side_to_move();
+        let enemy = !us;
 
         //update pawn hash
         if self.board.piece_on(mv.from) == Some(Piece::Pawn) {
-            self.pawn_hash ^= Self::KEYS[self.board.side_to_move() as usize][mv.from as usize];
+            //remove pawn from source square
+            self.pawn_hash ^= Self::KEYS[us as usize][mv.from as usize];
 
+            //add pawn to target square
             if mv.promotion.is_none() {
-                self.pawn_hash ^= Self::KEYS[self.board.side_to_move() as usize][mv.to as usize];
+                self.pawn_hash ^= Self::KEYS[us as usize][mv.to as usize];
+            }
+
+            //remove pawn if en passant
+            if let Some(ep_file) = self.board.en_passant() {
+                if mv.to.file() == ep_file {
+                    let captured_rank = match us {
+                        Color::White => Rank::Fourth,
+                        Color::Black => Rank::Fifth
+                    };
+
+                    let captured_sq = Square::new(ep_file, captured_rank);
+                    
+                    if self.board.piece_on(captured_sq) == Some(Piece::Pawn) {
+                        self.pawn_hash ^= Self::KEYS[enemy as usize][captured_sq as usize];
+                    }
+                }
             }
         }
+
+        self.board.play_unchecked(mv);
     }
 }
 

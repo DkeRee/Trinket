@@ -208,9 +208,11 @@ impl Engine {
 		match self.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
-				if board.is_legal(table_find.best_move.unwrap()) {
-					board.play_unchecked(table_find.best_move.unwrap());
-					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+				if table_find.best_move.is_some() {
+					if board.is_legal(table_find.best_move.unwrap()) {
+						board.play_unchecked(table_find.best_move.unwrap());
+						pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+					}
 				}
 
 				return pv;

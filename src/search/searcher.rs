@@ -228,22 +228,32 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = tt_hit.is_some() || tt_hit.is_some();
+		let mut staged_movegen = tt_hit.is_some() || iid.is_some();
 		if staged_movegen {
-			let mv = if tt_hit.is_some() {
-				tt_hit.clone().unwrap().best_move.unwrap()
-			} else {
-				iid.clone().unwrap()
-			};
+			let mut mv = None;
 
-			let movetype = if (mv.to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
-				MoveType::Quiet
-			} else {
-				MoveType::Loud
-			};
-			let mut sm = SortedMove::new(mv, 0, movetype);
+			if tt_hit.is_some() {
+				mv = tt_hit.as_ref().unwrap().best_move;
 
-			legal_moves.push(sm);
+				if mv == None {
+					mv = iid.clone();
+				}
+			} else {
+				mv = iid.clone();
+			}
+
+			if mv.is_some() {
+				let movetype = if (mv.unwrap().to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
+					MoveType::Quiet
+				} else {
+					MoveType::Loud
+				};
+				let mut sm = SortedMove::new(mv.unwrap(), 0, movetype);
+
+				legal_moves.push(sm);
+			} else {
+				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+			}
 		} else {
 			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
 		}
@@ -403,14 +413,12 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						tt_nodetype = NodeKind::LowerBound;
-						self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
 						tt_nodetype = NodeKind::Exact;
-						self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
 					//SPP
@@ -421,8 +429,6 @@ impl Searcher<'_> {
 					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
 					&& !staged_movegen;
-
-					self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
@@ -447,6 +453,19 @@ impl Searcher<'_> {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
 		}
+
+		let mut tt_mv_insertion = None;
+		if best_move.is_some() {
+			tt_mv_insertion = best_move;
+		} else {
+			if tt_hit.as_ref().is_some() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+				}
+			}
+		}
+
+		self.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
 		return Some((best_move, eval));
 	}
@@ -485,7 +504,7 @@ impl Searcher<'_> {
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
-		let table_find = match self.tt.find(&boardwrapper.board, ply) {
+		let tt_hit = match self.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
 				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
@@ -558,16 +577,22 @@ impl Searcher<'_> {
 					} else {
 						tt_nodetype = NodeKind::Exact
 					}
-				} else {
-					tt_nodetype = NodeKind::UpperBound;
 				}
 			}
 		}
 
-
+		let mut tt_mv_insertion = None;
 		if best_move.is_some() {
-			self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+			tt_mv_insertion = best_move;
+		} else {
+			if tt_hit.as_ref().is_some() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+				}
+			}
 		}
+
+		self.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

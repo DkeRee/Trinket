@@ -71,7 +71,7 @@ impl BoardWrapper {
             //remove pawn if en passant
             if let Some(ep_file) = self.board.en_passant() {
                 if mv.to.file() == ep_file {
-                    let captured_rank = match us {
+                    let captured_rank = match enemy {
                         Color::White => Rank::Fourth,
                         Color::Black => Rank::Fifth
                     };

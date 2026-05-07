@@ -1,4 +1,6 @@
 use cozy_chess::*;
+use crate::movegen::movegen::*;
+use crate::movegen::movesorter::*;
 
 fn init_pawn_hash(board: Board) -> u64 {
 	let mut hash = 0u64;
@@ -83,15 +85,24 @@ impl BoardWrapper {
         BoardWrapper::new_set(&self, null_board)
     }
 
-    pub fn play_unchecked(&mut self, mv: Move) {
+    pub fn play_unchecked(&mut self, sm: &mut SortedMove) {
         let us = self.board.side_to_move();
         let enemy = !us;
+        let mv = sm.mv;
 
-        let moving = self.board.piece_on(mv.from);
-        let captured = self.board.piece_on(mv.to);
+        let from = self.board.piece_on(mv.from);
+        let to = self.board.piece_on(mv.to);
+
+        //update material hash general
+        if sm.movetype == MoveType::Loud {
+            if let Some(piece) = to {
+                let count = self.board.colored_pieces(enemy, piece).len() as usize;
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][piece as usize][count - 1];
+            }
+        }
 
         //update pawn hash
-        if moving == Some(Piece::Pawn) {
+        if from == Some(Piece::Pawn) {
             self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.from as usize];
 
             if mv.promotion.is_none() {
@@ -106,12 +117,6 @@ impl BoardWrapper {
                 let promo_count = self.board.colored_pieces(us, promo).len() as usize;
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_count];
             }
-        }
-
-        //update material hash general
-        if let Some(piece) = captured {
-            let count = self.board.colored_pieces(enemy, piece).len() as usize;
-            self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][piece as usize][count - 1];
         }
 
         self.board.play_unchecked(mv);

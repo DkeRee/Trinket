@@ -256,7 +256,7 @@ impl Searcher<'_> {
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
 				
-			board_wrapper_cache.play_unchecked(mv);
+			board_wrapper_cache.play_unchecked(sm);
 
 			let move_is_check = !board_wrapper_cache.board.checkers().is_empty();
 
@@ -524,7 +524,7 @@ impl Searcher<'_> {
 		let mut eval = stand_pat;
 		let mut tt_nodetype = NodeKind::UpperBound;
 
-		for sm in move_list {
+		for mut sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {
@@ -533,7 +533,7 @@ impl Searcher<'_> {
 
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
-			board_wrapper_cache.play_unchecked(mv);
+			board_wrapper_cache.play_unchecked(&mut sm);
 
 			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;
 

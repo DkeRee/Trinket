@@ -95,6 +95,11 @@ impl BoardWrapper {
         if sm.movetype == MoveType::Loud {
             if let Some(piece) = to {
                 let count = self.board.colored_pieces(enemy, piece).len() as usize;
+
+                //remove old state (before capture)
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][piece as usize][count];
+                
+                //add new state (after capture)
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][piece as usize][count - 1];
             }
         }
@@ -106,14 +111,19 @@ impl BoardWrapper {
             if mv.promotion.is_none() {
                 self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.to as usize];
             } else {
+                //update material hash for promos
                 let promo = mv.promotion.unwrap();
 
-                //update material hash for promos
-                let pawn_count = self.board.colored_pieces(us, Piece::Pawn).len() as usize;
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_count - 1];
+                let pawn_before = self.board.colored_pieces(us, Piece::Pawn).len() as usize;
+                let promo_before = self.board.colored_pieces(us, promo).len() as usize;
 
-                let promo_count = self.board.colored_pieces(us, promo).len() as usize;
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_count];
+                //remove old states
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_before];
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_before];
+
+                // add new states
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_before - 1];
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promo as usize][promo_before + 1];
             }
         }
 

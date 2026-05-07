@@ -30,10 +30,8 @@ fn init_material_hash(board: Board) -> u64 {
     for color in [Color::White, Color::Black] {
         for piece in pieces {
             let bb = board.colored_pieces(color, piece);
-
-            for (i, _) in bb.into_iter().enumerate() {
-                hash ^= BoardWrapper::COUNT_BY_SIDE_KEYS[color as usize][piece as usize][i]
-            }
+            let count = bb.len();
+            hash ^= BoardWrapper::COUNT_BY_SIDE_KEYS[color as usize][piece as usize][count as usize];
         }
     }
 

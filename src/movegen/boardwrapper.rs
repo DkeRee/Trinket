@@ -1,22 +1,47 @@
 use cozy_chess::*;
 
+use crate::movegen::movegen::*;
+use crate::movegen::movesorter::*;
+
 fn init_pawn_hash(board: Board) -> u64 {
 	let mut hash = 0u64;
 	
 	for square in board.colored_pieces(Color::White, Piece::Pawn) {
-		hash ^= BoardWrapper::KEYS[0][square as usize];
+		hash ^= BoardWrapper::BOARD_BY_SIDE_KEYS[0][square as usize];
 	}
 	
 	for square in board.colored_pieces(Color::Black, Piece::Pawn) {
-		hash ^= BoardWrapper::KEYS[1][square as usize];
+		hash ^= BoardWrapper::BOARD_BY_SIDE_KEYS[1][square as usize];
 	}
 	
 	hash
 }
 
+fn init_material_hash(board: Board) -> u64 {
+    let mut hash = 0u64;
+
+    let pieces = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen
+    ];
+
+    for color in [Color::White, Color::Black] {
+        for piece in pieces {
+            let bb_count = board.colored_pieces(color, piece).len() as usize;
+            hash ^= BoardWrapper::COUNT_BY_SIDE_KEYS[color as usize][piece as usize][bb_count];
+        }
+    }
+
+    hash
+}
+
 pub struct BoardWrapper {
     pub board: Board,
-    pub pawn_hash: u64
+    pub pawn_hash: u64,
+    pub material_hash: u64
 }
 
 impl BoardWrapper {
@@ -25,27 +50,31 @@ impl BoardWrapper {
 
         BoardWrapper {
             board: new_board.clone(),
-            pawn_hash: init_pawn_hash(new_board.clone())
+            pawn_hash: init_pawn_hash(new_board.clone()),
+            material_hash: init_material_hash(new_board.clone())
         }
     }
 
     fn new_set(&self, board: Board) -> BoardWrapper {
         BoardWrapper {
             board: board,
-            pawn_hash: self.pawn_hash
+            pawn_hash: self.pawn_hash,
+            material_hash: self.material_hash
         }
     }
 
     pub fn clone(&self) -> BoardWrapper {
         BoardWrapper {
             board: self.board.clone(),
-            pawn_hash: self.pawn_hash
+            pawn_hash: self.pawn_hash,
+            material_hash: self.material_hash
         }
     }
 
     pub fn update_fen(&mut self, fen: String) {
 		self.board = Board::from_fen(&*fen.trim(), false).unwrap();
         self.pawn_hash = init_pawn_hash(self.board.clone());
+        self.material_hash = init_material_hash(self.board.clone());
     }
 
     pub fn null_move(&self) -> BoardWrapper {
@@ -54,18 +83,47 @@ impl BoardWrapper {
         BoardWrapper::new_set(&self, null_board)
     }
 
-    pub fn play_unchecked(&mut self, mv: Move) {
+    pub fn play_unchecked(&mut self, sm: &mut SortedMove) {
+        let mv = sm.mv;
         let us = self.board.side_to_move();
         let enemy = !us;
+
+        //update material history for single capture
+        if sm.movetype == MoveType::Loud {
+            let captured_piece = self.board.piece_on(mv.to);
+            if captured_piece.is_some() {
+                let captured_piece_count = self.board.colored_pieces(enemy, captured_piece.unwrap()).len() as usize;
+
+                //remove old state before capture
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count];
+
+                //new state after capture
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count - 1];
+            }
+        }
 
         //update pawn hash
         if self.board.piece_on(mv.from) == Some(Piece::Pawn) {
             //remove pawn from source square
-            self.pawn_hash ^= Self::KEYS[us as usize][mv.from as usize];
+            self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.from as usize];
 
             //add pawn to target square
             if mv.promotion.is_none() {
-                self.pawn_hash ^= Self::KEYS[us as usize][mv.to as usize];
+                self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[us as usize][mv.to as usize];
+            } else {
+                //update material hash for promotions
+                let promotion_piece = mv.promotion.unwrap();
+
+                let pawn_piece_count = self.board.colored_pieces(us, Piece::Pawn).len() as usize;
+                let promotion_piece_count = self.board.colored_pieces(us, promotion_piece).len() as usize;
+
+                //remove pawn from old state
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count];
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count - 1];
+
+                //add promotion in new state
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count];
+                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count + 1];
             }
 
             //remove pawn if en passant
@@ -77,10 +135,17 @@ impl BoardWrapper {
                     };
 
                     let captured_sq = Square::new(ep_file, captured_rank);
+                    let captured_piece = self.board.piece_on(captured_sq).unwrap();
+                    let captured_piece_count = self.board.colored_pieces(enemy, captured_piece).len() as usize;
                     
-                    if self.board.piece_on(captured_sq) == Some(Piece::Pawn) {
-                        self.pawn_hash ^= Self::KEYS[enemy as usize][captured_sq as usize];
+                    //handle en passant for pawn hash
+                    if captured_piece == Piece::Pawn {
+                        self.pawn_hash ^= Self::BOARD_BY_SIDE_KEYS[enemy as usize][captured_sq as usize];
                     }
+
+                    //handle en passant for material hash
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count];
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count - 1];
                 }
             }
         }
@@ -90,7 +155,7 @@ impl BoardWrapper {
 }
 
 impl BoardWrapper {
-	pub const KEYS: [[u64; 64]; 2] = [
+	pub const BOARD_BY_SIDE_KEYS: [[u64; 64]; 2] = [
 		[
 			0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
 			0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
@@ -128,4 +193,84 @@ impl BoardWrapper {
 			0x043FCAE60CC0EBA0, 0x920E449535DD359E, 0x70EB093B15B290CC, 0x73A1921916591CBD,
 		],
 	];
+
+
+    pub const COUNT_BY_SIDE_KEYS: [[[u64; 16]; 6]; 2] = [
+        [
+            [
+                0xA9D06DB327E439F5, 0x620DD663B377BB12, 0x86242FF22B53D02B, 0x7AB53E341F07EC90,
+                0x84B209B5D290055B, 0xA30FEBCE2F02A082, 0x3E0A813BD37B2E18, 0xB8D3AF23681C2889,
+                0xE59D7D731F8B2D4A, 0xD3C45A1986AE7F20, 0x489EF1B7B9DFA4C7, 0xCE179A04F63891AB,
+                0x12A5B4D80E3FC6DD, 0x6FBB8E9C243D7A61, 0x92DE5C0A81F33E17, 0xFD1047BA55A68CC2
+            ],
+            [
+                0x5AB9F86D7104B2E3, 0x0CE4DAD3E91A6278, 0x79D3180B24CF55A4, 0xEE640C72FBB14DA1,
+                0xC8427FA17A2D34F9, 0xA1B4C9076FDD8843, 0x39E03BD52CA7A5D8, 0xB5FA2A8E1D9C43E2,
+                0x7C21E45F03B6D99F, 0xF4E09B7C16A25344, 0x685D0EAF42F91C73, 0xD941B2C8EE370A1D,
+                0x2E7C4A50B68FDC29, 0x81A6D9F137E2BB05, 0xC30F7BEA948651E7, 0x1DBA32C4F570AA8C
+            ],
+            [
+                0x9F1B6D4A32C0E7F8, 0xB47E0AC9135D62EE, 0x25A4FDC7E1B98241, 0xD80C5BAA6F4371D3,
+                0x6A2E91BF04CCF56A, 0xF1D07E283A9B164D, 0x48BC3F9155EEA720, 0xC5E24A76B9D8319E,
+                0x7E41A8D2037F4CBB, 0x14F0B7CE8DAA60F2, 0xA2C5D93F7B0165D4, 0xE7A98B0243F2D8C1,
+                0x33DE4C618A7BBFE0, 0x8BF62A509C14377A, 0x57C13E9A2D5F4B06, 0xFC7A84E1369DB290
+            ],
+            [
+                0x04F3A9B5D827CE61, 0xBD60C4F218AE5937, 0x6E2D7109F45BC38A, 0xD174AFB86E03E2C5,
+                0x92C58E370A6D4F19, 0x3B9AEF1427D8C6E4, 0xF8D214CB605E9173, 0x58C47A2D91B3EF00,
+                0xAE1935F04CDA6288, 0x1C8BF7E36952A4D1, 0xC27E50ABF4D1B63E, 0x74D8A91C20EF573A,
+                0xE4C70D3B196A8F25, 0x29A5FEC8461370BD, 0xB13748D92CE5AA4F, 0x83F20B5A7DE46C92
+            ],
+            [
+                0xFA103CB5D26E9847, 0x61A9EF42C0D3748A, 0xC53B7D0A1EF68231, 0x09E7C1B5FA483D62,
+                0xD65A0F91B3CC7E19, 0x34FEC208A9D76144, 0xB0C41E7F2D9358AB, 0x72D95ABF10EC64F3,
+                0x1A7B04E5C39FD2D8, 0x8DFA6731B540AE06, 0x47C8D2AF6E1B395C, 0xF31E9B7084CD25A1,
+                0x2CB6E541D89AF730, 0x98A347F1C50D6BE5, 0xE05D28BC7134CFA9, 0x56F18D049AE27C13
+            ],
+            [
+                0x8E4C20A7D9F36BB1, 0x15D3BF4E6809A254, 0xC9F271B5A34ED07A, 0x6BF8402D17C59CE3,
+                0xF7A10D9B2E4386C0, 0x3A5CE87140DFBA26, 0xA413F09E75B84D1C, 0xDB6205A9CF17E873,
+                0x20ED4B3681FA5C9D, 0x9ACF7502D14B63E8, 0xE6B1D38F4C2A9715, 0x53A8CE907D6F20B4,
+                0xBC47E2F135A0D669, 0x0F92AB64E3D81C57, 0x7D6143B9FA25EE02, 0xD2E84C7016BF498A
+            ]
+        ],
+        [
+            [
+                0xB6D3F18A24EC7095, 0x43A7C20D9185BEF1, 0xD90B64F7EA3102AC, 0x27CE9A583D46F8B3,
+                0xF102E74BA5C9136D, 0x6D85CB1F407EA924, 0x9B47A6D0F2C58E11, 0x3CFA28B5619DE047,
+                0xE14C970AB83F5D62, 0x52B0ED3C7649A18F, 0xAC7F01D943E6B250, 0x0D98B5A2CF7E3C79,
+                0x74E1D02B958AF4CE, 0xC3287BF651D40AA3, 0x18FA4E6D3B72C591, 0xF69D1308AE4CB7E8
+            ],
+            [
+                0x39A4C5E270DB816F, 0x8F16E2D04BA93C25, 0xD4E93AF81560B742, 0x21B7C40DAE6F58C9,
+                0xA80D7F3492E1BC50, 0x5F3EC28176A409DD, 0xEBC7904F3A62561B, 0x0A51DE98C74F32E4,
+                0xC7D420A63E9B85A8, 0x61AF9E14508D7C33, 0x97C2F805DB134E6A, 0x34E68A1BC5F72091,
+                0xF3B109DE82764D7E, 0x4CD8A57B19E0F2C0, 0xB24FCE361D8A9B15, 0x1583D6FA40C75EE9
+            ],
+            [
+                0xE2D641A70BC59F48, 0x56B7C0D91EAF3421, 0x93FC15A4D8276BE0, 0x2B408E6F7159CD37,
+                0xCA19D3B584F2A670, 0x7E05AFC241DB9832, 0x148D72EB50C4F11D, 0xB9F630AC8D1E75A4,
+                0x04AB91F672CDE388, 0xDFA72C1459B0AE6F, 0x6C51E3B8F2047A59, 0x80D49FA37E16BC22,
+                0x37C5B019D4FA684E, 0xF0A86E52BC731D94, 0x5D2147C6E89FAB03, 0xA71BC4D350E265DA
+            ],
+            [
+                0x11C5FAE78034BD6E, 0x8AE1D9534CB07F29, 0xC63F40A9DE278154, 0x3D728BF105EC96C3,
+                0xF89A2476B31DC05F, 0x65DE30BC948AF7E1, 0x9C170A4D52F36BA8, 0x2E49D8F0A16CB534,
+                0xD7BCA35048E17A62, 0x40FE158C93D42D0B, 0xBAE2735F6C19E8C4, 0x073D94A1F5B0629D,
+                0xEC58B246AD7F1037, 0x59A6D13CE8047BFA, 0xA4F0387B6215CD81, 0x1BFDE6529C8E4A50
+            ],
+            [
+                0x9D4317F5AE20C64C, 0x28B6EC904DF719E3, 0xF741D3A8625B8F11, 0x4A09BE37C6E18475,
+                0xC25ED0149BF63AA0, 0x16A8F94730DC527E, 0xB8D204E76F15CB39, 0x63CF1A5809EAB4D2,
+                0x0C7BE34D92F67018, 0xE59A10BC48D37F65, 0x35D4C6E12A8FB903, 0x8B12AF70D64CEEDA,
+                0xD0683B59F12457A1, 0x41EFC8057B9AD23C, 0xAF37D196C58E608B, 0x72B0E4FA13CD9546
+            ],
+            [
+                0xF4C72D318E0AB67F, 0x5B190AE4D36FC8D2, 0x82DE47B95014A3A6, 0x1E4A8CF263DB7190,
+                0xC916F2A07D58EC3B, 0x30B7D8491FC5A46E, 0xE7A25C03B64F12D5, 0x0F6D934E81AB7BC1,
+                0xA3C50871DE2948FA, 0x68F14D2CB037E506, 0xDB920E57A4C16F84, 0x25AC6B194FD87A3D,
+                0x94E3F7C80A5162B7, 0x47D8093EBC2F0CD9, 0xBE1574A260D3E841, 0x13FAE0D58C79B52A
+            ]
+        ]
+    ];
 }

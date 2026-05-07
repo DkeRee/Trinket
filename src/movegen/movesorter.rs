@@ -162,7 +162,7 @@ impl MoveSorter {
 
 	pub fn read_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let pawn_hist = self.pawn_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize];
-		pawn_hist / 198.0
+		pawn_hist / 115.0
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

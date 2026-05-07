@@ -462,7 +462,11 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		let stand_pat = Eval::new(evaluate(&boardwrapper.board), false);
+		let base_eval = evaluate(&boardwrapper.board) as f32;
+		let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
+		let stand_pat = Eval::new((
+			base_eval + pawn_corrhist
+		) as i32, false);
 
 		//beta cutoff
 		if stand_pat.score >= beta {

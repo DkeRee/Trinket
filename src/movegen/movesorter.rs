@@ -14,6 +14,7 @@ pub struct MoveSorter {
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
 	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
+	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	see: See
 }
@@ -25,6 +26,7 @@ impl MoveSorter {
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
 			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
+			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			see: See::new()
 		}
@@ -172,6 +174,20 @@ impl MoveSorter {
 		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
+	pub fn add_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let side_to_move = boardwrapper.board.side_to_move() as usize;
+	
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+
+		let entry_white = &mut self.non_pawn_corrhist[side_to_move][idx_white];
+		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+
+		let entry_black = &mut self.non_pawn_corrhist[side_to_move][idx_black];	
+		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let material_hist = self.material_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.material_hash % Self::CORRHIST_SIZE as u64) as usize];
 		material_hist / 289.0
@@ -180,6 +196,16 @@ impl MoveSorter {
 	pub fn read_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let pawn_hist = self.pawn_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize];
 		pawn_hist / 198.0
+	}
+
+	pub fn read_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
+		let side_to_move = boardwrapper.board.side_to_move() as usize;
+		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 202.0;
+		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
+
+		non_pawn_hist_white + non_pawn_hist_black
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

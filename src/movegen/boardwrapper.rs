@@ -125,7 +125,9 @@ impl BoardWrapper {
 
                 //new state after capture
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count - 1];
-                self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
+                if captured_piece.unwrap() != Piece::Pawn {
+                    self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
+                }
             }
         }
 
@@ -175,7 +177,10 @@ impl BoardWrapper {
                     //handle en passant for non pawn captured pieces
                     self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count];
                     self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count - 1];
-                    self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+
+                    if captured_piece != Piece::Pawn {
+                        self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+                    }
                 }
             }
         } else if piece_from.is_some() {

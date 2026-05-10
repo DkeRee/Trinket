@@ -446,13 +446,7 @@ impl Searcher<'_> {
 			}
 		}
 
-		let check_best_move_quiet = if best_move_type.is_some() {
-			best_move_type.unwrap() == MoveType::Quiet
-		} else {
-			true
-		};
-
-		if eval.score <= original_alpha || check_best_move_quiet
+		if (eval.score <= original_alpha || best_move_type.unwrap() == MoveType::Quiet)
 		&& ( (tt_nodetype == NodeKind::Exact) || (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

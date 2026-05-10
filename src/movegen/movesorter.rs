@@ -202,8 +202,8 @@ impl MoveSorter {
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
 		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
 		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 202.0;
-		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
+		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 150.0;
+		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 150.0;
 
 		non_pawn_hist_white + non_pawn_hist_black
 	}

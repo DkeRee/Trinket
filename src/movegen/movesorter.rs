@@ -161,7 +161,7 @@ impl MoveSorter {
 		let entry = &mut self.material_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-150.0, 150.0) * 280.0 * weight;
 	}
 
 	pub fn add_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
@@ -171,7 +171,7 @@ impl MoveSorter {
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-150.0, 150.0) * 280.0 * weight;
 	}
 
 	pub fn add_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {

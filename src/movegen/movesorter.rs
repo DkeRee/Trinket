@@ -182,10 +182,10 @@ impl MoveSorter {
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
 
 		let entry_white = &mut self.non_pawn_corrhist[side_to_move][idx_white];
-		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 140.0 * weight;
 
 		let entry_black = &mut self.non_pawn_corrhist[side_to_move][idx_black];	
-		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 140.0 * weight;
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {

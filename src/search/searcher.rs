@@ -444,7 +444,8 @@ impl Searcher<'_> {
 			}
 		}
 
-		if best_move_type.unwrap() == MoveType::Quiet
+		if !in_check && 
+		best_move_type.unwrap() == MoveType::Quiet
 		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

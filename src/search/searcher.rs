@@ -254,6 +254,8 @@ impl Searcher<'_> {
 		let mut legal_index = 0;
 		let mut tt_nodetype = NodeKind::UpperBound;
 
+		let original_alpha = alpha;
+
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
@@ -444,8 +446,8 @@ impl Searcher<'_> {
 			}
 		}
 
-		if best_move_type.unwrap() == MoveType::Quiet
-		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
+		if (eval.score <= original_alpha || best_move_type.unwrap() == MoveType::Quiet)
+		&& ( (tt_nodetype == NodeKind::Exact) || (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);

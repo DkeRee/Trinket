@@ -175,17 +175,14 @@ impl MoveSorter {
 	}
 
 	pub fn add_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let combined_hash = boardwrapper.non_pawn_hash[0] ^ boardwrapper.non_pawn_hash[1];
+		let idx = (combined_hash % Self::CORRHIST_SIZE as u64) as usize;
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
 
-		let entry_white = &mut self.non_pawn_corrhist[side_to_move][idx_white];
-		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
-
-		let entry_black = &mut self.non_pawn_corrhist[side_to_move][idx_black];	
-		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		let entry = &mut self.non_pawn_corrhist[side_to_move][idx];
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
@@ -199,13 +196,11 @@ impl MoveSorter {
 	}
 
 	pub fn read_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
-		let side_to_move = boardwrapper.board.side_to_move() as usize;
-		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 202.0;
-		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
+		let idx = (boardwrapper.non_pawn_hash[0] ^ boardwrapper.non_pawn_hash[1]) % Self::CORRHIST_SIZE as u64;
+		let side_to_move = boardwrapper.board.side_to_move();
 
-		non_pawn_hist_white + non_pawn_hist_black
+		let non_pawn_hist = self.non_pawn_corrhist[side_to_move as usize][idx as usize] / 100.0;
+		non_pawn_hist
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

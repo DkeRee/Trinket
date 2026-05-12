@@ -160,7 +160,7 @@ impl MoveSorter {
 	
 		let entry = &mut self.material_corrhist[side][idx];
 	
-		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		let weight = f32::min(depth as f32 * depth as f32 + 10.0, 62.0) / 596.0;
 		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
@@ -170,7 +170,7 @@ impl MoveSorter {
 	
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
-		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		let weight = f32::min(depth as f32 * depth as f32 + 10.0, 62.0) / 596.0;
 		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
@@ -179,7 +179,7 @@ impl MoveSorter {
 		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
 	
-		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		let weight = f32::min(depth as f32 * depth as f32 + 10.0, 62.0) / 596.0;
 
 		let entry_white = &mut self.non_pawn_corrhist[side_to_move][idx_white];
 		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;

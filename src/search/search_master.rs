@@ -112,13 +112,13 @@ impl Engine<'_> {
 			}
 
 			//manage time
+			let mut time: u64;
+			let mut timeinc: u64;
+
 			let abort = handler.clone();
 
 			let movetime = time_control.movetime;
 			let movestogo = time_control.movestogo;
-
-			let mut time: u64;
-			let mut timeinc: u64;
 
 			//set time
 			match self.boardwrapper.board.side_to_move() {
@@ -132,7 +132,6 @@ impl Engine<'_> {
 				}
 			}
 
-			let mut soft_timeout = None;
 			if time != u64::MAX {
 				thread::spawn(move || {
 					let hard_timeout = if movetime.is_none() {
@@ -149,13 +148,6 @@ impl Engine<'_> {
 					thread::sleep(Duration::from_millis(hard_timeout));
 					abort.store(true, Ordering::Relaxed);
 				});
-
-				let mut soft_timeout_div = 25;
-				if let Some(movestogo) = movestogo {
-					soft_timeout_div /= movestogo / 10;
-				}
-
-				soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
 			}
 
 			let mut index = 0;

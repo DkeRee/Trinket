@@ -120,6 +120,41 @@ impl Searcher<'_> {
 				};
 
 				println!("info depth {} time {} score {} nodes {} nps {} pv {}", depth_index, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
+
+				let mut time: u64;
+				let mut timeinc: u64;
+
+				let movetime = self.time_control.movetime;
+				let movestogo = self.time_control.movestogo;
+				
+				//set time
+				match self.boardwrapper.board.side_to_move() {
+					Color::White => {
+						time = self.time_control.wtime as u64;
+						timeinc = self.time_control.winc as u64;
+					},
+					Color::Black => {
+						time = self.time_control.btime as u64;
+						timeinc = self.time_control.binc as u64;	
+					}
+				}
+
+				if time != u64::MAX {
+					let mut soft_timeout = None;
+
+					let mut soft_timeout_div = 25;
+					if let Some(movestogo) = movestogo {
+						soft_timeout_div /= movestogo / 10;
+					}
+
+					soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
+
+					if movetime.is_none() && !soft_timeout.is_none() {
+						if elapsed as u64 > soft_timeout.unwrap() {
+							break;
+						}
+					}
+				}
 			} else {
 				break;
 			}

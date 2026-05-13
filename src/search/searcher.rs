@@ -91,6 +91,14 @@ impl Searcher<'_> {
 
 				depth_index += 1;
 
+				let is_main_thread = depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval);
+
+				if is_main_thread {
+					*best_move = best_mv.clone();
+					*best_depth = depth_index;
+					*best_eval = eval.score;
+				}
+				
 				let mut time: u64;
 				let mut timeinc: u64;
 
@@ -128,11 +136,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				if depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval) {
-					*best_move = best_mv.clone();
-					*best_depth = depth_index;
-					*best_eval = eval.score;
-				} else {
+				if !is_main_thread {
 					continue;
 				}
 

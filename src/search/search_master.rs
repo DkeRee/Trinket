@@ -94,6 +94,45 @@ impl Engine<'_> {
 	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
 		let shared_info = SharedInfo::new(&self.tt);
 
+		//manage time
+		let mut time: u64;
+		let mut timeinc: u64;
+
+		let abort = handler.clone();
+
+		let movetime = time_control.movetime;
+		let movestogo = time_control.movestogo;
+
+		//set time
+		match self.boardwrapper.board.side_to_move() {
+			Color::White => {
+				time = time_control.wtime as u64;
+				timeinc = time_control.winc as u64;
+			},
+			Color::Black => {
+				time = time_control.btime as u64;
+				timeinc = time_control.binc as u64;	
+			}
+		}
+
+		if time != u64::MAX {
+			thread::spawn(move || {
+				let hard_timeout = if movetime.is_none() {
+					let mut hard_timeout_div = 2;
+					if let Some(movestogo) = movestogo {
+						hard_timeout_div /= movestogo / 10;
+					}
+
+					(time + timeinc) / (hard_timeout_div) as u64
+				} else {
+					movetime.unwrap() as u64
+				};
+
+				thread::sleep(Duration::from_millis(hard_timeout));
+				abort.store(true, Ordering::Relaxed);
+			});
+		}
+
 		thread::scope(|scope| {
 			self.handler = Some(handler.clone());
 
@@ -109,45 +148,6 @@ impl Engine<'_> {
 				worker_threads.push(scope.spawn(move || {
 					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, boardwrapper, positions, this_handler.clone())
 				}));
-			}
-
-			//manage time
-			let mut time: u64;
-			let mut timeinc: u64;
-
-			let abort = handler.clone();
-
-			let movetime = time_control.movetime;
-			let movestogo = time_control.movestogo;
-
-			//set time
-			match self.boardwrapper.board.side_to_move() {
-				Color::White => {
-					time = time_control.wtime as u64;
-					timeinc = time_control.winc as u64;
-				},
-				Color::Black => {
-					time = time_control.btime as u64;
-					timeinc = time_control.binc as u64;	
-				}
-			}
-
-			if time != u64::MAX {
-				thread::spawn(move || {
-					let hard_timeout = if movetime.is_none() {
-						let mut hard_timeout_div = 2;
-						if let Some(movestogo) = movestogo {
-							hard_timeout_div /= movestogo / 10;
-						}
-
-						(time + timeinc) / (hard_timeout_div) as u64
-					} else {
-						movetime.unwrap() as u64
-					};
-
-					thread::sleep(Duration::from_millis(hard_timeout));
-					abort.store(true, Ordering::Relaxed);
-				});
 			}
 
 			let mut index = 0;

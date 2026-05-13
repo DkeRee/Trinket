@@ -87,12 +87,14 @@ impl Searcher<'_> {
 
 				let mut best_move = self.shared_info.best_move.lock().unwrap();
 				let mut best_depth = self.shared_info.best_depth.lock().unwrap();
+				let mut best_eval = self.shared_info.best_eval.lock().unwrap();
 
 				depth_index += 1;
 
-				if depth_index > *best_depth {
+				if depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval) {
 					*best_move = best_mv.clone();
 					*best_depth = depth_index;
+					*best_eval = eval.score;
 				} else {
 					continue;
 				}

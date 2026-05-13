@@ -16,7 +16,8 @@ use crate::uci::castle_parse::*;
 pub struct SharedInfo<'a> {
 	pub tt: &'a TT,
 	pub best_move: Arc<Mutex<Option<Move>>>,
-	pub best_depth: Arc<Mutex<i32>>
+	pub best_depth: Arc<Mutex<i32>>,
+	pub best_eval: Arc<Mutex<i32>>
 }
 
 impl SharedInfo<'_> {
@@ -24,7 +25,8 @@ impl SharedInfo<'_> {
 		SharedInfo {
 			tt: tt,
 			best_move: Arc::new(Mutex::new(None)),
-			best_depth: Arc::new(Mutex::new(0))
+			best_depth: Arc::new(Mutex::new(0)),
+			best_eval: Arc::new(Mutex::new(i32::MIN))
 		}
 	}
 }

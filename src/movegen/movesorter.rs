@@ -9,6 +9,7 @@ pub enum MoveType {
 	Quiet
 }
 
+#[derive(Clone)]
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],

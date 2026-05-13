@@ -12,12 +12,14 @@ use crate::uci::castle_parse::*;
 
 const HASH_MIN: u32 = 0;
 const HASH_MAX: u32 = 64000;
+const THREAD_MIN: u32 = 1;
+const THREAD_MAX: u32 = 2048;
 
 enum UCICmd {
 	Uci,
-	UciNewGame(u32),
+	UciNewGame(u32, u32),
 	IsReady,
-	Go(TimeControl),
+	Go(TimeControl, Arc<AtomicBool>),
 	PositionFen(String),
 	PositionPgn(Vec<String>, bool),
 	Quit
@@ -32,6 +34,7 @@ fn get_channel() -> (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>) {
 pub struct UCIMaster {
 	pub playing: bool,
 	hash: u32,
+	threads: u32,
 	engine_thread: Option<thread::JoinHandle<()>>,
 	stop_abort: Arc<AtomicBool>,
 	channel: (Sender<UCICmd>, Arc<Mutex<Receiver<UCICmd>>>)
@@ -56,6 +59,7 @@ impl UCIMaster {
 		UCIMaster {
 			playing: continue_engine,
 			hash: 16,
+			threads: 1,
 			engine_thread: None,
 			stop_abort: Arc::new(AtomicBool::new(false)),
 			channel: get_channel()
@@ -75,8 +79,9 @@ impl UCIMaster {
 					let thread_receiver = receiver.clone();
 
 					let init_hash_count = self.hash;
+					let init_thread_count = self.threads;
 					self.engine_thread = Some(thread::spawn(move || {
-						let mut engine = Engine::new(init_hash_count);
+						let mut engine = Engine::new(init_hash_count, init_thread_count);
 						let mut playing = true;
 
 						loop {
@@ -86,17 +91,17 @@ impl UCIMaster {
 										println!("id name Trinket {}", env!("CARGO_PKG_VERSION"));
 										println!("id author DkeRee");
 										println!("option name Hash type spin default 16 min 0 max 64000");
-										println!("option name Threads type spin default 1 min 1 max 1");
+										println!("option name Threads type spin default 1 min 1 max 2048");
 										println!("uciok");
 									},
-									UCICmd::UciNewGame(hash_count) => {
-										engine = Engine::new(hash_count);
+									UCICmd::UciNewGame(hash_count, thread_count) => {
+										engine = Engine::new(hash_count, thread_count);
 									},
 									UCICmd::IsReady => {
 										println!("readyok");
 									},
-									UCICmd::Go(time_control) => {
-										let best_move = engine.go(time_control);
+									UCICmd::Go(time_control, handler) => {
+										let best_move = engine.go(time_control, handler);
 										println!("bestmove {}", best_move);
 									},
 									UCICmd::PositionFen(fen) => {
@@ -132,25 +137,37 @@ impl UCIMaster {
 			"setoption" => {
 				match cmd_vec[1] {
 					"name" => {
-						match cmd_vec[2] {
-							"Hash" => {
-								let hash = cmd_vec[4].parse::<u32>().unwrap();
+						for ind in 2..cmd_vec.len() {
+							match cmd_vec[ind] {
+								"Hash" => {
+									let hash = cmd_vec[ind + 2].parse::<u32>().unwrap();
 
-								if HASH_MIN <= hash && hash <= HASH_MAX {
-									self.hash = hash;
-									sender.send(UCICmd::UciNewGame(self.hash)).unwrap();
-								} else {
-									println!("Thread input is out of bounds.");
+									if HASH_MIN <= hash && hash <= HASH_MAX {
+										self.hash = hash;
+									} else {
+										println!("Hash input is out of bounds. Retype the whole command.");
+									}
+								},
+								"Threads" => {
+									let thread = cmd_vec[ind + 2].parse::<u32>().unwrap();
+
+									if THREAD_MIN <= thread && thread <= THREAD_MAX {
+										self.threads = thread;
+									} else {
+										println!("Thread input is out of bounds. Retype the whole command.");
+									}
 								}
-							},
-							_ => {}
+								_ => {}
+							}
 						}
+
+						sender.send(UCICmd::UciNewGame(self.hash, self.threads)).unwrap();
 					},
 					_ => {}
 				}
 			},
 			"ucinewgame" => {
-				sender.send(UCICmd::UciNewGame(self.hash)).unwrap();
+				sender.send(UCICmd::UciNewGame(self.hash, self.threads)).unwrap();
 			},
 			"isready" => {
 				sender.send(UCICmd::IsReady).unwrap();
@@ -158,7 +175,7 @@ impl UCIMaster {
 			"go" => {
 				self.stop_abort = Arc::new(AtomicBool::new(false));
 
-				let mut time_control = TimeControl::new(self.stop_abort.clone());
+				let mut time_control = TimeControl::new();
 
 				for i in 1..cmd_vec.len() {
 					match cmd_vec[i] {
@@ -187,14 +204,14 @@ impl UCIMaster {
 					}
 				}
 
-				sender.send(UCICmd::Go(time_control)).unwrap();
+				sender.send(UCICmd::Go(time_control, self.stop_abort.clone())).unwrap();
 			},
 			"position" => {
 				if cmd_vec.len() > 1 {
 					match cmd_vec[1] {
 						"startpos" => {
 							if cmd_vec.len() == 2 {
-								sender.send(UCICmd::UciNewGame(self.hash)).unwrap();
+								sender.send(UCICmd::UciNewGame(self.hash, self.threads)).unwrap();
 							} else {
 								let mut pgn_vec = Vec::with_capacity(64);
 								for i in 3..cmd_vec.len() {

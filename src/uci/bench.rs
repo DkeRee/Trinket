@@ -8,6 +8,7 @@ use crate::search::search_master::*;
 
 const DEPTH: i32 = 12;
 const HASH: u32 = 16;
+const THREADS: u32 = 1;
 
 //Random positions provided by Analog Hors from Tantabus https://github.com/analog-hors/tantabus/blob/master/uci/src/bench.rs
 const POSITIONS: &[&str] = &[
@@ -40,8 +41,8 @@ const POSITIONS: &[&str] = &[
 
 //bench for engine identification for OpenBench support
 pub fn bench() {
-    let mut engine = Engine::new(HASH);
-    let placeholder_abort = Arc::new(AtomicBool::new(false));
+    let mut engine = Engine::new(HASH, THREADS);
+    let mut placeholder_abort = Arc::new(AtomicBool::new(false));
 
     let mut total_nodes = 0;
     let mut total_elapsed: f32 = 0.0;
@@ -51,16 +52,17 @@ pub fn bench() {
 
         engine.boardwrapper.board = Board::from_fen(POSITIONS[i], false).unwrap();
 
-        let mut time_control = TimeControl::new(placeholder_abort.clone());
+        let mut time_control = TimeControl::new();
         time_control.depth = DEPTH;
 
-        let _ = engine.go(time_control);
+        let _ = engine.go(time_control,placeholder_abort.clone());
 
         total_nodes += engine.nodes;
         total_elapsed += now.elapsed().as_secs_f32() * 1000_f32;
 
         //clear engine
-        engine = Engine::new(HASH);
+        engine = Engine::new(HASH, THREADS);
+        //placeholder_abort =  Arc::new(AtomicBool::new(false));
     }
 
     let nps = ((total_nodes as f32 * 1000_f32) / total_elapsed) as u64;

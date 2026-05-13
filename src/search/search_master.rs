@@ -148,7 +148,7 @@ impl Engine<'_> {
 				let this_shared_info = &shared_info;
 
 				worker_threads.push(scope.spawn(move || {
-					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, boardwrapper, positions, this_handler.clone(), i)
+					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, boardwrapper, positions, this_handler.clone())
 				}));
 			}
 

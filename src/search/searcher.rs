@@ -25,7 +25,6 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
-	thread: u32,
 	nodes: u64,
 	boardwrapper: BoardWrapper,
 	my_past_positions: Vec<u64>,
@@ -33,12 +32,11 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, thread: u32) -> (MoveGen, u64) {
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> (MoveGen, u64) {
 		let mut instance = Searcher {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
-			thread: thread,
 			nodes: 0,
 			boardwrapper: boardwrapper,
 			my_past_positions: my_past_positions,
@@ -93,14 +91,14 @@ impl Searcher<'_> {
 
 				depth_index += 1;
 
-				if self.thread == 0 {
+				let is_main_thread = depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval);
+
+				if is_main_thread {
 					*best_move = best_mv.clone();
 					*best_depth = depth_index;
 					*best_eval = eval.score;
-				} 
+				}
 				
-				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-
 				let mut time: u64;
 				let mut timeinc: u64;
 
@@ -119,6 +117,8 @@ impl Searcher<'_> {
 					}
 				}
 
+				let elapsed: f32 = now.elapsed().as_secs_f32() * 1000_f32;
+
 				if time != u64::MAX {
 					let mut soft_timeout = None;
 
@@ -135,9 +135,8 @@ impl Searcher<'_> {
 						}
 					}
 				}
-				
-				
-				if self.thread != 0 {
+
+				if !is_main_thread {
 					continue;
 				}
 

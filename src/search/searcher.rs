@@ -25,7 +25,7 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
-	thread_count: u32,
+	thread: u32,
 	nodes: u64,
 	boardwrapper: BoardWrapper,
 	my_past_positions: Vec<u64>,
@@ -33,12 +33,12 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, thread_count: u32) -> (MoveGen, u64) {
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, thread: u32) -> (MoveGen, u64) {
 		let mut instance = Searcher {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
-			thread_count: thread_count,
+			thread: thread,
 			nodes: 0,
 			boardwrapper: boardwrapper,
 			my_past_positions: my_past_positions,
@@ -93,37 +93,7 @@ impl Searcher<'_> {
 
 				depth_index += 1;
 
-				if self.thread_count == 0 {
-					*best_move = best_mv.clone();
-					*best_depth = depth_index;
-					*best_eval = eval.score;
-				} else {
-					continue;
-				}
-
 				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-
-				//get nps
-				let mut nps: u64;
-				if elapsed == 0_f32 {
-					nps = self.nodes;
-				} else {
-					nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
-				}
-
-				let mut score_str = if eval.mate {
-					let mut mate_score = if eval.score > 0 {
-						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
-					} else {
-						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
-					};
-
-					format!("mate {}", mate_score)
-				} else {
-					format!("cp {}", eval.score)
-				};
-
-				println!("info depth {} time {} score {} nodes {} nps {} pv {}", depth_index, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
 
 				let mut time: u64;
 				let mut timeinc: u64;
@@ -159,6 +129,36 @@ impl Searcher<'_> {
 						}
 					}
 				}
+
+				if self.thread == 0 {
+					*best_move = best_mv.clone();
+					*best_depth = depth_index;
+					*best_eval = eval.score;
+				} else {
+					continue;
+				}
+
+				//get nps
+				let mut nps: u64;
+				if elapsed == 0_f32 {
+					nps = self.nodes;
+				} else {
+					nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
+				}
+
+				let mut score_str = if eval.mate {
+					let mut mate_score = if eval.score > 0 {
+						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
+					} else {
+						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
+					};
+
+					format!("mate {}", mate_score)
+				} else {
+					format!("cp {}", eval.score)
+				};
+
+				println!("info depth {} time {} score {} nodes {} nps {} pv {}", depth_index, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
 			} else {
 				break;
 			}

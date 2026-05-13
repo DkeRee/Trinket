@@ -25,6 +25,7 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
+	thread_count: u32,
 	nodes: u64,
 	boardwrapper: BoardWrapper,
 	my_past_positions: Vec<u64>,
@@ -32,11 +33,12 @@ pub struct Searcher<'a> {
 }
 
 impl Searcher<'_> {
-	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>) -> (MoveGen, u64) {
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, thread_count: u32) -> (MoveGen, u64) {
 		let mut instance = Searcher {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
+			thread_count: thread_count,
 			nodes: 0,
 			boardwrapper: boardwrapper,
 			my_past_positions: my_past_positions,
@@ -91,7 +93,7 @@ impl Searcher<'_> {
 
 				depth_index += 1;
 
-				if depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval) {
+				if self.thread_count == 0 {
 					*best_move = best_mv.clone();
 					*best_depth = depth_index;
 					*best_eval = eval.score;

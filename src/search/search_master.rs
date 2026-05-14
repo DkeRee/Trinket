@@ -146,9 +146,16 @@ impl Engine<'_> {
 				let positions = self.my_past_positions.clone();
 				let this_handler = &self.handler;
 				let this_shared_info = &shared_info;
+				let this_total_thread_count = self.thread_count;
 
 				worker_threads.push(scope.spawn(move || {
-					Searcher::create(time_control.clone(), this_shared_info, thread_movegen, boardwrapper, positions, this_handler.clone())
+					Searcher::create(time_control.clone(), 
+						this_shared_info, 
+						thread_movegen, 
+						boardwrapper, 
+						positions, 
+						this_handler.clone(),
+						this_total_thread_count)
 				}));
 			}
 

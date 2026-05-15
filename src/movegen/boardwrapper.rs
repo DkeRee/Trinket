@@ -196,7 +196,7 @@ impl BoardWrapper {
                 let to_file = mv.to.file() as i8;
 
                 //is castling move
-                if (from_file - to_file).abs() == 2 {
+                if (from_file - to_file).abs() >= 2 {
                     let rank = mv.from.rank();
 
                     let (rook_from, rook_to) = if to_file > from_file {

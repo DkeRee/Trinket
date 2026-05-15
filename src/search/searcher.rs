@@ -419,12 +419,7 @@ impl Searcher<'_> {
 			let mut new_depth = depth - 1;
 
 			//Extensions
-
-			//King Pawn Endgame Extension
-			let non_pawns = boardwrapper.board.pieces(Piece::Rook) | boardwrapper.board.pieces(Piece::Bishop) | boardwrapper.board.pieces(Piece::Queen) | boardwrapper.board.pieces(Piece::Knight);
-			if !(boardwrapper.board.occupied() & non_pawns).is_empty() && (board_wrapper_cache.board.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
-				new_depth += 1;
-			}
+			//none
 
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;

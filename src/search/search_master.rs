@@ -159,6 +159,7 @@ impl Engine<'_> {
 				}));
 			}
 
+			self.nodes = 0;
 			let mut index = 0;
 			for worker in worker_threads {
 				let (movegen, nodes) = worker.join().unwrap();

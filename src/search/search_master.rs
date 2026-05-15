@@ -2,7 +2,7 @@ use cozy_chess::*;
 
 use std::thread;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, Duration};
 
 use crate::search::tt::*;
@@ -13,6 +13,39 @@ use crate::movegen::movegen::*;
 use crate::movegen::boardwrapper::*;
 use crate::uci::castle_parse::*;
 
+pub struct SharedInfo<'a> {
+	pub tt: &'a TT,
+	pub best_move: Arc<Mutex<Option<Move>>>,
+	pub best_depth: Arc<Mutex<i32>>,
+	pub best_eval: Arc<Mutex<i32>>
+}
+
+impl SharedInfo<'_> {
+	pub fn new(tt: &TT) -> SharedInfo {
+		SharedInfo {
+			tt: tt,
+			best_move: Arc::new(Mutex::new(None)),
+			best_depth: Arc::new(Mutex::new(0)),
+			best_eval: Arc::new(Mutex::new(i32::MIN))
+		}
+	}
+}
+
+pub struct EngineThread<'a> {
+	pub shared_info: Option<&'a SharedInfo<'a>>,
+	movegen: MoveGen
+}
+
+impl EngineThread<'_> {
+	pub fn new<'a>(shared_info: Option<&'a SharedInfo>) -> EngineThread<'a> {
+		EngineThread {
+			shared_info: shared_info,
+			movegen: MoveGen::new()
+		}
+	}
+}
+
+#[derive(Clone, Copy)]
 pub struct TimeControl {
 	pub depth: i32,
 	pub wtime: i64,
@@ -21,11 +54,10 @@ pub struct TimeControl {
 	pub binc: i64,
 	pub movetime: Option<i64>,
 	pub movestogo: Option<i64>,
-	pub handler: Arc<AtomicBool>
 }
 
 impl TimeControl {
-	pub fn new(stop_abort: Arc<AtomicBool>) -> TimeControl {
+	pub fn new() -> TimeControl {
 		TimeControl {
 			depth: i32::MAX,
 			wtime: i64::MAX,
@@ -34,49 +66,46 @@ impl TimeControl {
 			binc: 0,
 			movetime: None,
 			movestogo: None,
-			handler: stop_abort
 		}
 	}
 }
 
-pub struct Engine {
+pub struct Engine<'a> {
 	pub boardwrapper: BoardWrapper,
-	pub max_depth: i32,
 	pub my_past_positions: Vec<u64>,
 	pub nodes: u64,
-	seldepth: i32,
-	movegen: MoveGen,
+	thread_count: u32,
+	threads: Vec<EngineThread<'a>>,
+	handler: Option<Arc<AtomicBool>>,
 	tt: TT
 }
 
-impl Engine {
-	pub fn new(hash: u32) -> Engine {
+impl Engine<'_> {
+	pub fn new(hash: u32, thread_count: u32) -> Engine<'static> {
 		Engine {
 			boardwrapper: BoardWrapper::new(),
-			max_depth: 0,
 			my_past_positions: Vec::with_capacity(64),
 			nodes: 0,
-			seldepth: 0,
-			movegen: MoveGen::new(),
+			thread_count: thread_count,
+			threads: (0..thread_count).map(|_| EngineThread::new(None)).collect(),
+			handler: None,
 			tt: TT::new(hash)
 		}
 	}
 
-	pub fn go(&mut self, time_control: TimeControl) -> String {
-		let now = Instant::now();
+	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
+		let shared_info = SharedInfo::new(&self.tt);
 
-		let mut best_move = None;
-
-		//set time
-		let movetime = time_control.movetime;
-		let movestogo = time_control.movestogo;
+		//manage time
 		let mut time: u64;
 		let mut timeinc: u64;
 
-		self.max_depth = time_control.depth;
+		let abort = handler.clone();
 
-		self.nodes = 0;
+		let movetime = time_control.movetime;
+		let movestogo = time_control.movestogo;
 
+		//set time
 		match self.boardwrapper.board.side_to_move() {
 			Color::White => {
 				time = time_control.wtime as u64;
@@ -88,9 +117,6 @@ impl Engine {
 			}
 		}
 
-		//set up multithread for search abort
-		let abort = time_control.handler.clone();
-		let mut soft_timeout = None;
 		if time != u64::MAX {
 			thread::spawn(move || {
 				let hard_timeout = if movetime.is_none() {
@@ -107,117 +133,43 @@ impl Engine {
 				thread::sleep(Duration::from_millis(hard_timeout));
 				abort.store(true, Ordering::Relaxed);
 			});
-
-			let mut soft_timeout_div = 25;
-			if let Some(movestogo) = movestogo {
-				soft_timeout_div /= movestogo / 10;
-			}
-
-			soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
 		}
 
-		let mut last_result = 0;
-		let mut depth_index = 0;
-		let mut window = 10;
+		thread::scope(|scope| {
+			self.handler = Some(handler.clone());
 
-		while depth_index < self.max_depth && depth_index < 250 {
-			self.seldepth = 0;
-			let boardwrapper = &mut self.boardwrapper.clone();
-			let mut past_positions = self.my_past_positions.clone();
+			let mut worker_threads = Vec::new();
 
-			let new_alpha = if depth_index + 1 > 3 {
-				last_result - window
-			} else {
-				-i32::MAX
-			};
+			for i in 0..self.thread_count {
+				let thread_movegen = self.threads[i as usize].movegen.clone();
+				let boardwrapper = self.boardwrapper.clone();
+				let positions = self.my_past_positions.clone();
+				let this_handler = &self.handler;
+				let this_shared_info = &shared_info;
+				let this_total_thread_count = self.thread_count;
 
-			let new_beta = if depth_index + 1 > 3 {
-				last_result + window
-			} else {
-				i32::MAX
-			};
+				worker_threads.push(scope.spawn(move || {
+					Searcher::create(time_control.clone(), 
+						this_shared_info, 
+						thread_movegen, 
+						boardwrapper, 
+						positions, 
+						this_handler.clone(),
+						this_total_thread_count)
+				}));
+			}
 
-			let result = Searcher::new(&self.tt, &mut self.movegen, time_control.handler.clone(), SearchInfo {
-				boardwrapper: boardwrapper.clone(),
-				depth: depth_index + 1,
-				alpha: new_alpha,
-				beta: new_beta,
-				past_positions
-			});
-
-			if result != None {
-				let (best_mv, eval, nodes, seldepth) = result.unwrap();
-
+			self.nodes = 0;
+			let mut index = 0;
+			for worker in worker_threads {
+				let (movegen, nodes) = worker.join().unwrap();
+				self.threads[index].movegen = movegen.clone();
 				self.nodes += nodes;
-				self.seldepth += seldepth;
-
-				if eval.score <= last_result - window || eval.score >= last_result + window {
-					window *= 2;
-					continue;
-				}
-
-				window = 10;
-				last_result = eval.score;
-				best_move = best_mv.clone();
-				depth_index += 1;
-
-				let elapsed = now.elapsed().as_secs_f32() * 1000_f32;
-
-				//get nps
-				let mut nps: u64;
-				if elapsed == 0_f32 {
-					nps = self.nodes;
-				} else {
-					nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
-				}
-
-				let mut score_str = if eval.mate {
-					let mut mate_score = if eval.score > 0 {
-						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
-					} else {
-						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
-					};
-
-					format!("mate {}", mate_score)
-				} else {
-					format!("cp {}", eval.score)
-				};
-
-				println!("info depth {} seldepth {} time {} score {} nodes {} nps {} pv {}", depth_index, self.seldepth, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
-
-				if movetime.is_none() && !soft_timeout.is_none() {
-					if elapsed as u64 > soft_timeout.unwrap() {
-						break;
-					}
-				}
-			} else {
-				break;
+				index += 1;
 			}
-		}
 
-		_960_to_regular_(best_move, &self.boardwrapper.board)
-	}
-
-	//fish PV from TT
-	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
-		if depth == 0 || ply > 50 {
-			return String::new();
-		}
-
-		//probe TT
-		match self.tt.find(board, ply) {
-			Some(table_find) => {
-				let mut pv = String::new();
-				if board.is_legal(table_find.best_move.unwrap()) {
-					board.play_unchecked(table_find.best_move.unwrap());
-					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
-				}
-
-				return pv;
-			},
-			None => {}
-		}
-
-		String::new()
+			let best_move = *(&shared_info).best_move.lock().unwrap();
+			_960_to_regular_(best_move, &self.boardwrapper.board)
+		})
 	}
 }

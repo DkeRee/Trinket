@@ -5,6 +5,8 @@ Special thanks to Malarksist and Pali from Openbench!
 https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
 */
 
+
+#[derive(Clone)]
 pub struct See {
 	gains: [i32; 32]
 }

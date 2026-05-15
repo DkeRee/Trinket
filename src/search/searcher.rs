@@ -1,5 +1,6 @@
 use cozy_chess::*;
 
+use std::time::Instant;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -7,6 +8,7 @@ use crate::search::lmr_table::*;
 use crate::eval::evaluator::*;
 use crate::eval::score::*;
 use crate::search::tt::*;
+use crate::search::search_master::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::movegen::boardwrapper::*;
@@ -20,27 +22,174 @@ pub struct SearchInfo {
 }
 
 pub struct Searcher<'a> {
-	tt: &'a TT,
+	pub time_control: TimeControl,
+	pub shared_info: &'a SharedInfo<'a>,
+	pub movegen: MoveGen,
+	total_thread_count: u32,
 	nodes: u64,
-	seldepth: i32,
-	movegen: &'a mut MoveGen,
-	searching_depth: i32,
+	boardwrapper: BoardWrapper,
+	my_past_positions: Vec<u64>,
 	evals: [i32; 300]
 }
 
 impl Searcher<'_> {
-	pub fn new(tt: &TT, movegen: &mut MoveGen, abort: Arc<AtomicBool>, mut search_info: SearchInfo) -> Option<(Option<Move>, Eval, u64, i32)> {
-		let mut searcher = Searcher {
-			tt: tt,
-			nodes: 0,
-			seldepth: 0,
+	pub fn create(time_control: TimeControl, shared_info: &SharedInfo, movegen: MoveGen, boardwrapper: BoardWrapper, my_past_positions: Vec<u64>, handler: Option<Arc<AtomicBool>>, total_thread_count: u32) -> (MoveGen, u64) {
+		let mut instance = Searcher {
+			time_control: time_control,
+			shared_info: shared_info,
 			movegen: movegen,
-			searching_depth: search_info.depth,
+			total_thread_count: total_thread_count,
+			nodes: 0,
+			boardwrapper: boardwrapper,
+			my_past_positions: my_past_positions,
 			evals: [0; 300]
 		};
-		let (mv, eval) = searcher.search(&abort, &search_info.boardwrapper, search_info.depth, 0, search_info.alpha, search_info.beta, &mut search_info.past_positions, None)?;
-	
-		return Some((mv, eval, searcher.nodes, searcher.seldepth));
+
+		instance.go(handler.unwrap());
+		(instance.movegen, instance.nodes)
+	}
+
+	pub fn go(&mut self, handler: Arc<AtomicBool>) {
+		let now = Instant::now();
+
+		let mut last_result = 0;
+		let mut depth_index = 0;
+		let mut window = 10;
+
+		while depth_index < self.time_control.depth && depth_index < 250 {
+			let boardwrapper = &mut self.boardwrapper.clone();
+			let mut past_positions = self.my_past_positions.clone();
+
+			let new_alpha = if depth_index + 1 > 3 {
+				last_result - window
+			} else {
+				-i32::MAX
+			};
+
+			let new_beta = if depth_index + 1 > 3 {
+				last_result + window
+			} else {
+				i32::MAX
+			};
+
+			let search_handler: Arc<AtomicBool> = handler.clone();
+
+			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+
+			if result != None {
+				let (best_mv, eval) = result.unwrap();
+
+				if eval.score <= last_result - window || eval.score >= last_result + window {
+					window *= 2;
+					continue;
+				}
+
+				window = 10;
+				last_result = eval.score;
+
+				let mut best_move = self.shared_info.best_move.lock().unwrap();
+				let mut best_depth = self.shared_info.best_depth.lock().unwrap();
+				let mut best_eval = self.shared_info.best_eval.lock().unwrap();
+
+				depth_index += 1;
+
+				let is_main_thread = depth_index > *best_depth || (depth_index == *best_depth && eval.score > *best_eval) || self.total_thread_count == 1;
+
+				if is_main_thread {
+					*best_move = best_mv.clone();
+					*best_depth = depth_index;
+					*best_eval = eval.score;
+				}
+				
+				let mut time: u64;
+				let mut timeinc: u64;
+
+				let movetime = self.time_control.movetime;
+				let movestogo = self.time_control.movestogo;
+				
+				//set time
+				match self.boardwrapper.board.side_to_move() {
+					Color::White => {
+						time = self.time_control.wtime as u64;
+						timeinc = self.time_control.winc as u64;
+					},
+					Color::Black => {
+						time = self.time_control.btime as u64;
+						timeinc = self.time_control.binc as u64;	
+					}
+				}
+
+				let elapsed: f32 = now.elapsed().as_secs_f32() * 1000_f32;
+
+				if time != u64::MAX {
+					let mut soft_timeout = None;
+
+					let mut soft_timeout_div = 25;
+					if let Some(movestogo) = movestogo {
+						soft_timeout_div /= movestogo / 10;
+					}
+
+					soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
+
+					if movetime.is_none() && !soft_timeout.is_none() {
+						if elapsed as u64 > soft_timeout.unwrap() {
+							break;
+						}
+					}
+				}
+
+				if !is_main_thread {
+					continue;
+				}
+
+				//get nps
+				let mut nps: u64;
+				if elapsed == 0_f32 {
+					nps = self.nodes;
+				} else {
+					nps = ((self.nodes as f32 * 1000_f32) / elapsed) as u64;
+				}
+
+				let mut score_str = if eval.mate {
+					let mut mate_score = if eval.score > 0 {
+						(((Score::CHECKMATE_BASE - eval.score + 1) / 2) as f32).ceil()
+					} else {
+						((-(eval.score + Score::CHECKMATE_BASE) / 2) as f32).ceil()
+					};
+
+					format!("mate {}", mate_score)
+				} else {
+					format!("cp {}", eval.score)
+				};
+
+				println!("info depth {} time {} score {} nodes {} nps {} pv {}", depth_index, elapsed as u64, score_str, self.nodes, nps, self.get_pv(&mut boardwrapper.board, depth_index, 0));
+			} else {
+				break;
+			}
+		}
+	}
+
+	//fish PV from TT
+	fn get_pv(&self, board: &mut Board, depth: i32, ply: i32) -> String {
+		if depth == 0 || ply > 50 {
+			return String::new();
+		}
+
+		//probe TT
+		match self.shared_info.tt.find(board, ply) {
+			Some(table_find) => {
+				let mut pv = String::new();
+				if board.is_legal(table_find.best_move.unwrap()) {
+					board.play_unchecked(table_find.best_move.unwrap());
+					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+				}
+
+				return pv;
+			},
+			None => {}
+		}
+
+		String::new()
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
@@ -63,9 +212,9 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {
+	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {		
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
 		}
 
@@ -106,7 +255,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (tt_hit, iid) = match self.tt.find(&boardwrapper.board, ply) {
+		let (tt_hit, iid) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -405,14 +554,14 @@ impl Searcher<'_> {
 					alpha = eval.score;
 					if alpha >= beta {
 						tt_nodetype = NodeKind::LowerBound;
-						self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::LowerBound);
+						self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::LowerBound);
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
 						tt_nodetype = NodeKind::Exact;
-						self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::Exact);
+						self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::Exact);
 					}
 				} else {
 					//SPP
@@ -424,7 +573,7 @@ impl Searcher<'_> {
 					&& sm.movetype == MoveType::Quiet
 					&& !staged_movegen;
 
-					self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::UpperBound);
+					self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, NodeKind::UpperBound);
 				}
 			}
 
@@ -456,11 +605,10 @@ impl Searcher<'_> {
 
 	fn qsearch(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {
 		//abort?
-		if self.searching_depth > 1 && abort.load(Ordering::Relaxed) {
+		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
 		}
 
-		self.seldepth = i32::max(self.seldepth, ply);
 		self.nodes += 1;
 
 		match boardwrapper.board.status() {
@@ -489,7 +637,7 @@ impl Searcher<'_> {
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
-		let table_find = match self.tt.find(&boardwrapper.board, ply) {
+		let table_find = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
 				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
@@ -570,7 +718,7 @@ impl Searcher<'_> {
 
 
 		if best_move.is_some() {
-			self.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
 		}
 
 		return Some((best_move, eval));

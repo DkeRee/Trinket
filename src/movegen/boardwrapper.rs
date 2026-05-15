@@ -24,7 +24,8 @@ fn init_non_pawn_hash(board: Board) -> [u64; 2] {
         Piece::Knight,
         Piece::Bishop,
         Piece::Rook,
-        Piece::Queen
+        Piece::Queen,
+        Piece::King
     ];
 
     for color in [Color::White, Color::Black] {

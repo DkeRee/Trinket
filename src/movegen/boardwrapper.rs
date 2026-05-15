@@ -113,82 +113,84 @@ impl BoardWrapper {
         let mv = sm.mv;
         let us = self.board.side_to_move();
         let enemy = !us;
-
-        //update material history for single capture
-        if sm.movetype == MoveType::Loud {
-            let captured_piece = self.board.piece_on(mv.to);
-            if captured_piece.is_some() {
-                let captured_piece_count = self.board.colored_pieces(enemy, captured_piece.unwrap()).len() as usize;
-
-                //remove old state before capture
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count];
-
-                //new state after capture
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count - 1];
-                if captured_piece.unwrap() != Piece::Pawn {
-                    self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
-                }
-            }
-        }
-
-        //update pawn hash
         let piece_from = self.board.piece_on(mv.from);
-        if piece_from == Some(Piece::Pawn) {
-            //remove pawn from source square
-            self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][mv.from as usize];
 
-            //add pawn to target square
-            if mv.promotion.is_none() {
-                self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][mv.to as usize];
-            } else {
-                //update material hash for promotions
-                let promotion_piece = mv.promotion.unwrap();
+        if piece_from != Some(Piece::King) {
+            //update material history for single capture
+            if sm.movetype == MoveType::Loud {
+                let captured_piece = self.board.piece_on(mv.to);
+                if captured_piece.is_some() {
+                    let captured_piece_count = self.board.colored_pieces(enemy, captured_piece.unwrap()).len() as usize;
 
-                let pawn_piece_count = self.board.colored_pieces(us, Piece::Pawn).len() as usize;
-                let promotion_piece_count = self.board.colored_pieces(us, promotion_piece).len() as usize;
+                    //remove old state before capture
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count];
 
-                //remove pawn from old state
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count];
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count - 1];
-
-                //add promotion in new state
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count];
-                self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count + 1];
-                self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[promotion_piece as usize][mv.to as usize];
-            }
-
-            //remove pawn if en passant
-            if let Some(ep_file) = self.board.en_passant() {
-                if mv.to.file() == ep_file {
-                    let captured_rank = match enemy {
-                        Color::White => Rank::Fourth,
-                        Color::Black => Rank::Fifth
-                    };
-
-                    let captured_sq = Square::new(ep_file, captured_rank);
-                    let captured_piece = self.board.piece_on(captured_sq).unwrap();
-                    let captured_piece_count = self.board.colored_pieces(enemy, captured_piece).len() as usize;
-                    
-                    //handle en passant for pawn hash
-                    if captured_piece == Piece::Pawn {
-                        self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][captured_sq as usize];
-                    }
-
-                    //handle en passant for non pawn captured pieces
-                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count];
-                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count - 1];
-
-                    if captured_piece != Piece::Pawn {
-                        self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+                    //new state after capture
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count - 1];
+                    if captured_piece.unwrap() != Piece::Pawn {
+                        self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
                     }
                 }
             }
-        } else if piece_from.is_some() {
-            //remove piece from source square for nonpawn hash
-            self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.from as usize];
 
-            //add piece to target square for nonpawn hash
-            self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+            //update pawn hash
+            if piece_from == Some(Piece::Pawn) {
+                //remove pawn from source square
+                self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][mv.from as usize];
+
+                //add pawn to target square
+                if mv.promotion.is_none() {
+                    self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][mv.to as usize];
+                } else {
+                    //update material hash for promotions
+                    let promotion_piece = mv.promotion.unwrap();
+
+                    let pawn_piece_count = self.board.colored_pieces(us, Piece::Pawn).len() as usize;
+                    let promotion_piece_count = self.board.colored_pieces(us, promotion_piece).len() as usize;
+
+                    //remove pawn from old state
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count];
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][Piece::Pawn as usize][pawn_piece_count - 1];
+
+                    //add promotion in new state
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count];
+                    self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count + 1];
+                    self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[promotion_piece as usize][mv.to as usize];
+                }
+
+                //remove pawn if en passant
+                if let Some(ep_file) = self.board.en_passant() {
+                    if mv.to.file() == ep_file {
+                        let captured_rank = match enemy {
+                            Color::White => Rank::Fourth,
+                            Color::Black => Rank::Fifth
+                        };
+
+                        let captured_sq = Square::new(ep_file, captured_rank);
+                        let captured_piece = self.board.piece_on(captured_sq).unwrap();
+                        let captured_piece_count = self.board.colored_pieces(enemy, captured_piece).len() as usize;
+                        
+                        //handle en passant for pawn hash
+                        if captured_piece == Piece::Pawn {
+                            self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][captured_sq as usize];
+                        }
+
+                        //handle en passant for non pawn captured pieces
+                        self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count];
+                        self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece as usize][captured_piece_count - 1];
+
+                        if captured_piece != Piece::Pawn {
+                            self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+                        }
+                    }
+                }
+            } else if piece_from.is_some() {
+                //remove piece from source square for nonpawn hash
+                self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.from as usize];
+
+                //add piece to target square for nonpawn hash
+                self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+            }
         }
 
         self.board.play_unchecked(mv);
@@ -196,7 +198,7 @@ impl BoardWrapper {
 }
 
 impl BoardWrapper {
-	pub const BOARD_BY_PIECE_KEYS: [[u64; 64]; 6] = [
+	pub const BOARD_BY_PIECE_KEYS: [[u64; 64]; 5] = [
 		[
 			0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
 			0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
@@ -286,24 +288,6 @@ impl BoardWrapper {
             0x8394A5B6C7D8E9FA, 0x94A5B6C7D8E9FA0B, 0xA5B6C7D8E9FA0B1C, 0xB6C7D8E9FA0B1C2D,
             0xC7D8E9FA0B1C2D3E, 0xD8E9FA0B1C2D3E4F, 0xE9FA0B1C2D3E4F50, 0xFA0B1C2D3E4F5061,
             0x0B1C2D3E4F506172, 0x1D2E3F5061728394, 0x452821E638D01377, 0xBE5466CF34E90C6C,
-        ],
-        [
-            0xF8D626AAAF278509, 0x0E3FEE3F4A4F8C12, 0x4C8A1B27D5E9F633, 0x7B942ACD183E60AF,
-            0xD4F3E9A21C7B5088, 0x6AE2BC5D9F013477, 0x913A6F8D42CEB155, 0x28C5D1E7FA934622,
-            0xB1F26D947AC83E10, 0x59A7C31E2D6BF488, 0xEC4A8019F5372BCD, 0x3D62FEA418B97C50,
-            0x87BDE214CA5069F1, 0xF21C5893DE467A2E, 0x1458AF3B9C02E677, 0xA63FD5E1709BC248,
-            0xC90E347ABF651D33, 0x718DCA0F2E49B856, 0x2AF4B9816D30CE77, 0xE5C2374DA81FB290,
-            0x94B80DF6317AE54C, 0x38EFA572C4D019AB, 0xDB14C6F83A275E91, 0x6F90A1BD45EC3372,
-            0x1A7E3CD864B2F550, 0xB84F9217DE60AC39, 0xC35D0AFBE1947682, 0x7D21E8436ABF905E,
-            0xF6A90D31C7284BE4, 0x0BC57A9EF463D128, 0x5E13DF8A20CB6749, 0xA9F42C71D85E036B,
-            0x2748B3EC9D16FA40, 0xD18E640A53BC29F7, 0x68CB2F9E714D8055, 0xFE05A71BD342C69A,
-            0x31D9EC8F607A1544, 0x8C24B7A5FD91E263, 0x476AE19D3CB8507F, 0xBAF50326E4D17C18,
-            0x03E4C89AF1276DB2, 0xD762A40C5E9B3184, 0x94F0BE6138CA5727, 0x2D81E75AB469F03C,
-            0xC658149F72DE8A90, 0x71BC3E5D0AF24768, 0xE92067A3D58CF141, 0x56DA18FC309BE27D,
-            0x1FC37AB542D69088, 0xA4835DE71F2CB649, 0xD7E01A8C96F45320, 0x689C42BDF715AE13,
-            0x32F7D9840ECB561A, 0xBC159E6AF43027D5, 0xF047C2D91B8EA364, 0x0D8AE57163FC294B,
-            0x95B34CF8D1207E6F, 0x47E6A193BC5D8422, 0xEA2F580D716CB937, 0x2B90D4EFC8631578,
-            0xC7143AB85D09FE41, 0x6D58E2F130AC7B96, 0x18AF79C4E26D5033, 0xF39C046B8D71A2EC,
         ]
 	];
 

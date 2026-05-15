@@ -94,6 +94,8 @@ impl Engine<'_> {
 	}
 
 	pub fn go(&mut self, time_control: TimeControl, handler: Arc<AtomicBool>) -> String {
+		self.nodes = 0;
+
 		let shared_info = SharedInfo::new(&self.tt);
 
 		//manage time

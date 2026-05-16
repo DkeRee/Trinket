@@ -191,6 +191,34 @@ impl BoardWrapper {
                 //add piece to target square for nonpawn hash
                 self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
             }
+
+            //handle castling for nonpawn corrhist
+            if piece_from.unwrap() == Piece::King {
+                let from_file = mv.from.file() as i8;
+                let to_file = mv.to.file() as i8;
+
+                //is castling move
+                if (from_file - to_file).abs() >= 2 {
+                    let rank = mv.from.rank();
+
+                    let (rook_from, rook_to) = if to_file > from_file {
+                        //kingside
+                        (
+                            Square::new(File::H, rank),
+                            Square::new(File::F, rank)
+                        )
+                    } else {
+                        //queenside
+                        (
+                            Square::new(File::A, rank),
+                            Square::new(File::D, rank)
+                        )
+                    };
+
+                    self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[Piece::Rook as usize][rook_from as usize];
+                    self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[Piece::Rook as usize][rook_to as usize];
+                }
+            }
         }
 
         self.board.play_unchecked(mv);

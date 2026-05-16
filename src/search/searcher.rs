@@ -354,7 +354,7 @@ impl Searcher<'_> {
 		let our_pieces = boardwrapper.board.colors(boardwrapper.board.side_to_move());
 		let sliding_pieces = boardwrapper.board.pieces(Piece::Rook) | boardwrapper.board.pieces(Piece::Bishop) | boardwrapper.board.pieces(Piece::Queen);
 		let improving_nmp_check = if ply > 1 {
-			self.evals[ply as usize] - self.evals[ply as usize - 2] > -100
+			self.evals[ply as usize] - self.evals[ply as usize - 2] > 0
 		} else {
 			true
 		};

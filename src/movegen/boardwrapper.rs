@@ -111,6 +111,7 @@ impl BoardWrapper {
 
     pub fn play_unchecked(&mut self, sm: &mut SortedMove) {
         let mv = sm.mv;
+        let piece_from = self.board.piece_on(mv.from);
         let us = self.board.side_to_move();
         let enemy = !us;
 
@@ -132,7 +133,6 @@ impl BoardWrapper {
         }
 
         //update pawn hash
-        let piece_from = self.board.piece_on(mv.from);
         if piece_from == Some(Piece::Pawn) {
             //remove pawn from source square
             self.pawn_hash ^= Self::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][mv.from as usize];
@@ -184,11 +184,13 @@ impl BoardWrapper {
                 }
             }
         } else if piece_from.is_some() {
-            //remove piece from source square for nonpawn hash
-            self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.from as usize];
+            if piece_from.unwrap() != Piece::King {
+                //remove piece from source square for nonpawn hash
+                self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.from as usize];
 
-            //add piece to target square for nonpawn hash
-            self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+                //add piece to target square for nonpawn hash
+                self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+            }
         }
 
         self.board.play_unchecked(mv);

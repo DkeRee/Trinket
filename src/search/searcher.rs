@@ -422,8 +422,26 @@ impl Searcher<'_> {
 
 			//King Pawn Endgame Extension
 			let non_pawns = boardwrapper.board.pieces(Piece::Rook) | boardwrapper.board.pieces(Piece::Bishop) | boardwrapper.board.pieces(Piece::Queen) | boardwrapper.board.pieces(Piece::Knight);
-			if !(boardwrapper.board.occupied() & non_pawns).is_empty() && (board_wrapper_cache.board.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
+			let kp_extension = !(boardwrapper.board.occupied() & non_pawns).is_empty() && (board_wrapper_cache.board.occupied() & non_pawns).is_empty();
+			if kp_extension && !globally_extended && !staged_movegen {
 				new_depth += 1;
+			}
+
+			//TT Extension/Cutting
+			if depth > 3 && tt_hit.as_ref().is_some() && moves_searched == 0 {
+				if tt_hit.as_ref().unwrap().depth > depth - 4 
+				&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
+				&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound
+				&& !kp_extension && !globally_extended {
+					let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
+
+					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
+					child_eval.score *= -1;
+
+					if child_eval.score < singular_beta { 
+						new_depth += 1;
+					}
+				}
 			}
 
 			if moves_searched == 0 {

@@ -429,9 +429,9 @@ impl Searcher<'_> {
 
 			//TT Extension/Cutting
 			if depth > 3 && tt_hit.as_ref().is_some() && moves_searched == 0 {
-				if tt_hit.as_ref().unwrap().depth > depth - 4 
+				if tt_hit.as_ref().unwrap().depth >= depth - 3
 				&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
-				&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound
+				&& tt_hit.as_ref().unwrap().node_kind == NodeKind::LowerBound
 				&& !kp_extension && !globally_extended {
 					let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
 

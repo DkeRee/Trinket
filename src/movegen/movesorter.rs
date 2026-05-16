@@ -14,9 +14,9 @@ pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[i32; 64]; 64],
 	countermove_table: [[Option<Move>; 64]; 64],
-	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
+	pawn_corrhist: [[f32; Self::PAWN_CORRHIST_SIZE]; 2],
+	non_pawn_corrhist: [[f32; Self::NON_PAWN_CORRHIST_SIZE]; 2],
+	material_corrhist: [[f32; Self::MATERIAL_CORRHIST_SIZE]; 2],
 	see: See
 }
 
@@ -26,9 +26,9 @@ impl MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[0; 64]; 64],
 			countermove_table: [[None; 64]; 64],
-			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
+			pawn_corrhist: [[0.0; Self::PAWN_CORRHIST_SIZE]; 2],
+			non_pawn_corrhist: [[0.0; Self::NON_PAWN_CORRHIST_SIZE]; 2],
+			material_corrhist: [[0.0; Self::MATERIAL_CORRHIST_SIZE]; 2],
 			see: See::new()
 		}
 	}
@@ -156,7 +156,7 @@ impl MoveSorter {
 	}
 
 	pub fn add_material_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx = (boardwrapper.material_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let idx = (boardwrapper.material_hash % Self::MATERIAL_CORRHIST_SIZE as u64) as usize;
 		let side = boardwrapper.board.side_to_move() as usize;
 	
 		let entry = &mut self.material_corrhist[side][idx];
@@ -166,7 +166,7 @@ impl MoveSorter {
 	}
 
 	pub fn add_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx = (boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let idx = (boardwrapper.pawn_hash % Self::PAWN_CORRHIST_SIZE as u64) as usize;
 		let side = boardwrapper.board.side_to_move() as usize;
 	
 		let entry = &mut self.pawn_corrhist[side][idx];
@@ -176,8 +176,8 @@ impl MoveSorter {
 	}
 
 	pub fn add_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::NON_PAWN_CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::NON_PAWN_CORRHIST_SIZE as u64) as usize;
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
@@ -190,19 +190,19 @@ impl MoveSorter {
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
-		let material_hist = self.material_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.material_hash % Self::CORRHIST_SIZE as u64) as usize];
+		let material_hist = self.material_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.material_hash % Self::MATERIAL_CORRHIST_SIZE as u64) as usize];
 		material_hist / 289.0
 	}
 
 	pub fn read_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
-		let pawn_hist = self.pawn_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.pawn_hash % Self::CORRHIST_SIZE as u64) as usize];
+		let pawn_hist = self.pawn_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.pawn_hash % Self::PAWN_CORRHIST_SIZE as u64) as usize];
 		pawn_hist / 198.0
 	}
 
 	pub fn read_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
-		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_white = (boardwrapper.non_pawn_hash[Color::White as usize] % Self::NON_PAWN_CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.non_pawn_hash[Color::Black as usize] % Self::NON_PAWN_CORRHIST_SIZE as u64) as usize;
 		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 202.0;
 		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
 
@@ -238,7 +238,10 @@ impl MoveSorter {
 	const UNDER_PROMO: i32 = -50000;
 
 	const HISTORY_MAX: i32 = 2000;
-	const CORRHIST_SIZE: usize = 16384;
+	
+	const PAWN_CORRHIST_SIZE: usize = 16384;
+	const NON_PAWN_CORRHIST_SIZE: usize = 32768;
+	const MATERIAL_CORRHIST_SIZE: usize = 4096;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

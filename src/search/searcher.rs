@@ -407,6 +407,30 @@ impl Searcher<'_> {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
+
+			let mut value: Eval;
+			let mut new_depth = depth - 1;
+
+			//TT Extension/Cutting
+			if depth > 3 
+			&& tt_hit.as_ref().is_some() 
+			&& !globally_extended {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv
+					&& tt_hit.as_ref().unwrap().depth >= depth - 3
+					&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
+					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
+						let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
+	
+						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
+	
+						if se_eval.score < singular_beta { 
+							new_depth += 1;
+						}
+					}
+				}
+			}
+
 			let mut board_wrapper_cache = boardwrapper.clone();
 				
 			board_wrapper_cache.play_unchecked(sm);
@@ -415,9 +439,6 @@ impl Searcher<'_> {
 
 			past_positions.push(board_wrapper_cache.board.hash());
 
-			let mut value: Eval;
-			let mut new_depth = depth - 1;
-
 			//Extensions
 
 			//King Pawn Endgame Extension
@@ -425,23 +446,6 @@ impl Searcher<'_> {
 			let kp_extension = !(boardwrapper.board.occupied() & non_pawns).is_empty() && (board_wrapper_cache.board.occupied() & non_pawns).is_empty();
 			if kp_extension && !globally_extended && !staged_movegen {
 				new_depth += 1;
-			}
-
-			//TT Extension/Cutting
-			if depth > 3 && tt_hit.as_ref().is_some() && moves_searched == 0 {
-				if tt_hit.as_ref().unwrap().depth >= depth - 3
-				&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
-				&& tt_hit.as_ref().unwrap().node_kind == NodeKind::LowerBound
-				&& !kp_extension && !globally_extended {
-					let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
-
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
-					child_eval.score *= -1;
-
-					if child_eval.score < singular_beta { 
-						new_depth += 1;
-					}
-				}
 			}
 
 			if moves_searched == 0 {

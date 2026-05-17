@@ -686,10 +686,8 @@ impl Searcher<'_> {
 		for mut sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
-				if sm.see_value < -200 {
-					continue;
-				}
+			if sm.importance < 0 && sm.see_value < -200 {
+				break;
 			}
 
 			let mv = sm.mv;

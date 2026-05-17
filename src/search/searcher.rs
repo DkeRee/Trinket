@@ -179,9 +179,11 @@ impl Searcher<'_> {
 		match self.shared_info.tt.find(board, ply) {
 			Some(table_find) => {
 				let mut pv = String::new();
-				if board.is_legal(table_find.best_move.unwrap()) {
-					board.play_unchecked(table_find.best_move.unwrap());
-					pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+				if table_find.best_move.is_some() {
+					if board.is_legal(table_find.best_move.unwrap()) {
+						board.play_unchecked(table_find.best_move.unwrap());
+						pv = format!("{} {}", table_find.best_move.unwrap(), self.get_pv(board, depth - 1, ply + 1));
+					}
 				}
 
 				return pv;
@@ -379,22 +381,29 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = tt_hit.is_some() || tt_hit.is_some();
+		let mut staged_movegen = tt_hit.is_some();
 		if staged_movegen {
-			let mv = if tt_hit.is_some() {
-				tt_hit.clone().unwrap().best_move.unwrap()
+			let top_move = if tt_hit.is_some() {
+				tt_hit.clone().unwrap().best_move
+			} else if iid.is_some() {
+				iid.clone()
 			} else {
-				iid.clone().unwrap()
+				None
 			};
 
-			let movetype = if (mv.to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
-				MoveType::Quiet
+			if top_move.is_some() {
+				let movetype = if (top_move.unwrap().to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
+					MoveType::Quiet
+				} else {
+					MoveType::Loud
+				};
+				let mut sm = SortedMove::new(top_move.unwrap(), 0, movetype);
+	
+				legal_moves.push(sm);
 			} else {
-				MoveType::Loud
-			};
-			let mut sm = SortedMove::new(mv, 0, movetype);
-
-			legal_moves.push(sm);
+				staged_movegen = false;
+				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+			}
 		} else {
 			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
 		}
@@ -591,11 +600,13 @@ impl Searcher<'_> {
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
-		if best_move_type.unwrap() == MoveType::Quiet
-		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
-			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
+		if best_move_type.is_some() {
+			if best_move_type.unwrap() == MoveType::Quiet
+			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
+				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+				self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
+			}
 		}
 
 		return Some((best_move, eval));
@@ -714,10 +725,7 @@ impl Searcher<'_> {
 			}
 		}
 
-
-		if best_move.is_some() {
-			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
-		}
+		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

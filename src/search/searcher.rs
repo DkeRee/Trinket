@@ -319,7 +319,7 @@ impl Searcher<'_> {
 
 				//if sufficient depth
 				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
+				if !exclude && depth >= Self::IID_DEPTH_MIN	&& is_pv {
 					let (best_mv, _) = self.search(
 						&abort, 
 						boardwrapper, 
@@ -423,7 +423,7 @@ impl Searcher<'_> {
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
 		let mut staged_movegen = tt_hit.is_some();
-		if staged_movegen {
+		if staged_movegen && !exclude {
 			let mv = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move.unwrap()
 			} else {
@@ -463,9 +463,9 @@ impl Searcher<'_> {
 							continue;
 						}
 
-						if depth > 10
+						if depth >= 6
 						&& !globally_extended 
-						&& tt_hit.as_ref().unwrap().depth >= depth - 1 
+						&& tt_hit.as_ref().unwrap().depth >= depth - 3 
 						&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
 						&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
 							let singular_beta = tt_hit.as_ref().unwrap().eval - depth * 2;

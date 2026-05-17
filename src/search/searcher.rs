@@ -607,16 +607,17 @@ impl Searcher<'_> {
 			}
 		}
 
-		let mut tt_mv_insertion = None;
-		if best_move.is_some() {
-			tt_mv_insertion = best_move;
-		} else {
-			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() {
-					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
-				}
+		let tt_mv_insertion = match tt_hit.as_ref() {
+			Some(tt) if tt.node_kind != NodeKind::UpperBound => {
+				best_move
 			}
-		}
+			Some(tt) => {
+				best_move.or(tt.best_move)
+			}
+			None => {
+				best_move
+			}
+		};
 
 		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
@@ -736,17 +737,18 @@ impl Searcher<'_> {
 			}
 		}
 
-		let mut tt_mv_insertion = None;
-		if best_move.is_some() {
-			tt_mv_insertion = best_move;
-		} else {
-			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() {
-					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
-				}
+		let tt_mv_insertion = match tt_hit.as_ref() {
+			Some(tt) if tt.node_kind != NodeKind::UpperBound => {
+				best_move
 			}
-		}
-
+			Some(tt) => {
+				best_move.or(tt.best_move)
+			}
+			None => {
+				best_move
+			}
+		};
+		
 		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));

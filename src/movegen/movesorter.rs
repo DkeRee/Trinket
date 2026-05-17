@@ -118,7 +118,7 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth + 10;
+		let change = depth * depth + 50;
 
 		if !change.checked_mul(history).is_none() {
 			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
@@ -237,7 +237,7 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 4096;
+	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo

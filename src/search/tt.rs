@@ -70,11 +70,17 @@ impl TTSlot {
 		}
 	}
 
-	fn store(&self, best_move: Option<Move>, eval: i32, position: u64, depth: i32, node_kind: NodeKind) {	
-		let mut move_bits = 0u16;
-		move_bits = (move_bits << 6) | best_move.unwrap().from as u16;
-		move_bits = (move_bits << 6) | best_move.unwrap().to as u16;
-		move_bits = (move_bits << 4) | best_move.unwrap().promotion.map_or(0b1111, |p| p as u16);
+	fn store(&self, best_move: Option<Move>, eval: i32, position: u64, depth: i32, node_kind: NodeKind) {
+		let move_bits: u16 = match best_move {
+			Some(mv) => {
+				let mut bits = 0u16;
+				bits = (bits << 6) | mv.from as u16;
+				bits = (bits << 6) | mv.to as u16;
+				bits = (bits << 4) | mv.promotion.map_or(0b1111, |p| p as u16);
+				bits
+			}
+			None => 0xFFFF
+		};
 
 		let data = bytemuck::cast(EncodedEntry {
 			eval: eval,
@@ -98,19 +104,25 @@ impl TTSlot {
 			let data: EncodedEntry = bytemuck::cast(data);
 
 			let mut move_bits = data.mv_byte;
-			let promotion = move_bits & 0b1111;
-			move_bits >>= 4;
-			let to = move_bits & 0b111111;
-			move_bits >>= 6;
-			let from = move_bits & 0b111111;
-			move_bits >>= 6;
+			let mut best_mv = None;
 
-			Some(TTEntry {
-				best_move: Some(Move {
+			if move_bits != 0xFFFF {
+				let promotion = move_bits & 0b1111;
+				move_bits >>= 4;
+				let to = move_bits & 0b111111;
+				move_bits >>= 6;
+				let from = move_bits & 0b111111;
+				move_bits >>= 6;
+
+				best_mv = Some(Move {
 					from: Square::index(from as usize),
 					to: Square::index(to as usize),
 					promotion: Piece::try_index(promotion as usize)
-				}),
+				});
+			}
+
+			Some(TTEntry {
+				best_move: best_mv,
 				eval: add_mate_score(data.eval, ply),
 				depth: data.depth as i32,
 				node_kind: match data.node_kind {

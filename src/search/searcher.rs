@@ -687,7 +687,9 @@ impl Searcher<'_> {
 
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {
-				break;
+				if sm.see_value < -200 {
+					continue;
+				}
 			}
 
 			let mv = sm.mv;

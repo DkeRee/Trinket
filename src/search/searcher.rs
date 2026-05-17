@@ -74,7 +74,15 @@ impl Searcher<'_> {
 
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
-			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+			let result = self.search(&search_handler, 
+				boardwrapper, 
+				depth_index + 1, 
+				0, 
+				new_alpha, 
+				new_beta, 
+				&mut past_positions, 
+				None,
+				false);
 
 			if result != None {
 				let (best_mv, eval) = result.unwrap();
@@ -212,7 +220,17 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {		
+	pub fn search(&mut self, 
+		abort: &AtomicBool, 
+		boardwrapper: &BoardWrapper, 
+		mut depth: i32, 
+		mut ply: i32, 
+		mut alpha: i32, 
+		mut beta: i32, 
+		past_positions: &mut Vec<u64>, 
+		last_move: Option<Move>,
+		exclude: bool) -> Option<(Option<Move>, Eval)> {		
+
 		//abort?
 		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -222,7 +240,7 @@ impl Searcher<'_> {
 
 		//MATE DISTANCE PRUNING
 		//make sure that alpha is not defaulted to negative infinity
-		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
+		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha && !exclude {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
@@ -244,7 +262,12 @@ impl Searcher<'_> {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, boardwrapper, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(
+				&abort, 
+				boardwrapper, 
+				alpha, 
+				beta, 
+				ply); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -266,21 +289,23 @@ impl Searcher<'_> {
 						false
 					};
 
-					match table_find.node_kind {
-						NodeKind::Exact => {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						},
-						NodeKind::UpperBound => {
-							if table_find.eval <= alpha {
+					if !exclude {
+						match table_find.node_kind {
+							NodeKind::Exact => {
 								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-							}	
-						},
-						NodeKind::LowerBound => {
-							if table_find.eval >= beta {
-								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-							}
-						},
-						NodeKind::Null => {}
+							},
+							NodeKind::UpperBound => {
+								if table_find.eval <= alpha {
+									return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+								}	
+							},
+							NodeKind::LowerBound => {
+								if table_find.eval >= beta {
+									return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+								}
+							},
+							NodeKind::Null => {}
+						}
 					}
 				}
 
@@ -295,7 +320,16 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+					let (best_mv, _) = self.search(
+						&abort, 
+						boardwrapper, 
+						depth - 10, 
+						ply, 
+						alpha, 
+						beta, 
+						past_positions, 
+						last_move, 
+						exclude)?;
 					iid_move = best_mv;
 				}
 
@@ -335,7 +369,7 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if depth <= Self::MAX_DEPTH_RFP && !in_check && !exclude {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -359,12 +393,21 @@ impl Searcher<'_> {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check && !exclude {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
 			
-			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(
+				&abort, 
+				nulled_board, 
+				depth - r, 
+				ply + 1, 
+				-beta, 
+				-beta + 1,
+				past_positions, 
+				None,
+				exclude)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -379,7 +422,7 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = tt_hit.is_some() || tt_hit.is_some();
+		let mut staged_movegen = tt_hit.is_some();
 		if staged_movegen {
 			let mv = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move.unwrap()
@@ -412,20 +455,35 @@ impl Searcher<'_> {
 			let mut new_depth = depth - 1;
 
 			//TT Extension/Cutting
-			if depth > 3 
-			&& tt_hit.as_ref().is_some() 
-			&& !globally_extended {
+			if tt_hit.as_ref().is_some() {
 				if tt_hit.as_ref().unwrap().best_move.is_some() {
-					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv
-					&& tt_hit.as_ref().unwrap().depth >= depth - 3
-					&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
-					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
-						let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
+					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv {
+						if exclude {
+							legal_index += 1;
+							continue;
+						}
+
+						if depth > 10
+						&& !globally_extended 
+						&& tt_hit.as_ref().unwrap().depth >= depth - 1 
+						&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
+						&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
+							let singular_beta = tt_hit.as_ref().unwrap().eval - depth * 2;
 	
-						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv))?;
-	
-						if se_eval.score < singular_beta { 
-							new_depth += 1;
+							let (_, mut se_eval) = self.search(
+								&abort, 
+								boardwrapper, 
+								new_depth / 2, 
+								ply + 1, 
+								singular_beta - 1, 
+								singular_beta, 
+								past_positions, 
+								Some(mv),
+								true)?;
+		
+							if se_eval.score < singular_beta { 
+								new_depth += 1;
+							}
 						}
 					}
 				}
@@ -449,7 +507,16 @@ impl Searcher<'_> {
 			}
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(
+					&abort, 
+					&board_wrapper_cache, 
+					new_depth, 
+					ply + 1, 
+					-beta, 
+					-alpha, 
+					past_positions, 
+					Some(mv),
+					exclude)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -540,7 +607,16 @@ impl Searcher<'_> {
 					reduction = 0;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(
+					&abort, 
+					&board_wrapper_cache,
+					new_depth - reduction, 
+					ply + 1, 
+					-alpha - 1, 
+					-alpha, 
+					past_positions, 
+					Some(mv),
+					exclude)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -548,7 +624,16 @@ impl Searcher<'_> {
 				//check if reductions should be removed
 				//search with full depth and null window
 				if value.score > alpha && reduction > 0 {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(
+						&abort, 
+						&board_wrapper_cache, 
+						new_depth, 
+						ply + 1, 
+						-alpha - 1, 
+						-alpha, 
+						past_positions, 
+						Some(mv),
+						exclude)?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -557,7 +642,16 @@ impl Searcher<'_> {
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(
+						&abort, 
+						&board_wrapper_cache, 
+						new_depth, 
+						ply + 1, 
+						-beta, 
+						-alpha, 
+						past_positions, 
+						Some(mv),
+						exclude)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -615,17 +709,24 @@ impl Searcher<'_> {
 			}
 		}
 
-		if best_move_type.unwrap() == MoveType::Quiet
-		&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
-			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
+		if best_move_type.is_some() {
+			if best_move_type.unwrap() == MoveType::Quiet
+			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
+				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+				self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
+			}
 		}
 
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, 
+		abort: &AtomicBool, 
+		boardwrapper: &BoardWrapper, 
+		mut alpha: i32, 
+		beta: i32, 
+		mut ply: i32) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -716,7 +817,12 @@ impl Searcher<'_> {
 			let mut board_wrapper_cache = boardwrapper.clone();
 			board_wrapper_cache.play_unchecked(&mut sm);
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;
+			let (_, mut child_eval) = self.qsearch(
+				&abort, 
+				&board_wrapper_cache, 
+				-beta, 
+				-alpha, 
+				ply + 1)?;
 
 			child_eval.score *= -1;
 

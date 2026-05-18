@@ -461,7 +461,11 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				let hist = sm.history.clamp(-MoveSorter::HIST_CLAMP, MoveSorter::HIST_CLAMP);
+
+				if depth >= Self::HISTORY_DEPTH_MIN
+					&& hist < -(Self::HIST_PRUNE_DIV * depth)
+				{
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -471,7 +475,8 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				let hist = sm.history.clamp(-MoveSorter::HIST_CLAMP, MoveSorter::HIST_CLAMP);
+				reduction -= hist / Self::HIST_LMR_DIV;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth
@@ -739,4 +744,6 @@ impl Searcher<'_> {
 	const LMP_DEPTH_MAX: i32 = 3;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
+	const HIST_LMR_DIV: i32 = 1500;  
+	const HIST_PRUNE_DIV: i32 = 2500;  
 }

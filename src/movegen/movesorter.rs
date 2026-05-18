@@ -85,7 +85,7 @@ impl MoveSorter {
 							0
 						};
 					} else {
-						let history = self.get_history(mv_info.mv, board);
+						let history = self.get_history(mv_info.mv, board).clamp(-Self::HIST_CLAMP, Self::HIST_CLAMP);
 						increment = history;
 						mv_info.history = history;
 					}
@@ -106,6 +106,10 @@ impl MoveSorter {
 		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
 	}
 
+	fn update_history(entry: &mut i32, bonus: i32) {
+		*entry += bonus - (*entry * bonus.abs()) / Self::HISTORY_MAX;
+	}
+
 	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {
 		if ply < 100 && !self.is_killer(mv, board, ply) {
 			let color = board.side_to_move();
@@ -117,12 +121,13 @@ impl MoveSorter {
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth + 50;
-
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
-		}
+		let bonus = depth * depth + 50;
+		let entry = &mut self.history_table
+			[board.side_to_move() as usize]
+			[mv.from as usize]
+			[mv.to as usize];
+	
+		Self::update_history(entry, bonus);
 	}
 
 	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
@@ -130,12 +135,13 @@ impl MoveSorter {
 	}
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth;
-
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
-		}
+		let penalty = -(depth * depth);
+		let entry = &mut self.history_table
+			[board.side_to_move() as usize]
+			[mv.from as usize]
+			[mv.to as usize];
+	
+		Self::update_history(entry, penalty);
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
@@ -237,7 +243,8 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 2000;
+	const HISTORY_MAX: i32 = 16384;
+	pub const HIST_CLAMP: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo

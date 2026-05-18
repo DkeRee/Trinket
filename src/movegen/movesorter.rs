@@ -64,7 +64,7 @@ impl MoveSorter {
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score + loud_history / 30;
+					increment = capture_score + loud_history;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {
@@ -129,7 +129,7 @@ impl MoveSorter {
 	}
 
 	pub fn add_loud_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.quiet_history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
+		let history = self.loud_history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth + 50;
 
 		if !change.checked_mul(history).is_none() {
@@ -142,7 +142,7 @@ impl MoveSorter {
 	}
 
 	pub fn decay_quiet_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.quiet_history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
+		let history = self.loud_history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth;
 
 		if !change.checked_mul(history).is_none() {

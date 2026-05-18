@@ -64,7 +64,7 @@ impl MoveSorter {
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score + loud_history;
+					increment = capture_score + loud_history / 64;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

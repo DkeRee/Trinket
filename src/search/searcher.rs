@@ -453,6 +453,7 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
+				&& mv.promotion == None
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& !in_check {
@@ -602,6 +603,7 @@ impl Searcher<'_> {
 
 		if best_move_type.is_some() {
 			if best_move_type.unwrap() == MoveType::Quiet
+			&& best_move.unwrap().promotion == None
 			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

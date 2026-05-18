@@ -24,25 +24,25 @@ impl SortedMove {
 	}
 
 	pub fn insert_killer(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
+		if self.movetype == MoveType::Quiet && self.mv.promotion == None {
 			move_sorter.add_killer(self.mv, ply, board);
 		}
 	}
 
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
+		if self.movetype == MoveType::Quiet && self.mv.promotion == None {
 			move_sorter.add_history(self.mv, depth, board);
 		}
 	}
 
 	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>) {
-		if self.movetype == MoveType::Quiet && !last_move.is_none() {
+		if self.movetype == MoveType::Quiet && !last_move.is_none() && self.mv.promotion == None {
 			move_sorter.add_countermove(self.mv, last_move.unwrap());
 		}
 	}
 
 	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
+		if self.movetype == MoveType::Quiet && self.mv.promotion == None {
 			move_sorter.decay_history(self.mv, depth, board);
 		}
 	}

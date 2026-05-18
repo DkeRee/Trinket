@@ -11,28 +11,26 @@ pub enum MoveType {
 
 #[derive(Clone)]
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 2]; 100]; 2],
-	history_table: [[[i32; 64]; 64]; 2],
-	conthist: [[i32; 64]; 6],
-	stack_conthist: [i32; 250],
-	countermove_table: [[Option<Move>; 64]; 64],
-	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
+	killer_table: Box<[[[Option<Move>; 2]; 100]; 2]>,
+	history_table: Box<[[[i32; 64]; 64]; 2]>,
+	conthist: Box<[[[i32; 64]; 6]; 250]>,
+	countermove_table: Box<[[Option<Move>; 64]; 64]>,
+	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	see: See
 }
 
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
-			killer_table: [[[None; 2]; 100]; 2],
-			history_table: [[[0; 64]; 64]; 2],
-			conthist: [[0; 64]; 6],
-			stack_conthist: [0; 250],
-			countermove_table: [[None; 64]; 64],
-			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
+			killer_table: Box::new([[[None; 2]; 100]; 2]),
+			history_table: Box::new([[[0; 64]; 64]; 2]),
+			conthist: Box::new([[[0; 64]; 6]; 250]),
+			countermove_table: Box::new([[None; 64]; 64]),
+			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			see: See::new()
 		}
 	}
@@ -90,8 +88,8 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						//let conthist = self.get_conthist(mv_info.mv, ply, board);
-						increment = history; //+ conthist;
+						let conthist = self.get_conthist(mv_info.mv, ply, board);
+						increment = history + 2 * conthist;
 						mv_info.history = history;
 					}
 				}
@@ -122,37 +120,25 @@ impl MoveSorter {
 	}
 
 	pub fn add_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let piece = board.piece_on(mv.from).unwrap() as usize;
-		let to = mv.to as usize;
+		let chist = self.conthist[(ply + 2) as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize];
+		let bonus = depth * depth + 50;
 
-		let entry = &mut self.conthist[piece][to];
-
-		self.stack_conthist[ply as usize] = entry;
-
-		let change = depth * depth + 50;
-
-		if !change.checked_mul(*entry).is_none() {
-			*entry += change - change * (*entry) / 16384;
+		if !bonus.checked_mul(chist).is_none() {
+			self.conthist[(ply + 2) as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize] += bonus - bonus * chist / 16384;
 		}
 	}
 
 	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let piece = board.piece_on(mv.from).unwrap() as usize;
-		let to = mv.to as usize;
+		let chist = self.conthist[(ply + 2) as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize];
+		let bonus = depth * depth + 50;
 
-		let entry = &mut self.conthist[piece][to];
-
-		self.stack_conthist[ply as usize] = entry;
-
-		let change = depth * depth + 50;
-
-		if !change.checked_mul(*entry).is_none() {
-			*entry -= change - change * (*entry) / 16384;
+		if !bonus.checked_mul(chist).is_none() {
+			self.conthist[(ply + 2) as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize] -= bonus - bonus * chist / 16384;
 		}
 	}
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
-		return self.stack_conthist[ply as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize];
+		return self.conthist[ply as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize];
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {

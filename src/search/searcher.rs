@@ -565,7 +565,7 @@ impl Searcher<'_> {
 						tt_nodetype = NodeKind::LowerBound;
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-						sm.insert_countermove(&mut self.movegen.sorter, last_move);
+						sm.insert_countermove(&mut self.movegen.sorter, last_move, &boardwrapper.board);
 						break;
 					} else {
 						tt_nodetype = NodeKind::Exact;

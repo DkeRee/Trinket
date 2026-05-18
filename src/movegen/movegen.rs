@@ -35,9 +35,9 @@ impl SortedMove {
 		}
 	}
 
-	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>) {
+	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>, board: &Board) {
 		if self.movetype == MoveType::Quiet && !last_move.is_none() {
-			move_sorter.add_countermove(self.mv, last_move.unwrap());
+			move_sorter.add_countermove(self.mv, last_move.unwrap(), board);
 		}
 	}
 

@@ -13,7 +13,7 @@ pub enum MoveType {
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[[i32; 64]; 64]; 2],
-	countermove_table: [[Option<Move>; 64]; 64],
+	countermove_table: [[[Option<Move>; 64]; 64]; 2],
 	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
@@ -25,7 +25,7 @@ impl MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[[0; 64]; 64]; 2],
-			countermove_table: [[None; 64]; 64],
+			countermove_table: [[[None; 64]; 64]; 2],
 			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
@@ -68,7 +68,7 @@ impl MoveSorter {
 					base = Self::QUIET_MOVE;
 	
 					mv_info.is_killer = self.is_killer(mv_info.mv, board, ply);
-					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
+					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move, board);
 	
 					if mv_info.is_killer || mv_info.is_countermove {
 						base = 0;
@@ -125,8 +125,8 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
-		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
+	pub fn add_countermove(&mut self, mv: Move, last_move: Move, board: &Board) {
+		self.countermove_table[board.side_to_move() as usize][last_move.from as usize][last_move.to as usize] = Some(mv);
 	}
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
@@ -209,12 +209,12 @@ impl MoveSorter {
 		non_pawn_hist_white + non_pawn_hist_black
 	}
 
-	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
+	fn is_countermove(&self, mv: Move, last_move: Option<Move>, board: &Board) -> bool {
 		if last_move.is_none() {
 			return false;
 		}
 
-		return self.countermove_table[last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
+		return self.countermove_table[board.side_to_move() as usize][last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
 	}
 
 	fn get_history(&self, mv: Move, board: &Board) -> i32 {

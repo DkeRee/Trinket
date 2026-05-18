@@ -12,7 +12,7 @@ pub enum MoveType {
 #[derive(Clone)]
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
-	history_table: [[i32; 64]; 64],
+	history_table: [[[i32; 64]; 64]; 2],
 	countermove_table: [[Option<Move>; 64]; 64],
 	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
@@ -24,7 +24,7 @@ impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
-			history_table: [[0; 64]; 64],
+			history_table: [[[0; 64]; 64]; 2],
 			countermove_table: [[None; 64]; 64],
 			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
@@ -55,7 +55,7 @@ impl MoveSorter {
 
 					base = if capture_score > 0 {
 						Self::WINNING_CAPTURE
-					} else if capture_score == 0{
+					} else if capture_score == 0 {
 						Self::NEUTRAL_CAPTURE
 					} else {
 						Self::LOSING_CAPTURE
@@ -85,7 +85,7 @@ impl MoveSorter {
 							0
 						};
 					} else {
-						let history = self.get_history(mv_info.mv);
+						let history = self.get_history(mv_info.mv, board);
 						increment = history;
 						mv_info.history = history;
 					}
@@ -116,12 +116,12 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn add_history(&mut self, mv: Move, depth: i32) {
-		let history = self.history_table[mv.from as usize][mv.to as usize];
-		let change = depth * depth + 10;
+	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
+		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
+		let change = depth * depth + 50;
 
 		if !change.checked_mul(history).is_none() {
-			self.history_table[mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
+			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
 		}
 	}
 
@@ -129,12 +129,12 @@ impl MoveSorter {
 		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
 	}
 
-	pub fn decay_history(&mut self, mv: Move, depth: i32) {
-		let history = self.history_table[mv.from as usize][mv.to as usize];
+	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
+		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth;
 
 		if !change.checked_mul(history).is_none() {
-			self.history_table[mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
+			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
 		}
 	}
 
@@ -217,8 +217,8 @@ impl MoveSorter {
 		return self.countermove_table[last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
 	}
 
-	fn get_history(&self, mv: Move) -> i32 {
-		return self.history_table[mv.from as usize][mv.to as usize];
+	fn get_history(&self, mv: Move, board: &Board) -> i32 {
+		return self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 	}
 }
 

@@ -564,7 +564,7 @@ impl Searcher<'_> {
 					if alpha >= beta {
 						tt_nodetype = NodeKind::LowerBound;
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
-						sm.insert_history(&mut self.movegen.sorter, depth);
+						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
 					} else {
@@ -582,7 +582,7 @@ impl Searcher<'_> {
 				}
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth);
+			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 
 			if do_spp {
 				break;

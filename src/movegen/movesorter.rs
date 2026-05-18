@@ -13,6 +13,8 @@ pub enum MoveType {
 pub struct MoveSorter {
 	killer_table: [[[Option<Move>; 2]; 100]; 2],
 	history_table: [[[i32; 64]; 64]; 2],
+	conthist: [[i32; 64]; 6],
+	stack_conthist: [i32; 250],
 	countermove_table: [[Option<Move>; 64]; 64],
 	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
 	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
@@ -25,6 +27,8 @@ impl MoveSorter {
 		MoveSorter {
 			killer_table: [[[None; 2]; 100]; 2],
 			history_table: [[[0; 64]; 64]; 2],
+			conthist: [[0; 64]; 6],
+			stack_conthist: [0; 250],
 			countermove_table: [[None; 64]; 64],
 			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
 			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
@@ -86,7 +90,8 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						increment = history;
+						//let conthist = self.get_conthist(mv_info.mv, ply, board);
+						increment = history; //+ conthist;
 						mv_info.history = history;
 					}
 				}
@@ -114,6 +119,40 @@ impl MoveSorter {
 			ply_slot.rotate_right(1);
 			ply_slot[0] = Some(mv);
 		}
+	}
+
+	pub fn add_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		let piece = board.piece_on(mv.from).unwrap() as usize;
+		let to = mv.to as usize;
+
+		let entry = &mut self.conthist[piece][to];
+
+		self.stack_conthist[ply as usize] = entry;
+
+		let change = depth * depth + 50;
+
+		if !change.checked_mul(*entry).is_none() {
+			*entry += change - change * (*entry) / 16384;
+		}
+	}
+
+	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		let piece = board.piece_on(mv.from).unwrap() as usize;
+		let to = mv.to as usize;
+
+		let entry = &mut self.conthist[piece][to];
+
+		self.stack_conthist[ply as usize] = entry;
+
+		let change = depth * depth + 50;
+
+		if !change.checked_mul(*entry).is_none() {
+			*entry -= change - change * (*entry) / 16384;
+		}
+	}
+
+	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
+		return self.stack_conthist[ply as usize][board.piece_on(mv.from).unwrap() as usize][mv.to as usize];
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {

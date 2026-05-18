@@ -452,6 +452,7 @@ impl Searcher<'_> {
 				//IF IS late move
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				&& mv.promotion == None
 				&& sm.movetype == MoveType::Quiet 
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)

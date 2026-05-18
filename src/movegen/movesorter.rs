@@ -11,7 +11,7 @@ pub enum MoveType {
 
 #[derive(Clone)]
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 2]; 100]; 2],
+	killer_table: [[[Option<Move>; 5]; 100]; 2],
 	history_table: [[[i32; 64]; 64]; 2],
 	countermove_table: [[Option<Move>; 64]; 64],
 	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
@@ -23,7 +23,7 @@ pub struct MoveSorter {
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
-			killer_table: [[[None; 2]; 100]; 2],
+			killer_table: [[[None; 5]; 100]; 2],
 			history_table: [[[0; 64]; 64]; 2],
 			countermove_table: [[None; 64]; 64],
 			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],

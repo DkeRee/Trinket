@@ -38,6 +38,26 @@ fn init_non_pawn_hash(board: Board) -> [u64; 2] {
     hash
 }
 
+fn init_major_hash(board: Board) -> [u64; 2] {
+    let mut hash = [0u64; 2];
+
+    let pieces = [
+        Piece::Rook,
+        Piece::Queen,
+        Piece::King
+    ];
+
+    for color in [Color::White, Color::Black] {
+        for piece in pieces {
+            for square in board.colored_pieces(color, piece) {
+                hash[color as usize] ^= BoardWrapper::BOARD_BY_PIECE_KEYS[piece as usize][square as usize];
+            }
+        }
+    }
+
+    hash
+}
+
 fn init_material_hash(board: Board) -> u64 {
     let mut hash = 0u64;
 
@@ -63,6 +83,7 @@ pub struct BoardWrapper {
     pub board: Board,
     pub pawn_hash: u64,
     pub non_pawn_hash: [u64; 2],
+    pub major_hash: [u64; 2],
     pub material_hash: u64
 }
 
@@ -74,6 +95,7 @@ impl BoardWrapper {
             board: new_board.clone(),
             pawn_hash: init_pawn_hash(new_board.clone()),
             non_pawn_hash: init_non_pawn_hash(new_board.clone()),
+            major_hash: init_major_hash(new_board.clone()),
             material_hash: init_material_hash(new_board.clone())
         }
     }
@@ -83,6 +105,7 @@ impl BoardWrapper {
             board: board,
             pawn_hash: self.pawn_hash,
             non_pawn_hash: self.non_pawn_hash,
+            major_hash: self.major_hash,
             material_hash: self.material_hash
         }
     }
@@ -92,6 +115,7 @@ impl BoardWrapper {
             board: self.board.clone(),
             pawn_hash: self.pawn_hash,
             non_pawn_hash: self.non_pawn_hash,
+            major_hash: self.major_hash,
             material_hash: self.material_hash
         }
     }
@@ -100,6 +124,7 @@ impl BoardWrapper {
 		self.board = Board::from_fen(&*fen.trim(), false).unwrap();
         self.pawn_hash = init_pawn_hash(self.board.clone());
         self.non_pawn_hash = init_non_pawn_hash(self.board.clone());
+        self.major_hash = init_major_hash(self.board.clone());
         self.material_hash = init_material_hash(self.board.clone());
     }
 
@@ -107,6 +132,10 @@ impl BoardWrapper {
         let null_board = self.board.null_move().unwrap();
 
         BoardWrapper::new_set(&self, null_board)
+    }
+
+    fn is_major_piece(&self, piece: Piece) -> bool {
+        piece == Piece::King || piece == Piece::Queen || piece == Piece::Rook
     }
 
     pub fn play_unchecked(&mut self, sm: &mut SortedMove) {
@@ -127,6 +156,10 @@ impl BoardWrapper {
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[enemy as usize][captured_piece.unwrap() as usize][captured_piece_count - 1];
                 if captured_piece.unwrap() != Piece::Pawn {
                     self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
+
+                    if self.is_major_piece(captured_piece.unwrap()) {
+                        self.major_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece.unwrap() as usize][mv.to as usize];
+                    }
                 }
             }
         }
@@ -155,6 +188,10 @@ impl BoardWrapper {
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count];
                 self.material_hash ^= Self::COUNT_BY_SIDE_KEYS[us as usize][promotion_piece as usize][promotion_piece_count + 1];
                 self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[promotion_piece as usize][mv.to as usize];
+
+                if self.is_major_piece(promotion_piece) {
+                    self.major_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[promotion_piece as usize][mv.to as usize];
+                }
             }
 
             //remove pawn if en passant
@@ -180,6 +217,10 @@ impl BoardWrapper {
 
                     if captured_piece != Piece::Pawn {
                         self.non_pawn_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+
+                        if self.is_major_piece(captured_piece) {
+                            self.major_hash[enemy as usize] ^= Self::BOARD_BY_PIECE_KEYS[captured_piece as usize][captured_sq as usize];
+                        }
                     }
                 }
             }
@@ -189,6 +230,39 @@ impl BoardWrapper {
 
             //add piece to target square for nonpawn hash
             self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+
+            if self.is_major_piece(piece_from.unwrap()) {
+                self.major_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.from as usize];
+                self.major_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
+            }
+
+            //handle castling for nonpawn corrhist
+            if piece_from.unwrap() == Piece::King {
+                let from_file = mv.from.file() as i8;
+                let to_file = mv.to.file() as i8;
+
+                //is castling move
+                if (from_file - to_file).abs() >= 2 {
+                    let rank = mv.from.rank();
+
+                    let (rook_from, rook_to) = if to_file > from_file {
+                        //kingside
+                        (
+                            Square::new(File::H, rank),
+                            Square::new(File::F, rank)
+                        )
+                    } else {
+                        //queenside
+                        (
+                            Square::new(File::A, rank),
+                            Square::new(File::D, rank)
+                        )
+                    };
+
+                    self.major_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[Piece::Rook as usize][rook_from as usize];
+                    self.major_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[Piece::Rook as usize][rook_to as usize];
+                }
+            }
         }
 
         self.board.play_unchecked(mv);

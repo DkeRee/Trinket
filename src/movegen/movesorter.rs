@@ -11,24 +11,26 @@ pub enum MoveType {
 
 #[derive(Clone)]
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 2]; 100]; 2],
-	history_table: [[[i32; 64]; 64]; 2],
-	countermove_table: [[Option<Move>; 64]; 64],
-	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
+	killer_table: Box<[[[Option<Move>; 2]; 100]; 2]>,
+	history_table: Box<[[[i32; 64]; 64]; 2]>,
+	countermove_table: Box<[[Option<Move>; 64]; 64]>,
+	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	major_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	see: See
 }
 
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
-			killer_table: [[[None; 2]; 100]; 2],
-			history_table: [[[0; 64]; 64]; 2],
-			countermove_table: [[None; 64]; 64],
-			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
+			killer_table: Box::new([[[None; 2]; 100]; 2]),
+			history_table: Box::new([[[0; 64]; 64]; 2]),
+			countermove_table: Box::new([[None; 64]; 64]),
+			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			major_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			see: See::new()
 		}
 	}
@@ -189,6 +191,20 @@ impl MoveSorter {
 		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
+	pub fn add_major_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx_white = (boardwrapper.major_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.major_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let side_to_move = boardwrapper.board.side_to_move() as usize;
+	
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+
+		let entry_white = &mut self.major_corrhist[side_to_move][idx_white];
+		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+
+		let entry_black = &mut self.major_corrhist[side_to_move][idx_black];	
+		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let material_hist = self.material_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.material_hash % Self::CORRHIST_SIZE as u64) as usize];
 		material_hist / 289.0
@@ -207,6 +223,16 @@ impl MoveSorter {
 		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
 
 		non_pawn_hist_white + non_pawn_hist_black
+	}
+
+	pub fn read_major_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
+		let side_to_move = boardwrapper.board.side_to_move() as usize;
+		let idx_white = (boardwrapper.major_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let idx_black = (boardwrapper.major_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
+		let major_hist_white = self.major_corrhist[side_to_move][idx_white] / 260.0;
+		let major_hist_black = self.major_corrhist[side_to_move][idx_black] / 260.0;
+
+		major_hist_white + major_hist_black
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

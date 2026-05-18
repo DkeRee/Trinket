@@ -117,9 +117,18 @@ impl UCIMaster {
 										}
 
 										for i in 0..pgn_vec.len() {
+											let the_move = _regular_to_960_(pgn_vec[i].clone(), &engine.boardwrapper.board).parse().unwrap();
+											if !engine.boardwrapper.board.is_legal(the_move) {
+												let faulty_move =  the_move;
+												println!("{}", format!("{}", engine.boardwrapper.board));
+												panic!("AHAH: {}", faulty_move);
+											}
+
 											engine.boardwrapper.board.play_unchecked(_regular_to_960_(pgn_vec[i].clone(), &engine.boardwrapper.board).parse().unwrap());
 											engine.my_past_positions.push(engine.boardwrapper.board.hash());
 										}
+
+										println!("{}", format!("{}", engine.boardwrapper.board));
 									},
 									UCICmd::Quit => {
 										playing = false;

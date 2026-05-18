@@ -417,8 +417,30 @@ impl Searcher<'_> {
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
-				
+
+			let mut init_ok = false;
+			let mut after_ok = false;
+			if boardwrapper.board.pieces(Piece::King).len() == 2 {
+				init_ok = true;
+			}
+
 			board_wrapper_cache.play_unchecked(sm);
+
+			if board_wrapper_cache.board.pieces(Piece::King).len() == 3 {
+				after_ok = false;
+			} else if board_wrapper_cache.board.pieces(Piece::King).len() == 2 {
+				after_ok = true;
+			}
+
+			if init_ok == true && after_ok == false {
+                let fen_before = format!("{}", boardwrapper.board);
+                println!("before: {}", fen_before);
+
+				let fen_after = format!("{}", board_wrapper_cache.board);
+				println!("after: {}", fen_after);
+
+				println!("the move: {}", mv);
+			}
 
 			let move_is_check = !board_wrapper_cache.board.checkers().is_empty();
 

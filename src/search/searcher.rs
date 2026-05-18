@@ -601,7 +601,7 @@ impl Searcher<'_> {
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
 		if !in_check
-		&& best_move_type == Some(MoveType::Quiet) || tt_nodetype == NodeKind::UpperBound
+		&& best_move_type == Some(MoveType::Quiet)
 		&& ( (tt_nodetype == NodeKind::Exact) || (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

@@ -31,7 +31,11 @@ impl SortedMove {
 
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
 		if self.movetype == MoveType::Quiet {
-			move_sorter.add_history(self.mv, depth, board);
+			move_sorter.add_quiet_history(self.mv, depth, board);
+		}
+
+		if self.movetype == MoveType::Loud {
+			move_sorter.add_loud_history(self.mv, depth, board);
 		}
 	}
 
@@ -43,7 +47,11 @@ impl SortedMove {
 
 	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
 		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_history(self.mv, depth, board);
+			move_sorter.decay_quiet_history(self.mv, depth, board);
+		}
+
+		if self.movetype == MoveType::Loud {
+			move_sorter.decay_loud_history(self.mv, depth, board);
 		}
 	}
 }

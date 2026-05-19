@@ -414,7 +414,6 @@ impl Searcher<'_> {
 		let mut tt_nodetype = NodeKind::UpperBound;
 
 		while legal_index < legal_moves.len() {
-			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let is_quiet = sm.movetype == MoveType::Quiet;
@@ -448,8 +447,9 @@ impl Searcher<'_> {
 
 				//Late Move Pruning
 				if eval.score > -Score::CHECKMATE_BASE
+				&& alpha > -Score::CHECKMATE_BASE
 				&& !in_check
-				&& quiet_count > (10 + depth * depth) >> !improving as i32
+				&& quiet_count > 3 + depth * depth
 				&& is_quiet {
 					past_positions.pop();
 					break;

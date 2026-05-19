@@ -449,7 +449,7 @@ impl Searcher<'_> {
 				//Late Move Pruning
 				if eval.score > -Score::CHECKMATE_BASE
 				&& !in_check
-				&& quiet_count > 1 + depth * depth
+				&& quiet_count > (10 + depth * depth) >> !improving as i32
 				&& is_quiet {
 					past_positions.pop();
 					break;

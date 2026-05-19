@@ -449,7 +449,7 @@ impl Searcher<'_> {
 				if eval.score > -Score::CHECKMATE_BASE
 				&& alpha > -Score::CHECKMATE_BASE
 				&& !in_check
-				&& quiet_count > 3 + depth * depth
+				&& quiet_count > 4 + depth * depth
 				&& is_quiet {
 					past_positions.pop();
 					break;

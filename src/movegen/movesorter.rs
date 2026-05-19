@@ -118,7 +118,7 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let mut history = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = depth * depth + 50;
+		let bonus = i32::min(169 * depth - 69, 1660);
 
 		*history += bonus - (*history * i32::abs(bonus) / Self::HISTORY_MAX);
 	}
@@ -129,7 +129,7 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let mut history = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = -(depth * depth + 50);
+		let bonus = -i32::min(169 * depth - 69, 1660);
 
 		*history += bonus - (*history * i32::abs(bonus) / Self::HISTORY_MAX);
 	}
@@ -233,7 +233,7 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 2000;
+	const HISTORY_MAX: i32 = 16384;
 	const CORRHIST_SIZE: usize = 16384;
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo

@@ -566,6 +566,13 @@ impl Searcher<'_> {
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
+
+						//punish all past moves, from 0 to current_index - 1, thus 0 <= i < legal_index
+						for i in 0..legal_index {
+							if legal_moves[i].movetype == MoveType::Quiet {
+								legal_moves[i].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+							}
+						}
 						break;
 					} else {
 						tt_nodetype = NodeKind::Exact;
@@ -581,8 +588,6 @@ impl Searcher<'_> {
 					&& !staged_movegen;
 				}
 			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 
 			if do_spp {
 				break;

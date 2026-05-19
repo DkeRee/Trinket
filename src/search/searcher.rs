@@ -416,6 +416,8 @@ impl Searcher<'_> {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
+			let is_quiet = sm.movetype == MoveType::Quiet;
+
 			let mut board_wrapper_cache = boardwrapper.clone();
 				
 			board_wrapper_cache.play_unchecked(sm);
@@ -470,15 +472,13 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 
-				//History Leaf Reduction
-				reduction -= sm.history / 1500;
-
-				//LMR can be applied
-				//IF depth is above sufficient depth
-				//IF the first X searched are searched
 				if moves_searched >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
+					//LMR
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
+
+					//History Reduction
+					reduction += is_quiet as i32 * sm.history / 7560;
 				}
 
 				//Reduce less if PV node

@@ -448,6 +448,7 @@ impl Searcher<'_> {
 
 				//Late Move Pruning
 				if eval.score > -Score::CHECKMATE_BASE
+				&& !in_check
 				&& quiet_count > 1 + depth * depth
 				&& is_quiet {
 					past_positions.pop();

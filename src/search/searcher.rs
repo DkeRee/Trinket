@@ -478,7 +478,7 @@ impl Searcher<'_> {
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 
 					//History Reduction
-					reduction += is_quiet as i32 * sm.history / 7560;
+					reduction += is_quiet as i32 * sm.history / (MoveSorter::HISTORY_MAX * 3);
 				}
 
 				//Reduce less if PV node

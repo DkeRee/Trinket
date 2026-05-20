@@ -469,16 +469,15 @@ impl Searcher<'_> {
 					continue;
 				}
 
-				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
+
+				//History Reduction
+				reduction -= is_quiet as i32 * sm.history / (MoveSorter::HISTORY_MAX * 5 / 6);
 
 				if moves_searched >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
 					//LMR
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
-
-					//History Reduction
-					reduction -= is_quiet as i32 * sm.history / (MoveSorter::HISTORY_MAX * 3 / 4);
 				}
 
 				//Reduce less if PV node

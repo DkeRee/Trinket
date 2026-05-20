@@ -473,8 +473,11 @@ impl Searcher<'_> {
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;
 
-				//LMR
-				reduction += self.get_lmr_reduction_amount(depth, moves_searched);
+				//LMR can be applied
+				if moves_searched > 2
+				&& depth > 2 {
+					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
+				}
 
 				//Reduce less if PV node
 				reduction -= is_pv as i32;

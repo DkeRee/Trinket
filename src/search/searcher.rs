@@ -366,7 +366,7 @@ impl Searcher<'_> {
 
 			let nulled_board = &boardwrapper.clone().null_move();
 			
-			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -alpha, past_positions, None)?; //perform a ZW search
 
 			null_score.score *= -1;
 		

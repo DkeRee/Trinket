@@ -578,6 +578,7 @@ impl Searcher<'_> {
 					&& !sm.is_killer
 					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
+					&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 					&& !staged_movegen;
 				}
 			}

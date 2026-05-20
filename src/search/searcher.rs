@@ -451,7 +451,7 @@ impl Searcher<'_> {
 				//IF alpha is NOT a losing mate
 				//IF IS late move
 				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
+				if !is_pv && depth >= Self::LMP_DEPTH_MIN
 				&& sm.movetype == MoveType::Quiet 
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
@@ -736,7 +736,7 @@ impl Searcher<'_> {
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
-	const LMP_DEPTH_MAX: i32 = 3;
+	const LMP_DEPTH_MIN: i32 = 3;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

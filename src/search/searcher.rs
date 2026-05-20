@@ -463,7 +463,7 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -(MoveSorter::HISTORY_MAX / 4) * depth {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -472,7 +472,7 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Reduction
-				reduction -= is_quiet as i32 * sm.history / (MoveSorter::HISTORY_MAX * 5 / 6);
+				reduction -= is_quiet as i32 * sm.history / (MoveSorter::HISTORY_MAX * 3 / 4);
 
 				if moves_searched >= 2 
 				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {

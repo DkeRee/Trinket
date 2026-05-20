@@ -117,12 +117,14 @@ impl MoveSorter {
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth + 50;
+		let entry = &mut self.history_table
+        [board.side_to_move() as usize]
+        [mv.from as usize]
+        [mv.to as usize];
 
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
-		}
+		let bonus = depth * depth + 50;
+
+		*entry += bonus - *entry * bonus.abs() / Self::HISTORY_MAX;
 	}
 
 	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
@@ -130,12 +132,14 @@ impl MoveSorter {
 	}
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth;
+		let entry = &mut self.history_table
+        [board.side_to_move() as usize]
+        [mv.from as usize]
+        [mv.to as usize];
 
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
-		}
+		let bonus = -(depth * depth + 50);
+
+		*entry += bonus - *entry * bonus.abs() / Self::HISTORY_MAX;
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
@@ -223,19 +227,19 @@ impl MoveSorter {
 }
 
 impl MoveSorter {
-	const HASHMOVE_SCORE: i32 = 1000000;
+	const HASHMOVE_SCORE: i32 = 10000000;
 
-	const PROMO: i32 = 50000;
-	const WINNING_CAPTURE: i32 = 50000;
+	const PROMO: i32 = 100000;
+	const WINNING_CAPTURE: i32 = 100000;
 
-	const NEUTRAL_CAPTURE: i32 = 30000;
+	const NEUTRAL_CAPTURE: i32 = 60000;
 
-	const KILLER_QUIET: i32 = 15000;
-	const COUNTER_QUIET: i32 = 10000;
-	const QUIET_MOVE: i32 = 0;
+	const KILLER_QUIET: i32 = 10000;
+	const COUNTER_QUIET: i32 = 0;
+	const QUIET_MOVE: i32 = -30000;
 
-	const LOSING_CAPTURE: i32 = -50000;
-	const UNDER_PROMO: i32 = -50000;
+	const LOSING_CAPTURE: i32 = -100000;
+	const UNDER_PROMO: i32 = -100000;
 
 	pub const HISTORY_MAX: i32 = 16384;
 	const CORRHIST_SIZE: usize = 16384;

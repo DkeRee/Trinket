@@ -210,8 +210,8 @@ impl Searcher<'_> {
 		return 2 + (depth / 3) + (diff / 128);
 	}
 
-	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> i32 {
-		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
+	fn get_lmr_reduction_amount(&self, mut depth: i32, mut moves_searched: i32) -> f32 {
+		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)]; 
 	}
 
 	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {		
@@ -468,26 +468,25 @@ impl Searcher<'_> {
 				}
 
 				//get initial value with reduction and pv-search null window
-				let mut reduction = 0;
+				let mut reduction = 0.0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				reduction -= (sm.history / 1500) as f32;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched
-				if moves_searched >= 2 
-				&& (!is_pv || sm.movetype == MoveType::Quiet || !move_is_check) {
+				if !is_pv || sm.movetype == MoveType::Quiet || !move_is_check {
 					reduction += self.get_lmr_reduction_amount(depth, moves_searched);
 				}
 
 				//Reduce less if PV node
-				reduction -= is_pv as i32;
+				reduction -= is_pv as i32 as f32;
 
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {
-						reduction += 1;
+						reduction += 1.0;
 					}
 				}
 
@@ -517,24 +516,24 @@ impl Searcher<'_> {
 					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
 					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
 					if passed {
-						reduction -= 1;
+						reduction -= 1.0;
 					} else {
-						reduction += 1;
+						reduction += 1.0;
 					}
 				}
 
-				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
-					reduction = 0;
+				if reduction < 0.0 || in_check || sm.is_killer || sm.is_countermove {
+					reduction = 0.0;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction as i32, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 				child_eval.score *= -1;
 
 				value = child_eval;
 
 				//check if reductions should be removed
 				//search with full depth and null window
-				if value.score > alpha && reduction > 0 {
+				if value.score > alpha && reduction > 0.0 {
 					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;
 

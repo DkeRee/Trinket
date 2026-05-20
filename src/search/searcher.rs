@@ -360,8 +360,13 @@ impl Searcher<'_> {
 		} else {
 			true
 		};
-
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
+		
+		if ply > 0 
+		&& !in_check 
+		&& !(our_pieces & sliding_pieces).is_empty() 
+		&& static_eval >= beta 
+		&& improving_nmp_check
+		&& !is_pv {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();

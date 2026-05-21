@@ -598,7 +598,18 @@ impl Searcher<'_> {
 			}
 		}
 
-		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
+		let mut tt_mv_insertion = None;
+		if best_move.is_some() {
+			tt_mv_insertion = best_move;
+		} else {
+			if tt_hit.as_ref().is_some() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() && tt_hit.as_ref().unwrap().depth >= depth {
+					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+				}
+			}
+		}
+
+		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
 		if best_move_type.is_some() {
 			if best_move_type.unwrap() == MoveType::Quiet
@@ -646,7 +657,7 @@ impl Searcher<'_> {
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
-		let table_find = match self.shared_info.tt.find(&boardwrapper.board, ply) {
+		let tt_hit = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
 				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
@@ -725,7 +736,18 @@ impl Searcher<'_> {
 			}
 		}
 
-		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+		let mut tt_mv_insertion = None;
+		if best_move.is_some() {
+			tt_mv_insertion = best_move;
+		} else {
+			if tt_hit.as_ref().is_some() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
+				}
+			}
+		}
+
+		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

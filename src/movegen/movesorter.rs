@@ -118,7 +118,7 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = 64 * depth;
+		let bonus = depth * depth + 50;
 
 		*history += bonus - bonus * *history / Self::HISTORY_MAX;
 	}
@@ -129,7 +129,7 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = 64 * depth;
+		let bonus = depth * depth + 50;
 
 		*history -= bonus + bonus * *history / Self::HISTORY_MAX;
 	}

@@ -6,13 +6,8 @@ pub fn oracle_lookup(board: &Board) -> bool {
 
 	((knight_lone_king(board, Color::White) || white_only_king) && (bishop_lone_king(board, Color::Black) || black_only_king))
 	|| ((knight_lone_king(board, Color::Black) || black_only_king) && (bishop_lone_king(board, Color::White) || white_only_king))
-	//|| ((knight_lone_king(board, Color::White) || white_only_king) && (knight_lone_king(board, Color::Black) || black_only_king))
-	/*
-	|| (minor_piece_king(board, Color::White) && knight_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && knight_lone_king(board, Color::White))
-	|| (minor_piece_king(board, Color::White) && bishop_lone_king(board, Color::Black))
-	|| (minor_piece_king(board, Color::Black) && bishop_lone_king(board, Color::White))
-	*/
+	|| ((knight_lone_king(board, Color::White) || white_only_king) && (knight_lone_king(board, Color::Black) || black_only_king))
+	|| bishops_same_color_only(board)
 }
 
 fn knight_lone_king(board: &Board, color: Color) -> bool {
@@ -33,13 +28,42 @@ fn bishop_lone_king(board: &Board, color: Color) -> bool {
 	me_only_bishop && me_only_have_bishops
 }
 
-fn minor_piece_king(board: &Board, color: Color) -> bool {
-	let my_pieces = board.colors(color);
-	let opponent_pieces = board.colors(!color);
+fn bishops_same_color_only(board: &Board) -> bool {
+	let white_pieces = board.colors(Color::White);
+	let black_pieces = board.colors(Color::Black);
 
-	let me_only_one_knight = (my_pieces & board.pieces(Piece::Knight)).len() == 1;
-	let me_only_one_bishop = (my_pieces & board.pieces(Piece::Bishop)).len() == 1;	
-    let me_only_minor = ((my_pieces & (board.pieces(Piece::Bishop) | board.pieces(Piece::Knight))) ^ (board.king(color).bitboard() ^ my_pieces)).is_empty();
+	let white_only_bishops =
+		((board.king(Color::White).bitboard() ^ white_pieces)
+			^ (white_pieces & board.pieces(Piece::Bishop))).is_empty();
 
-	me_only_one_knight && me_only_one_bishop && me_only_minor
+	let black_only_bishops =
+		((board.king(Color::Black).bitboard() ^ black_pieces)
+			^ (black_pieces & board.pieces(Piece::Bishop))).is_empty();
+
+	if !white_only_bishops || !black_only_bishops {
+		return false;
+	}
+
+	let bishops = board.pieces(Piece::Bishop);
+
+	let mut seen_light = false;
+	let mut seen_dark = false;
+
+	for sq in bishops {
+		let idx = sq as usize;
+
+		let is_light = ((idx / 8) + (idx % 8)) % 2 == 1;
+
+		if is_light {
+			seen_light = true;
+		} else {
+			seen_dark = true;
+		}
+
+		if seen_light && seen_dark {
+			return false;
+		}
+	}
+
+	true
 }

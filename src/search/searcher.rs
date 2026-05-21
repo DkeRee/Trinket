@@ -603,7 +603,8 @@ impl Searcher<'_> {
 			tt_mv_insertion = best_move;
 		} else {
 			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() && tt_hit.as_ref().unwrap().depth >= depth {
+				if tt_hit.as_ref().unwrap().depth >= depth
+				&& tt_hit.as_ref().unwrap().node_kind == NodeKind::UpperBound {
 					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
 				}
 			}
@@ -741,7 +742,7 @@ impl Searcher<'_> {
 			tt_mv_insertion = best_move;
 		} else {
 			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() {
+				if tt_hit.as_ref().unwrap().node_kind == NodeKind::UpperBound {
 					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
 				}
 			}

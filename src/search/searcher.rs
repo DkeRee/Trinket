@@ -25,6 +25,7 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
+	searching_depth: i32,
 	total_thread_count: u32,
 	nodes: u64,
 	boardwrapper: BoardWrapper,
@@ -38,6 +39,7 @@ impl Searcher<'_> {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
+			searching_depth: 0,
 			total_thread_count: total_thread_count,
 			nodes: 0,
 			boardwrapper: boardwrapper,
@@ -74,6 +76,7 @@ impl Searcher<'_> {
 
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
+			self.searching_depth = depth_index + 1;
 			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
 
 			if result != None {
@@ -603,7 +606,7 @@ impl Searcher<'_> {
 			tt_mv_insertion = best_move;
 		} else {
 			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() && tt_hit.as_ref().unwrap().depth >= depth {
+				if tt_hit.as_ref().unwrap().depth >= depth {
 					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
 				}
 			}
@@ -741,13 +744,13 @@ impl Searcher<'_> {
 			tt_mv_insertion = best_move;
 		} else {
 			if tt_hit.as_ref().is_some() {
-				if tt_hit.as_ref().unwrap().best_move.is_some() {
+				if tt_hit.as_ref().unwrap().depth >= self.searching_depth - ply {
 					tt_mv_insertion = tt_hit.as_ref().unwrap().best_move;
 				}
 			}
 		}
 
-		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+		self.shared_info.tt.insert(tt_mv_insertion, eval.score, boardwrapper.board.hash(), ply, self.searching_depth - ply, tt_nodetype);
 
 		return Some((best_move, eval));
 	}

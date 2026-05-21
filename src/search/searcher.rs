@@ -461,7 +461,7 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				if depth >= 5 && depth <= 15 && sm.history < -500 * depth {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -734,7 +734,6 @@ impl Searcher<'_> {
 impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
-	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const SPP_DEPTH_CAP: i32 = 3;

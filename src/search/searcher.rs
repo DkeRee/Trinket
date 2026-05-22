@@ -443,6 +443,17 @@ impl Searcher<'_> {
 			} else {
 				//Pruning
 
+				//Futility Pruning
+				if depth < 6 
+				&& !in_check 
+				&& alpha > -Score::CHECKMATE_BASE
+				&& static_eval + 80 * depth + 150 <= alpha
+				&& sm.movetype == MoveType::Quiet {
+					past_positions.pop();
+					legal_index += 1;
+					continue;
+				}
+
 				//LMP
 				//We can skip specific quiet moves that are very late in a node
 				//IF isn't PV

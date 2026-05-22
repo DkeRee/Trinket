@@ -3,98 +3,6 @@ use cozy_chess::*;
 use crate::movegen::movegen::*;
 use crate::movegen::movesorter::*;
 
-fn get_threats(square: Square, piece: Piece, board: &Board, color: Color) -> BitBoard {
-    // Squares this piece attacks
-    let attacks = match piece {
-        Piece::Pawn => {
-            get_pawn_attacks(square, color)
-        }
-
-        Piece::Knight => {
-            get_knight_moves(square)
-        }
-
-        Piece::Bishop => {
-            get_bishop_moves(square, board.occupied())
-        }
-
-        Piece::Rook => {
-            get_rook_moves(square, board.occupied())
-        }
-
-        Piece::Queen => {
-            get_bishop_moves(square, board.occupied())
-            | get_rook_moves(square, board.occupied())
-        }
-
-        Piece::King => {
-            get_king_moves(square)
-         }
-    };
-
-    // enemy occupied attacked squares
-    let mut threats = attacks & board.colors(!color);
-
-    // en passant
-    if piece == Piece::Pawn {
-        if let Some(ep_file) = board.en_passant() {
-            let ep_target = Square::new(
-                ep_file,
-                match color {
-                    Color::White => Rank::Sixth,
-                    Color::Black => Rank::Third,
-                }
-            );
-
-            // pawn attacks EP target
-            if attacks.has(ep_target) {
-                // actual capturable pawn square
-                let captured_sq = Square::new(
-                    ep_file,
-                    match color {
-                        Color::White => Rank::Fifth,
-                        Color::Black => Rank::Fourth,
-                    }
-                );
-
-                threats |= BitBoard::from(captured_sq);
-            }
-        }
-    }
-
-    threats
-}
-
-fn init_threat_hash(board: Board) -> u64 {
-    let mut hash = 0u64;
-
-    let pieces = [
-        Piece::Pawn,
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen
-    ];
-
-    for color in [Color::White, Color::Black] {
-        for piece in pieces {
-            for square in board.colored_pieces(color, piece) {
-                let captures = get_threats(square, piece, &board, color);
-
-                for target_sq in captures {
-                    let mut piece = board.piece_on(target_sq);
-                    if piece.is_none() {
-                        piece = Some(Piece::Pawn);
-                    }
-
-                    hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[piece.unwrap() as usize][target_sq as usize];
-                }
-            }
-        }
-    }
-
-    hash
-}
 fn init_pawn_hash(board: Board) -> u64 {
 	let mut hash = 0u64;
 	
@@ -151,6 +59,56 @@ fn init_material_hash(board: Board) -> u64 {
     hash
 }
 
+fn murmur_mix(mut key: u64) -> u64 {
+    key ^= key >> 33;
+    key = key.wrapping_mul(0xff51afd7ed558ccd);
+    key ^= key >> 33;
+    key = key.wrapping_mul(0xc4ceb9fe1a85ec53);
+    key ^= key >> 33;
+    key
+}
+
+fn get_threats(board: &Board) -> BitBoard {
+    let enemy = !board.side_to_move();
+    let occ = board.occupied();
+
+    let mut threats = BitBoard::EMPTY;
+
+    // pawns
+    for sq in board.colored_pieces(enemy, Piece::Pawn) {
+        threats |= get_pawn_attacks(sq, enemy);
+    }
+
+    // knights
+    for sq in board.colored_pieces(enemy, Piece::Knight) {
+        threats |= get_knight_moves(sq);
+    }
+
+    // bishops
+    for sq in board.colored_pieces(enemy, Piece::Bishop) {
+        threats |= get_bishop_moves(sq, occ);
+    }
+
+    // rooks
+    for sq in board.colored_pieces(enemy, Piece::Rook) {
+        threats |= get_rook_moves(sq, occ);
+    }
+
+    // queens
+    for sq in board.colored_pieces(enemy, Piece::Queen) {
+        threats |=
+            get_bishop_moves(sq, occ) |
+            get_rook_moves(sq, occ);
+    }
+
+    // king
+    for sq in board.colored_pieces(enemy, Piece::King) {
+        threats |= get_king_moves(sq);
+    }
+
+    threats
+}
+
 pub struct BoardWrapper {
     pub board: Board,
     pub pawn_hash: u64,
@@ -163,11 +121,14 @@ impl BoardWrapper {
     pub fn new() -> BoardWrapper {
         let new_board = Board::default();
 
+        let stm = new_board.side_to_move();
+        let my_pieces = new_board.colors(stm);
+
         BoardWrapper {
             board: new_board.clone(),
             pawn_hash: init_pawn_hash(new_board.clone()),
             non_pawn_hash: init_non_pawn_hash(new_board.clone()),
-            threat_hash: init_threat_hash(new_board.clone()),
+            threat_hash: murmur_mix((get_threats(&new_board) & my_pieces).0),
             material_hash: init_material_hash(new_board.clone())
         }
     }
@@ -194,9 +155,13 @@ impl BoardWrapper {
 
     pub fn update_fen(&mut self, fen: String) {
 		self.board = Board::from_fen(&*fen.trim(), false).unwrap();
+
+        let stm = self.board.side_to_move();
+        let my_pieces = self.board.colors(stm);
+
         self.pawn_hash = init_pawn_hash(self.board.clone());
         self.non_pawn_hash = init_non_pawn_hash(self.board.clone());
-        self.threat_hash = init_threat_hash(self.board.clone());
+        self.threat_hash = murmur_mix((get_threats(&self.board) & my_pieces).0);
         self.material_hash = init_material_hash(self.board.clone());
     }
 
@@ -289,9 +254,9 @@ impl BoardWrapper {
         }
 
         //Threat Corrhist
-        self.threat_hash = init_threat_hash(self.board.clone());
-
         self.board.play_unchecked(mv);
+
+        self.threat_hash = murmur_mix((get_threats(&self.board) & self.board.colors(us)).0);
     }
 }
 

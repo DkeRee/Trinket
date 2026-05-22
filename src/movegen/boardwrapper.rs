@@ -72,8 +72,8 @@ fn get_threats(square: Square, piece: Piece, board: &Board, color: Color) -> Bit
     attacks & board.colors(!color)
 }
 
-fn init_threat_hash(board: Board) -> [u64; 2] {
-    let mut hash = [0u64; 2];
+fn init_threat_hash(board: Board) -> u64 {
+    let mut hash = 0u64;
 
     let pieces = [
         Piece::Pawn,
@@ -89,7 +89,7 @@ fn init_threat_hash(board: Board) -> [u64; 2] {
                 let captures = get_threats(square, piece, &board, color);
 
                 for target_sq in captures {
-                    hash[color as usize] ^=
+                    hash ^=
                         BoardWrapper::BOARD_BY_PIECE_KEYS
                             [board.piece_on(target_sq).unwrap() as usize]
                             [target_sq as usize];
@@ -126,7 +126,7 @@ pub struct BoardWrapper {
     pub board: Board,
     pub pawn_hash: u64,
     pub non_pawn_hash: [u64; 2],
-    pub threat_hash: [u64; 2],
+    pub threat_hash: u64,
     pub material_hash: u64
 }
 
@@ -262,7 +262,7 @@ impl BoardWrapper {
         //Threat Corrhist
         let old_captures = get_threats(mv.from, piece_from.unwrap(), &self.board, us);
         for target_sq in old_captures {
-            self.threat_hash[us as usize] ^=
+            self.threat_hash ^=
                 BoardWrapper::BOARD_BY_PIECE_KEYS
                     [self.board.piece_on(target_sq).unwrap() as usize]
                     [target_sq as usize];
@@ -272,7 +272,7 @@ impl BoardWrapper {
 
         let new_captures = get_threats(mv.to, piece_from.unwrap(), &self.board, us);
         for target_sq in new_captures {
-            self.threat_hash[us as usize] ^=
+            self.threat_hash ^=
                 BoardWrapper::BOARD_BY_PIECE_KEYS
                     [self.board.piece_on(target_sq).unwrap() as usize]
                     [target_sq as usize];

@@ -192,19 +192,14 @@ impl MoveSorter {
 	}
 
 	pub fn add_threat_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx_white = (boardwrapper.threat_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.threat_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let side_to_move = boardwrapper.board.side_to_move() as usize;
+		let idx = (boardwrapper.threat_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let side = boardwrapper.board.side_to_move() as usize;
+	
+		let entry = &mut self.threat_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-
-		let entry_white = &mut self.threat_corrhist[side_to_move][idx_white];
-		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
-
-		let entry_black = &mut self.threat_corrhist[side_to_move][idx_black];	
-		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
-
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let material_hist = self.material_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.material_hash % Self::CORRHIST_SIZE as u64) as usize];
@@ -227,13 +222,8 @@ impl MoveSorter {
 	}
 
 	pub fn read_threat_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
-		let side_to_move = boardwrapper.board.side_to_move() as usize;
-		let idx_white = (boardwrapper.threat_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.threat_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let threat_hist_white = self.threat_corrhist[side_to_move][idx_white] / 450.0;
-		let threat_hist_black = self.threat_corrhist[side_to_move][idx_black] / 450.0;
-
-		threat_hist_white + threat_hist_black
+		let threat_hist = self.threat_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.threat_hash % Self::CORRHIST_SIZE as u64) as usize];
+		threat_hist / 350.0
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

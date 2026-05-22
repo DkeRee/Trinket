@@ -223,7 +223,7 @@ impl MoveSorter {
 
 	pub fn read_threat_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let threat_hist = self.threat_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.threat_hash % Self::CORRHIST_SIZE as u64) as usize];
-		threat_hist / 512.0
+		threat_hist / 268.0
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

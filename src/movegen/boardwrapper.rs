@@ -67,9 +67,37 @@ fn get_threats(square: Square, piece: Piece, board: &Board, color: Color) -> Bit
          }
     };
 
-
     // enemy occupied attacked squares
-    attacks & board.colors(!color)
+    let mut threats = attacks & board.colors(!color);
+
+    // en passant
+    if piece == Piece::Pawn {
+        if let Some(ep_file) = board.en_passant() {
+            let ep_target = Square::new(
+                ep_file,
+                match color {
+                    Color::White => Rank::Sixth,
+                    Color::Black => Rank::Third,
+                }
+            );
+
+            // pawn attacks EP target
+            if attacks.has(ep_target) {
+                // actual capturable pawn square
+                let captured_sq = Square::new(
+                    ep_file,
+                    match color {
+                        Color::White => Rank::Fifth,
+                        Color::Black => Rank::Fourth,
+                    }
+                );
+
+                threats |= BitBoard::from(captured_sq);
+            }
+        }
+    }
+
+    threats
 }
 
 fn init_threat_hash(board: Board) -> u64 {

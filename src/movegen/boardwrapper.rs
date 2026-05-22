@@ -3,41 +3,6 @@ use cozy_chess::*;
 use crate::movegen::movegen::*;
 use crate::movegen::movesorter::*;
 
-fn init_pawn_hash(board: Board) -> u64 {
-	let mut hash = 0u64;
-	
-	for square in board.colored_pieces(Color::White, Piece::Pawn) {
-		hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][square as usize];
-	}
-	
-	for square in board.colored_pieces(Color::Black, Piece::Pawn) {
-		hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][square as usize];
-	}
-	
-	hash
-}
-
-fn init_non_pawn_hash(board: Board) -> [u64; 2] {
-    let mut hash = [0u64; 2];
-
-    let pieces = [
-        Piece::Knight,
-        Piece::Bishop,
-        Piece::Rook,
-        Piece::Queen
-    ];
-
-    for color in [Color::White, Color::Black] {
-        for piece in pieces {
-            for square in board.colored_pieces(color, piece) {
-                hash[color as usize] ^= BoardWrapper::BOARD_BY_PIECE_KEYS[piece as usize][square as usize];
-            }
-        }
-    }
-
-    hash
-}
-
 fn get_threats(square: Square, piece: Piece, board: &Board, color: Color) -> BitBoard {
     // Squares this piece attacks
     let attacks = match piece {
@@ -117,11 +82,47 @@ fn init_threat_hash(board: Board) -> u64 {
                 let captures = get_threats(square, piece, &board, color);
 
                 for target_sq in captures {
-                    hash ^=
-                        BoardWrapper::BOARD_BY_PIECE_KEYS
-                            [board.piece_on(target_sq).unwrap() as usize]
-                            [target_sq as usize];
+                    let mut piece = board.piece_on(target_sq);
+                    if piece.is_none() {
+                        piece = Some(Piece::Pawn);
+                    }
+
+                    hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[piece.unwrap() as usize][target_sq as usize];
                 }
+            }
+        }
+    }
+
+    hash
+}
+fn init_pawn_hash(board: Board) -> u64 {
+	let mut hash = 0u64;
+	
+	for square in board.colored_pieces(Color::White, Piece::Pawn) {
+		hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][square as usize];
+	}
+	
+	for square in board.colored_pieces(Color::Black, Piece::Pawn) {
+		hash ^= BoardWrapper::BOARD_BY_PIECE_KEYS[Piece::Pawn as usize][square as usize];
+	}
+	
+	hash
+}
+
+fn init_non_pawn_hash(board: Board) -> [u64; 2] {
+    let mut hash = [0u64; 2];
+
+    let pieces = [
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen
+    ];
+
+    for color in [Color::White, Color::Black] {
+        for piece in pieces {
+            for square in board.colored_pieces(color, piece) {
+                hash[color as usize] ^= BoardWrapper::BOARD_BY_PIECE_KEYS[piece as usize][square as usize];
             }
         }
     }
@@ -288,23 +289,9 @@ impl BoardWrapper {
         }
 
         //Threat Corrhist
-        let old_captures = get_threats(mv.from, piece_from.unwrap(), &self.board, us);
-        for target_sq in old_captures {
-            self.threat_hash ^=
-                BoardWrapper::BOARD_BY_PIECE_KEYS
-                    [self.board.piece_on(target_sq).unwrap() as usize]
-                    [target_sq as usize];
-        }
+        self.threat_hash = init_threat_hash(self.board.clone());
 
         self.board.play_unchecked(mv);
-
-        let new_captures = get_threats(mv.to, piece_from.unwrap(), &self.board, us);
-        for target_sq in new_captures {
-            self.threat_hash ^=
-                BoardWrapper::BOARD_BY_PIECE_KEYS
-                    [self.board.piece_on(target_sq).unwrap() as usize]
-                    [target_sq as usize];
-        }
     }
 }
 

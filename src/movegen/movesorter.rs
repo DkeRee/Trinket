@@ -206,7 +206,7 @@ impl MoveSorter {
 		let non_pawn_hist_white = self.non_pawn_corrhist[side_to_move][idx_white] / 202.0;
 		let non_pawn_hist_black = self.non_pawn_corrhist[side_to_move][idx_black] / 202.0;
 
-		non_pawn_hist_white + non_pawn_hist_black
+		(non_pawn_hist_white + non_pawn_hist_black) / 2.0
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

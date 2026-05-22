@@ -229,8 +229,8 @@ impl MoveSorter {
 		let side_to_move = boardwrapper.board.side_to_move() as usize;
 		let idx_white = (boardwrapper.major_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
 		let idx_black = (boardwrapper.major_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let major_hist_white = self.major_corrhist[side_to_move][idx_white] / 260.0;
-		let major_hist_black = self.major_corrhist[side_to_move][idx_black] / 260.0;
+		let major_hist_white = self.major_corrhist[side_to_move][idx_white] / 480.0;
+		let major_hist_black = self.major_corrhist[side_to_move][idx_black] / 480.0;
 
 		major_hist_white + major_hist_black
 	}

@@ -162,7 +162,7 @@ impl MoveSorter {
 		let entry = &mut self.material_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-300.0, 300.0) * 280.0 * weight;
 	}
 
 	pub fn add_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
@@ -172,7 +172,7 @@ impl MoveSorter {
 		let entry = &mut self.pawn_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-300.0, 300.0) * 280.0 * weight;
 	}
 
 	pub fn add_non_pawn_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
@@ -183,10 +183,10 @@ impl MoveSorter {
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
 
 		let entry_white = &mut self.non_pawn_corrhist[side_to_move][idx_white];
-		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-300.0, 300.0) * 280.0 * weight;
 
 		let entry_black = &mut self.non_pawn_corrhist[side_to_move][idx_black];	
-		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-300.0, 300.0) * 280.0 * weight;
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
@@ -225,17 +225,17 @@ impl MoveSorter {
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 1000000;
 
-	const PROMO: i32 = 50000;
-	const WINNING_CAPTURE: i32 = 50000;
+	const PROMO: i32 = 80000;
+	const WINNING_CAPTURE: i32 = 80000;
 
-	const NEUTRAL_CAPTURE: i32 = 30000;
+	const NEUTRAL_CAPTURE: i32 = 40000;
 
 	const KILLER_QUIET: i32 = 15000;
 	const COUNTER_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 
-	const LOSING_CAPTURE: i32 = -50000;
-	const UNDER_PROMO: i32 = -50000;
+	const LOSING_CAPTURE: i32 = -80000;
+	const UNDER_PROMO: i32 = -80000;
 
 	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;

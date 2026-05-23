@@ -319,13 +319,13 @@ impl Searcher<'_> {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
 			let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
-			let major_corrhist = self.movegen.sorter.read_major_corrhist(boardwrapper);
+			let minor_corrhist = self.movegen.sorter.read_minor_corrhist(boardwrapper);
 			let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
 
 			(base_eval 
 				+ pawn_corrhist 
 				+ non_pawn_corrhist
-				+ major_corrhist
+				+ minor_corrhist
 				+ material_corrhist) as i32
 		};
 
@@ -607,7 +607,7 @@ impl Searcher<'_> {
 			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
 				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-				self.movegen.sorter.add_major_corrhist(boardwrapper, depth, eval.score, static_eval);
+				self.movegen.sorter.add_minor_corrhist(boardwrapper, depth, eval.score, static_eval);
 				self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
 			}
 		}
@@ -632,10 +632,10 @@ impl Searcher<'_> {
 		let base_eval = evaluate(&boardwrapper.board) as f32;
 		let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
 		let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
-		let major_corrhist = self.movegen.sorter.read_major_corrhist(boardwrapper);
+		let minor_corrhist = self.movegen.sorter.read_minor_corrhist(boardwrapper);
 		let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
 		let stand_pat = Eval::new((
-			base_eval + pawn_corrhist + non_pawn_corrhist + major_corrhist + material_corrhist
+			base_eval + pawn_corrhist + non_pawn_corrhist + minor_corrhist + material_corrhist
 		) as i32, false);
 
 		//beta cutoff

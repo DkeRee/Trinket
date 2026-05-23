@@ -417,6 +417,8 @@ impl Searcher<'_> {
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
+
+			sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
 				
 			board_wrapper_cache.play_unchecked(sm);
 
@@ -564,6 +566,7 @@ impl Searcher<'_> {
 					if alpha >= beta {
 						tt_nodetype = NodeKind::LowerBound;
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
+						sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 						break;
@@ -582,6 +585,7 @@ impl Searcher<'_> {
 				}
 			}
 
+			sm.decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 
 			if do_spp {

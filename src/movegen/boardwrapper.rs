@@ -106,7 +106,7 @@ fn get_threats(board: &Board) -> BitBoard {
         threats |= get_king_moves(sq);
     }
 
-    threats
+    threats & board.colors(!enemy)
 }
 
 pub struct BoardWrapper {
@@ -121,14 +121,11 @@ impl BoardWrapper {
     pub fn new() -> BoardWrapper {
         let new_board = Board::default();
 
-        let stm = new_board.side_to_move();
-        let my_pieces = new_board.colors(stm);
-
         BoardWrapper {
             board: new_board.clone(),
             pawn_hash: init_pawn_hash(new_board.clone()),
             non_pawn_hash: init_non_pawn_hash(new_board.clone()),
-            threat_hash: murmur_mix((get_threats(&new_board) & my_pieces).0),
+            threat_hash: murmur_mix(get_threats(&new_board).0),
             material_hash: init_material_hash(new_board.clone())
         }
     }
@@ -155,13 +152,9 @@ impl BoardWrapper {
 
     pub fn update_fen(&mut self, fen: String) {
 		self.board = Board::from_fen(&*fen.trim(), false).unwrap();
-
-        let stm = self.board.side_to_move();
-        let my_pieces = self.board.colors(stm);
-
         self.pawn_hash = init_pawn_hash(self.board.clone());
         self.non_pawn_hash = init_non_pawn_hash(self.board.clone());
-        self.threat_hash = murmur_mix((get_threats(&self.board) & my_pieces).0);
+        self.threat_hash = murmur_mix(get_threats(&self.board).0);
         self.material_hash = init_material_hash(self.board.clone());
     }
 
@@ -253,10 +246,10 @@ impl BoardWrapper {
             self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
         }
 
-        //Threat Corrhist
         self.board.play_unchecked(mv);
 
-        self.threat_hash = murmur_mix((get_threats(&self.board) & self.board.colors(us)).0);
+        //Threat Corrhist
+        self.threat_hash = murmur_mix(get_threats(&self.board).0);
     }
 }
 

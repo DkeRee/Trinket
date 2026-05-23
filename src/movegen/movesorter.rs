@@ -198,7 +198,7 @@ impl MoveSorter {
 		let entry = &mut self.major_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 483.0 * weight;
 	}
 
 

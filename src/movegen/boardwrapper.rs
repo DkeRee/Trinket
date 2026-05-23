@@ -158,8 +158,9 @@ impl BoardWrapper {
         self.material_hash = init_material_hash(self.board.clone());
     }
 
-    pub fn null_move(&self) -> BoardWrapper {
+    pub fn null_move(&mut self) -> BoardWrapper {
         let null_board = self.board.null_move().unwrap();
+        self.material_hash = init_material_hash(null_board.clone());
 
         BoardWrapper::new_set(&self, null_board)
     }

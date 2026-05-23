@@ -166,7 +166,7 @@ impl MoveSorter {
 	}
 
 	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
-		self.conthist_stack[(ply + 2) as usize] = (get_piece_index(board, mv), mv.to as usize);
+		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
 	}
 
 	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {

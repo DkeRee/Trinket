@@ -111,11 +111,13 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						let conthist = self.get_conthist(mv_info.mv, ply, board);
 
-						increment = history + conthist;
+						increment = history;
 						mv_info.history = history;
 					}
+
+					let conthist: i32 = self.get_conthist(mv_info.mv, ply, board);
+					increment += conthist;
 				}
 	
 				if is_promo {

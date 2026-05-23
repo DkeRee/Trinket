@@ -192,17 +192,13 @@ impl MoveSorter {
 	}
 
 	pub fn add_major_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
-		let idx_white = (boardwrapper.major_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.major_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let side_to_move = boardwrapper.board.side_to_move() as usize;
+		let idx = (boardwrapper.major_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let side = boardwrapper.board.side_to_move() as usize;
+	
+		let entry = &mut self.major_corrhist[side][idx];
 	
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
-
-		let entry_white = &mut self.major_corrhist[side_to_move][idx_white];
-		*entry_white = *entry_white * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
-
-		let entry_black = &mut self.major_corrhist[side_to_move][idx_black];	
-		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
@@ -226,14 +222,10 @@ impl MoveSorter {
 	}
 
 	pub fn read_major_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
-		let side_to_move = boardwrapper.board.side_to_move() as usize;
-		let idx_white = (boardwrapper.major_hash[Color::White as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let idx_black = (boardwrapper.major_hash[Color::Black as usize] % Self::CORRHIST_SIZE as u64) as usize;
-		let major_hist_white = self.major_corrhist[side_to_move][idx_white] / 260.0;
-		let major_hist_black = self.major_corrhist[side_to_move][idx_black] / 260.0;
-
-		major_hist_white + major_hist_black
+		let major_hist = self.major_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.major_hash % Self::CORRHIST_SIZE as u64) as usize];
+		major_hist / 210.0
 	}
+
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
 		if last_move.is_none() {

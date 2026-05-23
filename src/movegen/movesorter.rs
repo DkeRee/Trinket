@@ -113,7 +113,7 @@ impl MoveSorter {
 						let history = self.get_history(mv_info.mv, board);
 						let conthist = self.get_conthist(mv_info.mv, ply, board);
 
-						increment = history + 2 * conthist;
+						increment = history + conthist;
 						mv_info.history = history;
 					}
 				}
@@ -177,7 +177,7 @@ impl MoveSorter {
 		let bonus = depth * depth + 50;
 
 		if !bonus.checked_mul(*conthist).is_none() {
-			*conthist += bonus - bonus * (*conthist) / 16384;
+			*conthist += bonus - bonus * (*conthist) / 2000;
 		}
 	}
 
@@ -189,7 +189,7 @@ impl MoveSorter {
 		let penalty = depth * depth + 50;
 
 		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 16384;
+			*conthist -= penalty + penalty * (*conthist) / 2000;
 		}
 	}
 

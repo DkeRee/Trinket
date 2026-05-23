@@ -265,7 +265,7 @@ impl MoveSorter {
 	}
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
-		let (counter_piece, counter_to) = self.conthist_stack[(ply + 1) as usize];
+		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
 		self.conthist.0[idx]
 	}

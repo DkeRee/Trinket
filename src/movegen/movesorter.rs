@@ -177,7 +177,7 @@ impl MoveSorter {
 		let bonus = depth * depth + 50;
 
 		if !bonus.checked_mul(*conthist).is_none() {
-			*conthist += bonus - bonus * (*conthist) / 2000;
+			*conthist += bonus - bonus * (*conthist) / 16384;
 		}
 	}
 
@@ -189,7 +189,7 @@ impl MoveSorter {
 		let penalty = depth * depth + 50;
 
 		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 2000;
+			*conthist -= penalty + penalty * (*conthist) / 16384;
 		}
 	}
 

@@ -43,8 +43,7 @@ fn init_major_hash(board: Board) -> u64 {
 
     let pieces = [
         Piece::Rook,
-        Piece::Queen,
-        Piece::King
+        Piece::Queen
     ];
 
     for color in [Color::White, Color::Black] {
@@ -135,7 +134,7 @@ impl BoardWrapper {
     }
 
     fn is_major_piece(&self, piece: Piece) -> bool {
-        piece == Piece::King || piece == Piece::Queen || piece == Piece::Rook
+        piece == Piece::Queen || piece == Piece::Rook
     }
 
     pub fn play_unchecked(&mut self, sm: &mut SortedMove) {

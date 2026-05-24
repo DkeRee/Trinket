@@ -1,7 +1,28 @@
 use cozy_chess::*;
+use bytemuck::{Pod, Zeroable};
 use crate::movegen::movegen::*;
 use crate::movegen::see::*;
 use crate::movegen::boardwrapper::*;
+
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Zeroable, Pod)]
+struct Cont_Hist_Array([i32; 13 * 65 * 12 * 64]);
+
+impl Cont_Hist_Array {
+    fn index(prev_piece: usize, prev_sq: usize, curr_piece: usize, curr_sq: usize) -> usize {
+        prev_piece * 65 * 12 * 64 + prev_sq * 12 * 64 + curr_piece * 64 + curr_sq
+    }
+}
+
+fn get_piece_index(board: &Board, mv: Move) -> usize {
+    let piece_idx = board.piece_on(mv.from).unwrap() as usize;
+    let color = board.color_on(mv.from).unwrap();
+
+    match color {
+        Color::White => piece_idx,
+        Color::Black => piece_idx + 6,
+    }
+}
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum MoveType {
@@ -11,24 +32,28 @@ pub enum MoveType {
 
 #[derive(Clone)]
 pub struct MoveSorter {
-	killer_table: [[[Option<Move>; 1]; 100]; 2],
-	history_table: [[[i32; 64]; 64]; 2],
-	countermove_table: [[Option<Move>; 64]; 64],
-	pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	non_pawn_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
-	material_corrhist: [[f32; Self::CORRHIST_SIZE]; 2],
+	killer_table: Box<[[[Option<Move>; 1]; 100]; 2]>,
+	history_table: Box<[[[i32; 64]; 64]; 2]>,
+	countermove_table: Box<[[Option<Move>; 64]; 64]>,
+	conthist: Box<Cont_Hist_Array>,
+	conthist_stack: Box<[(usize, usize); 256]>,
+	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	see: See
 }
 
 impl MoveSorter {
 	pub fn new () -> MoveSorter {
 		MoveSorter {
-			killer_table: [[[None; 1]; 100]; 2],
-			history_table: [[[0; 64]; 64]; 2],
-			countermove_table: [[None; 64]; 64],
-			pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			non_pawn_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
-			material_corrhist: [[0.0; Self::CORRHIST_SIZE]; 2],
+			killer_table: Box::new([[[None; 1]; 100]; 2]),
+			history_table: Box::new([[[0; 64]; 64]; 2]),
+			countermove_table: Box::new([[None; 64]; 64]),
+			conthist: Box::new(Cont_Hist_Array([0; 13 * 65 * 12 * 64])),
+			conthist_stack: Box::new([(0, 0); 256]),
+			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			see: See::new()
 		}
 	}
@@ -86,7 +111,9 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						increment = history;
+						let conthist = 2 * self.get_conthist(mv_info.mv, ply, board);
+
+						increment = history + conthist;
 						mv_info.history = history;
 					}
 				}
@@ -135,6 +162,38 @@ impl MoveSorter {
 
 		if !change.checked_mul(history).is_none() {
 			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
+		}
+	}
+
+	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
+		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
+	}
+
+	pub fn set_null_conthist(&mut self, ply: i32) {
+		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
+	}
+
+	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
+		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
+		let conthist = &mut self.conthist.0[idx];
+
+		let bonus = depth * depth + 50;
+
+		if !bonus.checked_mul(*conthist).is_none() {
+			*conthist += bonus - bonus * (*conthist) / 2000;
+		}
+	}
+
+	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
+		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
+		let conthist = &mut self.conthist.0[idx];
+
+		let penalty = depth * depth + 50;
+
+		if !penalty.checked_mul(*conthist).is_none() {
+			*conthist -= penalty + penalty * (*conthist) / 2000;
 		}
 	}
 
@@ -209,6 +268,12 @@ impl MoveSorter {
 		non_pawn_hist_white + non_pawn_hist_black
 	}
 
+	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
+		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
+		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
+		self.conthist.0[idx]
+	}
+
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
 		if last_move.is_none() {
 			return false;
@@ -239,6 +304,7 @@ impl MoveSorter {
 
 	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
+	const NULL_MOVE: (usize, usize) = (12, 64);
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

@@ -23,6 +23,25 @@ impl SortedMove {
 		}
 	}
 
+	pub fn set_conthist(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
+		if self.movetype == MoveType::Quiet {
+			move_sorter.set_conthist(self.mv, ply, board);
+		}
+	}
+
+	pub fn insert_conthist(&mut self, move_sorter: &mut MoveSorter, depth: i32, ply: i32, board: &Board) {
+		if self.movetype == MoveType::Quiet {
+			move_sorter.insert_conthist(self.mv, depth, ply, board);
+		}
+	}
+
+	pub fn decay_conthist(&mut self, move_sorter: &mut MoveSorter, depth: i32, ply: i32, board: &Board) {
+		if self.movetype == MoveType::Quiet {
+			move_sorter.decay_conthist(self.mv, depth, ply, board);
+		}
+	}
+
+
 	pub fn insert_killer(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.add_killer(self.mv, ply, board);

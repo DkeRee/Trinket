@@ -174,7 +174,7 @@ impl MoveSorter {
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let bonus = 64 * depth;
+		let bonus = depth * depth;
 
 		if !bonus.checked_mul(*conthist).is_none() {
 			*conthist += bonus - bonus * (*conthist) / 16384;
@@ -186,7 +186,7 @@ impl MoveSorter {
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let penalty = 64 * depth;
+		let penalty = depth * depth;
 
 		if !penalty.checked_mul(*conthist).is_none() {
 			*conthist -= penalty + penalty * (*conthist) / 16384;

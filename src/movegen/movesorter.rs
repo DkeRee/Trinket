@@ -111,7 +111,7 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						let conthist = self.get_conthist(mv_info.mv, ply, board);
+						let conthist = 2 * self.get_conthist(mv_info.mv, ply, board);
 
 						increment = history + conthist;
 						mv_info.history = history;

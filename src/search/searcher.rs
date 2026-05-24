@@ -365,6 +365,8 @@ impl Searcher<'_> {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
+
+			self.movegen.sorter.set_null_conthist(ply);
 			
 			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
 
@@ -570,8 +572,10 @@ impl Searcher<'_> {
 						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
-						for i in 0..moves_searched {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+						if legal_index > 0 {
+							for i in 0..(legal_index - 1) {
+								legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+							}
 						}
 
 						break;
@@ -602,6 +606,7 @@ impl Searcher<'_> {
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
 				legal_index = 0; 
+				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
 			}
 		}

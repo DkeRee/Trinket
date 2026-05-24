@@ -6,11 +6,11 @@ use crate::movegen::boardwrapper::*;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Zeroable, Pod)]
-struct Cont_Hist_Array([i32; 12 * 64 * 12 * 64]);
+struct Cont_Hist_Array([i32; 13 * 65 * 12 * 64]);
 
 impl Cont_Hist_Array {
     fn index(prev_piece: usize, prev_sq: usize, curr_piece: usize, curr_sq: usize) -> usize {
-        prev_piece * 64 * 12 * 64 + prev_sq * 12 * 64 + curr_piece * 64 + curr_sq
+        prev_piece * 65 * 12 * 64 + prev_sq * 12 * 64 + curr_piece * 64 + curr_sq
     }
 }
 
@@ -49,7 +49,7 @@ impl MoveSorter {
 			killer_table: Box::new([[[None; 1]; 100]; 2]),
 			history_table: Box::new([[[0; 64]; 64]; 2]),
 			countermove_table: Box::new([[None; 64]; 64]),
-			conthist: Box::new(Cont_Hist_Array([0; 12 * 64 * 12 * 64])),
+			conthist: Box::new(Cont_Hist_Array([0; 13 * 65 * 12 * 64])),
 			conthist_stack: Box::new([(0, 0); 256]),
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
@@ -169,15 +169,19 @@ impl MoveSorter {
 		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
 	}
 
+	pub fn set_null_conthist(&mut self, ply: i32) {
+		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
+	}
+
 	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let bonus = depth * depth + 250;
+		let bonus = depth * depth + 50;
 
 		if !bonus.checked_mul(*conthist).is_none() {
-			*conthist += bonus - bonus * (*conthist) / 16384;
+			*conthist += bonus - bonus * (*conthist) / 2000;
 		}
 	}
 
@@ -186,10 +190,10 @@ impl MoveSorter {
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let penalty = depth * depth + 250;
+		let penalty = depth * depth + 50;
 
 		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 16384;
+			*conthist -= penalty + penalty * (*conthist) / 2000;
 		}
 	}
 
@@ -300,6 +304,7 @@ impl MoveSorter {
 
 	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
+	const NULL_MOVE: (usize, usize) = (12, 64);
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo
 //TT will have no specifity, Promos have no specifity

@@ -527,7 +527,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
+				if reduction < 0 || in_check || sm.is_killer {
 					reduction = 0;
 				}
 
@@ -570,7 +570,6 @@ impl Searcher<'_> {
 						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
 						sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
 						if legal_index > 0 {
 							for i in 0..(legal_index - 1) {
@@ -588,7 +587,6 @@ impl Searcher<'_> {
 					&& depth <= Self::SPP_DEPTH_CAP 
 					&& !move_is_check 
 					&& !sm.is_killer
-					&& !sm.is_countermove
 					&& sm.movetype == MoveType::Quiet
 					&& !staged_movegen;
 				}

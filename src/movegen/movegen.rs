@@ -7,7 +7,6 @@ pub struct SortedMove {
 	pub importance: i32,
 	pub movetype: MoveType,
 	pub is_killer: bool,
-	pub is_countermove: bool,
 	pub history: i32
 }
 
@@ -18,7 +17,6 @@ impl SortedMove {
 			importance: importance,
 			movetype: movetype,
 			is_killer: false,
-			is_countermove: false,
 			history: 0
 		}
 	}
@@ -51,12 +49,6 @@ impl SortedMove {
 	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
 		if self.movetype == MoveType::Quiet {
 			move_sorter.add_history(self.mv, depth, board);
-		}
-	}
-
-	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>) {
-		if self.movetype == MoveType::Quiet && !last_move.is_none() {
-			move_sorter.add_countermove(self.mv, last_move.unwrap());
 		}
 	}
 

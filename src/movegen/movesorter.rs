@@ -34,7 +34,6 @@ pub enum MoveType {
 pub struct MoveSorter {
 	killer_table: Box<[[[Option<Move>; 1]; 100]; 2]>,
 	history_table: Box<[[[i32; 64]; 64]; 2]>,
-	countermove_table: Box<[[Option<Move>; 64]; 64]>,
 	conthist: Box<Cont_Hist_Array>,
 	conthist_stack: Box<[(usize, usize); 256]>,
 	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
@@ -48,7 +47,6 @@ impl MoveSorter {
 		MoveSorter {
 			killer_table: Box::new([[[None; 1]; 100]; 2]),
 			history_table: Box::new([[[0; 64]; 64]; 2]),
-			countermove_table: Box::new([[None; 64]; 64]),
 			conthist: Box::new(Cont_Hist_Array([0; 13 * 65 * 12 * 64])),
 			conthist_stack: Box::new([(0, 0); 256]),
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
@@ -93,19 +91,12 @@ impl MoveSorter {
 					base = Self::QUIET_MOVE;
 	
 					mv_info.is_killer = self.is_killer(mv_info.mv, board, ply);
-					mv_info.is_countermove = self.is_countermove(mv_info.mv, last_move);
 	
-					if mv_info.is_killer || mv_info.is_countermove {
+					if mv_info.is_killer {
 						base = 0;
 
 						base += if mv_info.is_killer {
 							Self::KILLER_QUIET
-						} else {
-							0
-						};
-
-						base += if mv_info.is_countermove {
-							Self::COUNTER_QUIET
 						} else {
 							0
 						};
@@ -150,10 +141,6 @@ impl MoveSorter {
 		if !change.checked_mul(history).is_none() {
 			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
 		}
-	}
-
-	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
-		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
 	}
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
@@ -274,14 +261,6 @@ impl MoveSorter {
 		self.conthist.0[idx]
 	}
 
-	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
-		if last_move.is_none() {
-			return false;
-		}
-
-		return self.countermove_table[last_move.unwrap().from as usize][last_move.unwrap().to as usize] == Some(mv);
-	}
-
 	fn get_history(&self, mv: Move, board: &Board) -> i32 {
 		return self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 	}
@@ -296,7 +275,6 @@ impl MoveSorter {
 	const NEUTRAL_CAPTURE: i32 = 30000;
 
 	const KILLER_QUIET: i32 = 15000;
-	const COUNTER_QUIET: i32 = 10000;
 	const QUIET_MOVE: i32 = 0;
 
 	const LOSING_CAPTURE: i32 = -50000;

@@ -111,7 +111,7 @@ impl MoveSorter {
 						};
 					} else {
 						let history = self.get_history(mv_info.mv, board);
-						let conthist = 2 * self.get_conthist(mv_info.mv, ply, board);
+						let conthist = self.get_conthist(mv_info.mv, ply, board);
 
 						increment = history + conthist;
 						mv_info.history = history;
@@ -165,15 +165,7 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
-		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
-	}
-
-	pub fn set_null_conthist(&mut self, ply: i32) {
-		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
-	}
-
-	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+	fn bonus_conthist_ply(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
@@ -185,16 +177,40 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+	fn malus_conthist_ply(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let penalty = depth * depth + 50;
+		let bonus = depth * depth + 50;
 
-		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 2000;
+		if !bonus.checked_mul(*conthist).is_none() {
+			*conthist -= bonus + bonus * (*conthist) / 2000;
 		}
+	}
+
+	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
+		self.conthist_stack[(ply + 2) as usize] = (get_piece_index(board, mv), mv.to as usize);
+	}
+
+	pub fn set_null_conthist(&mut self, ply: i32) {
+		self.conthist_stack[(ply + 2) as usize] = Self::NULL_MOVE;
+	}
+
+	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		//2 ply
+		self.bonus_conthist_ply(mv, depth, ply, board);
+
+		//1 ply
+		self.bonus_conthist_ply(mv, depth, ply + 1, board);
+	}
+
+	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		//2 ply
+		self.malus_conthist_ply(mv, depth, ply, board);
+
+		//1 ply
+		self.malus_conthist_ply(mv, depth, ply + 1, board);
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
@@ -268,10 +284,16 @@ impl MoveSorter {
 		non_pawn_hist_white + non_pawn_hist_black
 	}
 
-	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
+	fn get_conthist_ply(&self, mv: Move, ply: i32, board: &Board) -> i32 {
 		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
 		self.conthist.0[idx]
+	}
+
+	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
+		let ply_1 = 2 * self.get_conthist_ply(mv, ply + 1, board);
+		let ply_2 = 2 * self.get_conthist_ply(mv, ply, board);
+		return ply_1 + ply_2;
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
@@ -304,6 +326,7 @@ impl MoveSorter {
 
 	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
+
 	const NULL_MOVE: (usize, usize) = (12, 64);
 }
 //Ranking: TT, Promo, Good Loud Moves (further specifity by SEE), Best Quiets (further specifity by history), Quiets (furhter specifity by history), Bad Loud Moves = Underpromo

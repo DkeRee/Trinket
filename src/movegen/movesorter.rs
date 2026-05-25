@@ -292,7 +292,7 @@ impl MoveSorter {
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
 		let ply_1 = 2 * self.get_conthist_ply(mv, ply + 1, board);
-		let ply_2 = 2 * self.get_conthist_ply(mv, ply, board);
+		let ply_2 = 3 * self.get_conthist_ply(mv, ply, board);
 		return ply_1 + ply_2;
 	}
 

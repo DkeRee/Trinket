@@ -563,35 +563,36 @@ impl Searcher<'_> {
 				eval = value;
 				best_move = Some(mv);
 				best_move_type = Some(sm.movetype.clone());
-				if eval.score > alpha {
-					alpha = eval.score;
-					if alpha >= beta {
-						tt_nodetype = NodeKind::LowerBound;
-						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
-						sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-						sm.insert_countermove(&mut self.movegen.sorter, last_move);
+			}
 
-						if legal_index > 0 {
-							for i in 0..(legal_index - 1) {
-								legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-							}
+			if eval.score > alpha {
+				alpha = eval.score;
+				if alpha >= beta {
+					tt_nodetype = NodeKind::LowerBound;
+					sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
+					sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+					sm.insert_countermove(&mut self.movegen.sorter, last_move);
+
+					if legal_index > 0 {
+						for i in 0..(legal_index - 1) {
+							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 						}
-
-						break;
-					} else {
-						tt_nodetype = NodeKind::Exact;
 					}
+
+					break;
 				} else {
-					//SPP
-					do_spp = !is_pv 
-					&& depth <= Self::SPP_DEPTH_CAP 
-					&& !move_is_check 
-					&& !sm.is_killer
-					&& !sm.is_countermove
-					&& sm.movetype == MoveType::Quiet
-					&& !staged_movegen;
+					tt_nodetype = NodeKind::Exact;
 				}
+			} else {
+				//SPP
+				do_spp = !is_pv 
+				&& depth <= Self::SPP_DEPTH_CAP 
+				&& !move_is_check 
+				&& !sm.is_killer
+				&& !sm.is_countermove
+				&& sm.movetype == MoveType::Quiet
+				&& !staged_movegen;
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
@@ -724,16 +725,15 @@ impl Searcher<'_> {
 			if v_score > eval.score {
 				eval = child_eval;
 				best_move = Some(mv);
-				if eval.score > alpha {
-					alpha = eval.score;
-					if alpha >= beta {
-						tt_nodetype = NodeKind::LowerBound;
-						break;
-					} else {
-						tt_nodetype = NodeKind::Exact
-					}
+			}
+
+			if eval.score > alpha {
+				alpha = eval.score;
+				if alpha >= beta {
+					tt_nodetype = NodeKind::LowerBound;
+					break;
 				} else {
-					tt_nodetype = NodeKind::UpperBound;
+					tt_nodetype = NodeKind::Exact
 				}
 			}
 		}

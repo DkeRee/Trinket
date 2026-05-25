@@ -190,7 +190,7 @@ impl MoveSorter {
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
-		let penalty = depth * depth + 50;
+		let penalty = depth * depth;
 
 		if !penalty.checked_mul(*conthist).is_none() {
 			*conthist -= penalty + penalty * (*conthist) / 2000;

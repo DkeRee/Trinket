@@ -185,7 +185,8 @@ impl MoveSorter {
 	}
 
 	pub fn set_null_conthist(&mut self, ply: i32) {
-		self.conthist_stack[(ply + 1) as usize] = (12, 64, 0.0);
+		let (_, _, contcorrhist) = self.conthist_stack[(ply + 1) as usize];
+		self.conthist_stack[(ply + 1) as usize] = (12, 64, contcorrhist);
 	}
 
 	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {

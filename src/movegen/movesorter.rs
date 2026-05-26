@@ -154,7 +154,7 @@ impl MoveSorter {
 
 	pub fn read_cont_corrhist(&mut self, ply: i32) -> f32 {
 		let (_, _, entry) = self.conthist_stack[ply as usize];
-		entry / 310.0
+		entry / 180.0
 	}
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {

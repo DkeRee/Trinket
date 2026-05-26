@@ -144,12 +144,12 @@ impl MoveSorter {
 	}
 
 	pub fn add_cont_corrhist(&mut self, depth: i32, ply: i32, best_alpha: i32, static_eval: i32) {
-		let (mv_piece, mv_square, entry) = self.conthist_stack[(ply + 1) as usize];
+		let (mv_piece, mv_square, entry) = self.conthist_stack[ply as usize];
 
 		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
 		let new_entry = entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
 
-		self.conthist_stack[(ply + 1) as usize] = (mv_piece, mv_square, new_entry);
+		self.conthist_stack[ply as usize] = (mv_piece, mv_square, new_entry);
 	}
 
 	pub fn read_cont_corrhist(&mut self, ply: i32) -> f32 {

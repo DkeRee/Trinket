@@ -229,7 +229,7 @@ impl Searcher<'_> {
 		}
 
 		let mut globally_extended = false;
-		let in_check = !boardwrapper.board.checkers().is_empty();
+		let in_check: bool = !boardwrapper.board.checkers().is_empty();
 		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
@@ -326,6 +326,15 @@ impl Searcher<'_> {
 				+ non_pawn_corrhist
 				+ material_corrhist) as i32
 		};
+
+		//Max Ply Cutoff
+		if ply >= 254 {
+			if in_check {
+				return Some((None, Eval::new(0, false)));
+			} else {
+				return Some((None, Eval::new(static_eval, false)));
+			}
+		}
 
 		self.evals[ply as usize] = static_eval;
 		let improving = ply > 1 && self.evals[ply as usize] > self.evals[ply as usize - 2];
@@ -644,6 +653,8 @@ impl Searcher<'_> {
 			return None;
 		}
 
+		let in_check: bool = !boardwrapper.board.checkers().is_empty();
+
 		self.nodes += 1;
 
 		match boardwrapper.board.status() {
@@ -659,6 +670,15 @@ impl Searcher<'_> {
 		let stand_pat = Eval::new((
 			base_eval + pawn_corrhist + non_pawn_corrhist + material_corrhist
 		) as i32, false);
+
+		//Max Ply Cutoff
+		if ply >= 254 {
+			if in_check {
+				return Some((None, Eval::new(0, false)));
+			} else {
+				return Some((None, Eval::new(stand_pat.score, false)));
+			}
+		}
 
 		//beta cutoff
 		if stand_pat.score >= beta {

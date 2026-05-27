@@ -257,7 +257,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (tt_hit, iid) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
+		let (tt_hit, iid_move) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -408,8 +408,8 @@ impl Searcher<'_> {
 		if staged_movegen {
 			let top_move = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move
-			} else if iid.is_some() {
-				iid.clone()
+			} else if iid_move.is_some() {
+				iid_move.clone()
 			} else {
 				None
 			};
@@ -425,10 +425,10 @@ impl Searcher<'_> {
 				legal_moves.push(sm);
 			} else {
 				staged_movegen = false;
-				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, iid_move, ply, false, last_move);
 			}
 		} else {
-			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, iid_move, ply, false, last_move);
 		}
 
 		let mut moves_searched = 0;
@@ -629,7 +629,7 @@ impl Searcher<'_> {
 				staged_movegen = false;
 				legal_index = 0; 
 				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
+				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), iid_move, ply, true, last_move);
 			}
 		}
 

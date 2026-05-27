@@ -58,7 +58,7 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, board: &Board, ply: i32, last_move: Option<Move>) {
+	pub fn sort(&mut self, move_list: &mut Vec<SortedMove>, tt_move: Option<Move>, iid_move: Option<Move>, board: &Board, ply: i32, last_move: Option<Move>) {
 		for i in 0..move_list.len() {
 			let mv_info = &mut move_list[i];
 
@@ -69,8 +69,9 @@ impl MoveSorter {
 			}
 
 			let is_tt = mv_info.importance == Self::HASHMOVE_SCORE;
+			let is_iid = mv_info.importance == Self::IID_SCORE;
 
-			if !is_tt {
+			if !is_tt && !is_iid {
 				let is_promo = mv_info.mv.promotion != None;
 				let mut base = 0;
 				let mut increment = 0;
@@ -289,6 +290,7 @@ impl MoveSorter {
 
 impl MoveSorter {
 	const HASHMOVE_SCORE: i32 = 1000000;
+	const IID_SCORE: i32 = 900000;
 
 	const PROMO: i32 = 50000;
 	const WINNING_CAPTURE: i32 = 50000;

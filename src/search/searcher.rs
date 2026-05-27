@@ -663,36 +663,10 @@ impl Searcher<'_> {
 			GameStatus::Ongoing => {}
 		}
 
-		let base_eval = evaluate(&boardwrapper.board) as f32;
-		let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
-		let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
-		let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
-		let stand_pat = Eval::new((
-			base_eval + pawn_corrhist + non_pawn_corrhist + material_corrhist
-		) as i32, false);
-
-		//Max Ply Cutoff
-		if ply >= 254 {
-			if in_check {
-				return Some((None, Eval::new(0, false)));
-			} else {
-				return Some((None, Eval::new(stand_pat.score, false)));
-			}
-		}
-
-		//beta cutoff
-		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false)));
-		}
-
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
-		}
-
 		let mut move_list: Vec<SortedMove>;
 
 		//probe TT
-		let table_find = match self.shared_info.tt.find(&boardwrapper.board, ply) {
+		let tt_hit = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
 				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
@@ -728,6 +702,37 @@ impl Searcher<'_> {
 				None
 			}
 		};
+
+		let stand_pat = if tt_hit.as_ref().is_some() {
+			Eval::new(tt_hit.as_ref().unwrap().eval, false)
+		} else {
+			let base_eval = evaluate(&boardwrapper.board) as f32;
+			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
+			let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
+			let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
+			
+			Eval::new((
+				base_eval + pawn_corrhist + non_pawn_corrhist + material_corrhist
+			) as i32, false)
+		};
+
+		//Max Ply Cutoff
+		if ply >= 254 {
+			if in_check {
+				return Some((None, Eval::new(0, false)));
+			} else {
+				return Some((None, Eval::new(stand_pat.score, false)));
+			}
+		}
+
+		//beta cutoff
+		if stand_pat.score >= beta {
+			return Some((None, Eval::new(beta, false)));
+		}
+
+		if alpha < stand_pat.score {
+			alpha = stand_pat.score;
+		}
 
 		//no more loud moves to be checked anymore, it can be returned safely
 		if move_list.len() == 0 {

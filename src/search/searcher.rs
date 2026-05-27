@@ -377,6 +377,18 @@ impl Searcher<'_> {
 			}
 		}
 
+		//Razoring
+		if !is_pv
+		&& !in_check
+		&& depth < 6
+		&& static_eval <= alpha - 75 * depth - 185 {
+			let (_, v) = self.search(&abort, boardwrapper, 0, ply, alpha, beta, past_positions, last_move)?;
+
+			if v.score <= alpha {
+				return Some((None, Eval::new(v.score, false)));
+			}
+		}
+
 		let mut best_move = None;
 		let mut best_move_type = None;
 		let mut eval = Eval::new(i32::MIN, false);

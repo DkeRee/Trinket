@@ -39,6 +39,7 @@ pub struct MoveSorter {
 	conthist_stack: Box<[(usize, usize); 256]>,
 	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	major_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	see: See
 }
@@ -53,6 +54,7 @@ impl MoveSorter {
 			conthist_stack: Box::new([(0, 0); 256]),
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			major_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			see: See::new()
 		}
@@ -246,6 +248,21 @@ impl MoveSorter {
 
 		let entry_black = &mut self.non_pawn_corrhist[side_to_move][idx_black];	
 		*entry_black = *entry_black * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
+	pub fn add_major_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx = (boardwrapper.major_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let side = boardwrapper.board.side_to_move() as usize;
+	
+		let entry = &mut self.major_corrhist[side][idx];
+	
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
+	pub fn read_major_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
+		let pawn_hist = self.major_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.major_hash % Self::CORRHIST_SIZE as u64) as usize];
+		pawn_hist / 205.0
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {

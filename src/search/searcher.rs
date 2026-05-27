@@ -383,7 +383,7 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = tt_hit.is_some();
+		let mut staged_movegen = tt_hit.is_some() || iid.is_some();
 		if staged_movegen {
 			let top_move = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move

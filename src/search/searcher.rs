@@ -313,6 +313,7 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
+		let mut total_corrhist = 0;
 		let static_eval = if tt_hit.as_ref().is_some() {
 			tt_hit.as_ref().unwrap().eval
 		} else {
@@ -320,11 +321,12 @@ impl Searcher<'_> {
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
 			let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
 			let material_corrhist = self.movegen.sorter.read_material_corrhist(boardwrapper);
-
-			(base_eval 
+			total_corrhist = (base_eval 
 				+ pawn_corrhist 
 				+ non_pawn_corrhist
-				+ material_corrhist) as i32
+				+ material_corrhist) as i32;
+
+			total_corrhist
 		};
 
 		self.evals[ply as usize] = static_eval;
@@ -473,6 +475,9 @@ impl Searcher<'_> {
 
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
+
+				//Corrhist Anti-Reduction
+				reduction -= (i32::abs(total_corrhist) > 200) as i32;
 
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;

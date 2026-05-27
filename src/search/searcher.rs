@@ -257,7 +257,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (tt_hit, iid) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
+		let tt_hit = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -286,21 +286,9 @@ impl Searcher<'_> {
 					}
 				}
 
-				(Some(table_find), None)
+				Some(table_find)
 			},
 			None => {
-				let mut iid_move = None;
-
-				//Internal Iterative Deepening
-				//We use the best move from a search with reduced depth to replace the hash move in move ordering if TT probe does not return a position
-
-				//if sufficient depth
-				//if PV node
-				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move)?;
-					iid_move = best_mv;
-				}
-
 				//Internal Iterative Reduction
 				//IF sufficient depth
 				//There is NO Hash Move
@@ -308,7 +296,7 @@ impl Searcher<'_> {
 					depth -= depth / 10 + 1;
 				}
 
-				(None, iid_move)
+				None
 			}
 		};
 
@@ -385,13 +373,7 @@ impl Searcher<'_> {
 		//Check if TT moves produce a cutoff before generating moves to same time
 		let mut staged_movegen = tt_hit.is_some();
 		if staged_movegen {
-			let top_move = if tt_hit.is_some() {
-				tt_hit.clone().unwrap().best_move
-			} else if iid.is_some() {
-				iid.clone()
-			} else {
-				None
-			};
+			let top_move = tt_hit.clone().unwrap().best_move;
 
 			if top_move.is_some() {
 				let movetype = if (top_move.unwrap().to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
@@ -748,7 +730,6 @@ impl Searcher<'_> {
 	const MAX_DEPTH_RFP: i32 = 6;
 	const MULTIPLIER_RFP: i32 = 80;
 	const HISTORY_DEPTH_MIN: i32 = 5;
-	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
 	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;

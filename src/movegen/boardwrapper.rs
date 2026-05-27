@@ -38,6 +38,69 @@ fn init_non_pawn_hash(board: Board) -> [u64; 2] {
     hash
 }
 
+fn get_threats(square: Square, piece: Piece, board: &Board, color: Color) -> BitBoard {
+    // Squares this piece attacks
+    let attacks = match piece {
+        Piece::Pawn => {
+            get_pawn_attacks(square, color)
+        }
+
+        Piece::Knight => {
+            get_knight_moves(square)
+        }
+
+        Piece::Bishop => {
+            get_bishop_moves(square, board.occupied())
+        }
+
+        Piece::Rook => {
+            get_rook_moves(square, board.occupied())
+        }
+
+        Piece::Queen => {
+            get_bishop_moves(square, board.occupied())
+            | get_rook_moves(square, board.occupied())
+        }
+
+        Piece::King => {
+            get_king_moves(square)
+         }
+    };
+
+
+    // enemy occupied attacked squares
+    attacks & board.colors(!color)
+}
+
+fn init_threat_hash(board: Board) -> u64 {
+    let mut hash = 0u64;
+
+    let pieces = [
+        Piece::Pawn,
+        Piece::Knight,
+        Piece::Bishop,
+        Piece::Rook,
+        Piece::Queen
+    ];
+
+    for color in [Color::White, Color::Black] {
+        for piece in pieces {
+            for square in board.colored_pieces(color, piece) {
+                let captures = get_threats(square, piece, &board, color);
+
+                for target_sq in captures {
+                    hash ^=
+                        BoardWrapper::BOARD_BY_PIECE_KEYS
+                            [board.piece_on(target_sq).unwrap() as usize]
+                            [target_sq as usize];
+                }
+            }
+        }
+    }
+
+    hash
+}
+
 fn init_material_hash(board: Board) -> u64 {
     let mut hash = 0u64;
 
@@ -63,6 +126,7 @@ pub struct BoardWrapper {
     pub board: Board,
     pub pawn_hash: u64,
     pub non_pawn_hash: [u64; 2],
+    pub threat_hash: u64,
     pub material_hash: u64
 }
 
@@ -74,6 +138,7 @@ impl BoardWrapper {
             board: new_board.clone(),
             pawn_hash: init_pawn_hash(new_board.clone()),
             non_pawn_hash: init_non_pawn_hash(new_board.clone()),
+            threat_hash: init_threat_hash(new_board.clone()),
             material_hash: init_material_hash(new_board.clone())
         }
     }
@@ -83,6 +148,7 @@ impl BoardWrapper {
             board: board,
             pawn_hash: self.pawn_hash,
             non_pawn_hash: self.non_pawn_hash,
+            threat_hash: self.threat_hash,
             material_hash: self.material_hash
         }
     }
@@ -92,6 +158,7 @@ impl BoardWrapper {
             board: self.board.clone(),
             pawn_hash: self.pawn_hash,
             non_pawn_hash: self.non_pawn_hash,
+            threat_hash: self.threat_hash,
             material_hash: self.material_hash
         }
     }
@@ -100,6 +167,7 @@ impl BoardWrapper {
 		self.board = Board::from_fen(&*fen.trim(), false).unwrap();
         self.pawn_hash = init_pawn_hash(self.board.clone());
         self.non_pawn_hash = init_non_pawn_hash(self.board.clone());
+        self.threat_hash = init_threat_hash(self.board.clone());
         self.material_hash = init_material_hash(self.board.clone());
     }
 
@@ -191,7 +259,24 @@ impl BoardWrapper {
             self.non_pawn_hash[us as usize] ^= Self::BOARD_BY_PIECE_KEYS[piece_from.unwrap() as usize][mv.to as usize];
         }
 
+        //Threat Corrhist
+        let old_captures = get_threats(mv.from, piece_from.unwrap(), &self.board, us);
+        for target_sq in old_captures {
+            self.threat_hash ^=
+                BoardWrapper::BOARD_BY_PIECE_KEYS
+                    [self.board.piece_on(target_sq).unwrap() as usize]
+                    [target_sq as usize];
+        }
+
         self.board.play_unchecked(mv);
+
+        let new_captures = get_threats(mv.to, piece_from.unwrap(), &self.board, us);
+        for target_sq in new_captures {
+            self.threat_hash ^=
+                BoardWrapper::BOARD_BY_PIECE_KEYS
+                    [self.board.piece_on(target_sq).unwrap() as usize]
+                    [target_sq as usize];
+        }
     }
 }
 

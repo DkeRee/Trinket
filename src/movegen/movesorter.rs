@@ -40,6 +40,7 @@ pub struct MoveSorter {
 	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
+	threat_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	see: See
 }
 
@@ -54,6 +55,7 @@ impl MoveSorter {
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
+			threat_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			see: See::new()
 		}
 	}
@@ -131,6 +133,21 @@ impl MoveSorter {
 		}
 
 		move_list.sort_by(|x, z| z.importance.cmp(&x.importance));
+	}
+
+	pub fn add_threat_corrhist(&mut self, boardwrapper: &BoardWrapper, depth: i32, best_alpha: i32, static_eval: i32) {
+		let idx = (boardwrapper.threat_hash % Self::CORRHIST_SIZE as u64) as usize;
+		let side = boardwrapper.board.side_to_move() as usize;
+	
+		let entry = &mut self.threat_corrhist[side][idx];
+	
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		*entry = *entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+	}
+
+	pub fn read_threat_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
+		let threat_hist = self.threat_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.threat_hash % Self::CORRHIST_SIZE as u64) as usize];
+		threat_hist / 380.0
 	}
 
 	pub fn add_killer(&mut self, mv: Move, ply: i32, board: &Board) {

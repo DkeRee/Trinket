@@ -377,6 +377,13 @@ impl Searcher<'_> {
 			}
 		}
 
+		//Razoring
+		if !is_pv
+		&& !in_check
+		&& static_eval <= alpha - 75 * depth - 185 {
+			depth = 0;
+		}
+
 		let mut best_move = None;
 		let mut best_move_type = None;
 		let mut eval = Eval::new(i32::MIN, false);

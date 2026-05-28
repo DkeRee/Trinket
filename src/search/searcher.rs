@@ -477,8 +477,8 @@ impl Searcher<'_> {
 	
 						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply, singular_beta - 1, singular_beta, past_positions, Some(mv), Some(mv))?;
 	
-						if se_eval.score < singular_beta { 
-							new_depth += 1;
+						if se_eval.score >= beta {
+							return Some((Some(mv), eval));
 						}
 					}
 				}

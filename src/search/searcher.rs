@@ -495,6 +495,9 @@ impl Searcher<'_> {
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 
+				//Move Check Antireduction
+				reduction -= move_is_check as i32;
+
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;
 

@@ -348,7 +348,7 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if depth <= Self::MAX_DEPTH_RFP && !in_check && excluded.is_none() {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -392,7 +392,8 @@ impl Searcher<'_> {
 		if !is_pv
 		&& !in_check
 		&& depth < 6
-		&& static_eval <= alpha - (250 + depth * 120) {
+		&& static_eval <= alpha - (250 + depth * 120)
+		&& excluded.is_none() {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply)?;
 
 			if v.score <= alpha {

@@ -86,7 +86,7 @@ impl MoveSorter {
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score;
+					increment = 2 * capture_score;
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

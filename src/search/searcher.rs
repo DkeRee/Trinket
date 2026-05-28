@@ -315,7 +315,7 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if tt_hit.as_ref().is_some() && excluded.is_none() {
+		let static_eval = if tt_hit.as_ref().is_some() {
 			tt_hit.as_ref().unwrap().eval
 		} else {
 			let base_eval = evaluate(&boardwrapper.board) as f32;

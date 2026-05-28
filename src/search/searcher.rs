@@ -509,6 +509,9 @@ impl Searcher<'_> {
 				//Reduce less if PV node
 				reduction -= is_pv as i32;
 
+				//Improving
+				reduction -= improving as i32;
+
 				//Underpromo Reduction
 				if !mv.promotion.is_none() {
 					if mv.promotion.unwrap() != Piece::Queen && depth >= Self::UNDERPROMO_REDUC_DEPTH {

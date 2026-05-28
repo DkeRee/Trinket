@@ -390,7 +390,7 @@ impl Searcher<'_> {
 		if !is_pv
 		&& !in_check
 		&& depth < 6
-		&& static_eval <= alpha - (250 + depth * 120) {
+		&& static_eval <= alpha - (120 + depth * 120) {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply)?;
 
 			if v.score <= alpha {

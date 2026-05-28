@@ -224,7 +224,7 @@ impl Searcher<'_> {
 
 		//MATE DISTANCE PRUNING
 		//make sure that alpha is not defaulted to negative infinity
-		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha && excluded.is_none() {
+		if alpha != -i32::MAX && Score::CHECKMATE_BASE - ply <= alpha {
 			return Some((None, Eval::new(Score::CHECKMATE_BASE - ply, true)));
 		}
 
@@ -348,7 +348,7 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check && excluded.is_none() {
+		if depth <= Self::MAX_DEPTH_RFP && !in_check {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -372,7 +372,7 @@ impl Searcher<'_> {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check && excluded.is_none() {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
@@ -392,8 +392,7 @@ impl Searcher<'_> {
 		if !is_pv
 		&& !in_check
 		&& depth < 6
-		&& static_eval <= alpha - (250 + depth * 120)
-		&& excluded.is_none() {
+		&& static_eval <= alpha - (250 + depth * 120) {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply)?;
 
 			if v.score <= alpha {

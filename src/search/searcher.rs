@@ -257,7 +257,7 @@ impl Searcher<'_> {
 		let mut legal_moves: Vec<SortedMove> = Vec::with_capacity(64);
 
 		//probe tt
-		let (tt_hit, iid) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
+		let (mut tt_hit, mut iid) = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//if sufficient depth
 				if table_find.depth >= depth {
@@ -314,8 +314,13 @@ impl Searcher<'_> {
 			}
 		};
 
+		if excluded.is_some() {
+			tt_hit = None;
+			iid = None;
+		}
+
 		//static eval for tuning methods
-		let static_eval = if tt_hit.as_ref().is_some() && excluded.is_none() {
+		let static_eval = if tt_hit.as_ref().is_some() {
 			tt_hit.as_ref().unwrap().eval
 		} else {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
@@ -372,7 +377,7 @@ impl Searcher<'_> {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check && excluded.is_none() {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
@@ -406,7 +411,7 @@ impl Searcher<'_> {
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
-		let mut staged_movegen = tt_hit.is_some();
+		let mut staged_movegen = tt_hit.is_some() || excluded.is_some();
 		if staged_movegen {
 			let top_move = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move
@@ -472,7 +477,7 @@ impl Searcher<'_> {
 					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv
 					&& tt_hit.as_ref().unwrap().depth > depth - 5
 					&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
-					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
+					&& tt_hit.as_ref().unwrap().node_kind == NodeKind::LowerBound {
 						let singular_beta = tt_hit.as_ref().unwrap().eval - 2 * depth;
 	
 						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply, singular_beta - 1, singular_beta, past_positions, Some(mv), Some(mv))?;

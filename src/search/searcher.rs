@@ -434,6 +434,7 @@ impl Searcher<'_> {
 			} else {
 				//for tt extension, exclude generating the initial tt move
 				//in this search tt move excluded doesnt exist, then it wont skip, checked within move_gen, but it should exist
+				staged_movegen = false;
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, excluded, ply, true, last_move);
 			}
 		} else {
@@ -475,7 +476,7 @@ impl Searcher<'_> {
 					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
 						let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
 	
-						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply + 1, singular_beta - 1, singular_beta, past_positions, Some(mv), Some(mv))?;
+						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply, singular_beta - 1, singular_beta, past_positions, Some(mv), Some(mv))?;
 	
 						if se_eval.score < singular_beta { 
 							new_depth += 1;

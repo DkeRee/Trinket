@@ -498,6 +498,9 @@ impl Searcher<'_> {
 				//History Leaf Reduction
 				reduction -= sm.history / 1500;
 
+				//Conthist Reduction
+				reduction -= self.movegen.sorter.get_conthist(mv, ply, &boardwrapper.board) / 1500;
+
 				//LMR can be applied
 				//IF depth is above sufficient depth
 				//IF the first X searched are searched

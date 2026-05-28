@@ -387,8 +387,7 @@ impl Searcher<'_> {
 		}
 
 		//Razoring
-		if !is_pv
-		&& !in_check
+		if !in_check
 		&& depth < 6
 		&& static_eval <= alpha - (250 + depth * 120) {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply)?;

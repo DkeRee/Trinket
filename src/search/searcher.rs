@@ -464,16 +464,16 @@ impl Searcher<'_> {
 			//Extensions
 
 			//TT Extension/Cutting
-			if depth > 3 
+			if depth > 7 
 			&& tt_hit.as_ref().is_some() 
 			&& !globally_extended
 			&& excluded.is_none() {
 				if tt_hit.as_ref().unwrap().best_move.is_some() {
 					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv
-					&& tt_hit.as_ref().unwrap().depth >= depth - 3
+					&& tt_hit.as_ref().unwrap().depth > depth - 5
 					&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
 					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
-						let singular_beta = tt_hit.as_ref().unwrap().eval - depth;
+						let singular_beta = tt_hit.as_ref().unwrap().eval - 2 * depth;
 	
 						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply, singular_beta - 1, singular_beta, past_positions, Some(mv), Some(mv))?;
 	

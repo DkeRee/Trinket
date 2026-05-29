@@ -548,7 +548,7 @@ impl Searcher<'_> {
 					}
 				}
 
-				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove {
+				if reduction < 0 || in_check || sm.is_killer || sm.is_countermove || move_is_check {
 					reduction = 0;
 				}
 

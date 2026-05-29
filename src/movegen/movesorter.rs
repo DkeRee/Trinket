@@ -262,7 +262,7 @@ impl MoveSorter {
 
 	pub fn read_major_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {
 		let pawn_hist = self.major_corrhist[boardwrapper.board.side_to_move() as usize][(boardwrapper.major_hash % Self::CORRHIST_SIZE as u64) as usize];
-		pawn_hist / 150.0
+		pawn_hist / 180.0
 	}
 
 	pub fn read_material_corrhist(&mut self, boardwrapper: &BoardWrapper) -> f32 {

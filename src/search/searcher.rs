@@ -774,6 +774,7 @@ impl Searcher<'_> {
 			return Some((None, stand_pat));
 		}
 
+		let static_eval = stand_pat.score;
 		let mut best_move = None;
 		let mut eval = stand_pat;
 		let mut tt_nodetype = NodeKind::UpperBound;
@@ -811,6 +812,14 @@ impl Searcher<'_> {
 		}
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+
+		if best_move.is_some() {
+			if (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) {
+				self.movegen.sorter.add_pawn_corrhist(boardwrapper, 0, eval.score, static_eval);
+				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, 0, eval.score, static_eval);
+				self.movegen.sorter.add_material_corrhist(boardwrapper, 0, eval.score, static_eval);
+			}
+		}
 
 		return Some((best_move, eval));
 	}

@@ -386,7 +386,7 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if static_eval < Score::CHECKMATE_BASE && depth <= Self::MAX_DEPTH_RFP && !in_check {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -518,7 +518,7 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
-				&& alpha > -Score::CHECKMATE_BASE 
+				&& eval.score > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& !in_check {
 					past_positions.pop();
@@ -526,7 +526,9 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				if depth >= Self::HISTORY_DEPTH_MIN 
+				&& sm.history < -500 * depth
+				&& eval.score > -Score::CHECKMATE_BASE {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -781,7 +783,7 @@ impl Searcher<'_> {
 		for mut sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
+			if eval.score > -Score::CHECKMATE_BASE && sm.importance < 0 {
 				break;
 			}
 

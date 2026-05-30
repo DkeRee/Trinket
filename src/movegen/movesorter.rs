@@ -155,7 +155,7 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = -(depth * depth + 50);
+		let bonus = -(depth * depth);
 		
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
 

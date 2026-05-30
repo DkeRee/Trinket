@@ -666,24 +666,54 @@ impl Searcher<'_> {
 			}
 		}
 
-		//Malus all non-capture histories up to beta-cutoff, if best move exists
-		if best_move.is_some() {
-			//malus tt stagedmovegen move, if the beta-cutoff isn't the staged movegen move
-			let loop_to = if tt_nodetype == NodeKind::LowerBound {
-				legal_index - 1
+		// Malus all searched quiet moves except the winning move.
+		// For beta cutoffs, this includes all moves searched before the cutoff move.
+		// For exact/all nodes, this includes all searched moves except best_move.
+		// Also malus the staged TT move if it lost.
+
+		if let Some(best_mv) = best_move {
+
+			let searched_moves = if tt_nodetype == NodeKind::LowerBound {
+				legal_index // cutoff move is at legal_index, exclude it
 			} else {
-				legal_index
+				legal_index + 1 // one past the last searched move
 			};
 
-			if loop_to != usize::MAX {
-				for i in 0..loop_to {
-					legal_moves[i as usize].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-					legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-				}
+			for sm in legal_moves.iter().take(searched_moves) {
+				if sm.mv != best_mv {
+					sm.clone().decay_history(
+						&mut self.movegen.sorter,
+						depth,
+						&boardwrapper.board
+					);
 
-				if staged_movegen_move.clone().is_some() && !staged_movegen {
-					staged_movegen_move.clone().unwrap().decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-					staged_movegen_move.clone().unwrap().decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+					sm.clone().decay_conthist(
+						&mut self.movegen.sorter,
+						depth,
+						ply,
+						&boardwrapper.board
+					);
+				}
+			}
+
+			// If the staged TT move was searched separately and lost,
+			// malus it too.
+			if !staged_movegen {
+				if let Some(sm) = staged_movegen_move.as_ref() {
+					if sm.mv != best_mv {
+						sm.clone().decay_history(
+							&mut self.movegen.sorter,
+							depth,
+							&boardwrapper.board
+						);
+
+						sm.clone().decay_conthist(
+							&mut self.movegen.sorter,
+							depth,
+							ply,
+							&boardwrapper.board
+						);
+					}
 				}
 			}
 		}

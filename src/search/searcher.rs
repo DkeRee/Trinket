@@ -803,11 +803,14 @@ impl Searcher<'_> {
 				alpha = eval.score;
 				if alpha >= beta {
 					tt_nodetype = NodeKind::LowerBound;
+					sm.insert_history(&mut self.movegen.sorter, 0, &boardwrapper.board);
 					break;
 				} else {
 					tt_nodetype = NodeKind::Exact
 				}
 			}
+
+			sm.decay_history(&mut self.movegen.sorter, 0, &boardwrapper.board);
 		}
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);

@@ -176,25 +176,23 @@ impl MoveSorter {
 	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
-		let conthist = &mut self.conthist.0[idx];
 
 		let bonus = depth * depth + 50;
+		let entry = &mut self.conthist.0[idx];
 
-		if !bonus.checked_mul(*conthist).is_none() {
-			*conthist += bonus - bonus * (*conthist) / 2000;
-		}
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+    	*entry += delta as i32;
 	}
 
 	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
-		let conthist = &mut self.conthist.0[idx];
 
-		let penalty = depth * depth + 50;
+		let bonus = -(depth * depth + 50);
+		let entry = &mut self.conthist.0[idx];
 
-		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 2000;
-		}
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+    	*entry += delta as i32;
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {

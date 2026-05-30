@@ -445,6 +445,7 @@ impl Searcher<'_> {
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
 		let mut staged_movegen = tt_hit.is_some();
+		let mut staged_movegen_move = None;
 		if staged_movegen {
 			let top_move = if tt_hit.is_some() {
 				tt_hit.clone().unwrap().best_move
@@ -462,7 +463,8 @@ impl Searcher<'_> {
 				};
 				let mut sm = SortedMove::new(top_move.unwrap(), 0, movetype);
 	
-				legal_moves.push(sm);
+				legal_moves.push(sm.clone());
+				staged_movegen_move = Some(sm.clone());
 			} else {
 				staged_movegen = false;
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
@@ -634,13 +636,6 @@ impl Searcher<'_> {
 					sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 					sm.insert_countermove(&mut self.movegen.sorter, last_move);
-
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						}
-					}
-
 					break;
 				} else {
 					tt_nodetype = NodeKind::Exact;
@@ -656,7 +651,6 @@ impl Searcher<'_> {
 				&& !staged_movegen;
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 
 			if do_spp {
 				break;
@@ -668,8 +662,29 @@ impl Searcher<'_> {
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
 				legal_index = 0; 
-				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
+			}
+		}
+
+		//Malus all non-capture histories up to beta-cutoff, if best move exists
+		if best_move.is_some() {
+			//malus tt stagedmovegen move, if the beta-cutoff isn't the staged movegen move
+			if staged_movegen_move.clone().is_some() && !staged_movegen {
+				staged_movegen_move.clone().unwrap().decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+				staged_movegen_move.clone().unwrap().decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+			}
+
+			let loop_to = if tt_nodetype == NodeKind::LowerBound {
+				legal_index - 1
+			} else {
+				legal_index
+			};
+
+			if loop_to != usize::MAX {
+				for i in 0..loop_to {
+					legal_moves[i as usize].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+					legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+				}
 			}
 		}
 

@@ -177,7 +177,7 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = depth * depth + 50;
+		let bonus = i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
@@ -188,7 +188,7 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = -(depth * depth + 50);
+		let bonus = -i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;

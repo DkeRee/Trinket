@@ -119,17 +119,21 @@ impl Engine<'_> {
 
 		if time != u64::MAX {
 			thread::spawn(move || {
-				let hard_timeout = if movetime.is_none() {
-					let mut hard_timeout_div = 2;
-					if let Some(movestogo) = movestogo {
-						hard_timeout_div /= movestogo / 10;
-					}
-
-					(time + timeinc) / (hard_timeout_div) as u64
+				let hard_timeout = if let Some(mt) = movetime {
+					mt as u64
 				} else {
-					movetime.unwrap() as u64
+					let mtg =
+						movestogo.unwrap_or(30).max(1) as u64;
+		
+					let base_soft =
+						(time + timeinc) / mtg;
+		
+					let hard =
+						base_soft * 4;
+		
+					hard.min((time + timeinc) / 2)
 				};
-
+		
 				thread::sleep(Duration::from_millis(hard_timeout));
 				abort.store(true, Ordering::Relaxed);
 			});

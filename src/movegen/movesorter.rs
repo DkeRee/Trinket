@@ -180,7 +180,7 @@ impl MoveSorter {
 		let bonus = depth * depth + 50;
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
     	*entry += delta as i32;
 	}
 
@@ -191,7 +191,7 @@ impl MoveSorter {
 		let bonus = -(depth * depth + 50);
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
     	*entry += delta as i32;
 	}
 

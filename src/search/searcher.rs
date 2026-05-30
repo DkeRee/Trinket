@@ -25,6 +25,9 @@ pub struct Searcher<'a> {
 	pub time_control: TimeControl,
 	pub shared_info: &'a SharedInfo<'a>,
 	pub movegen: MoveGen,
+	stable_depths: i32,
+	last_best_move: Option<Move>,
+	root_move_nodes: [u64; 4096],
 	total_thread_count: u32,
 	nodes: u64,
 	boardwrapper: BoardWrapper,
@@ -38,6 +41,9 @@ impl Searcher<'_> {
 			time_control: time_control,
 			shared_info: shared_info,
 			movegen: movegen,
+			stable_depths: 0,
+			last_best_move: None,
+			root_move_nodes: [0; 4096],
 			total_thread_count: total_thread_count,
 			nodes: 0,
 			boardwrapper: boardwrapper,
@@ -107,36 +113,69 @@ impl Searcher<'_> {
 				let movetime = self.time_control.movetime;
 				let movestogo = self.time_control.movestogo;
 				
-				//set time
-				match self.boardwrapper.board.side_to_move() {
-					Color::White => {
-						time = self.time_control.wtime as u64;
-						timeinc = self.time_control.winc as u64;
-					},
-					Color::Black => {
-						time = self.time_control.btime as u64;
-						timeinc = self.time_control.binc as u64;	
-					}
-				}
-
-				let elapsed: f32 = now.elapsed().as_secs_f32() * 1000_f32;
-
-				if time != u64::MAX {
-					let mut soft_timeout = None;
-
-					let mut soft_timeout_div = 25;
-					if let Some(movestogo) = movestogo {
-						soft_timeout_div /= movestogo / 10;
-					}
-
-					soft_timeout = Some((time + timeinc) / (soft_timeout_div) as u64);
-
-					if movetime.is_none() && !soft_timeout.is_none() {
-						if elapsed as u64 > soft_timeout.unwrap() {
-							break;
+				let (time, timeinc) = match self.boardwrapper.board.side_to_move() {
+					Color::White => (
+						self.time_control.wtime as u64,
+						self.time_control.winc as u64
+					),
+					Color::Black => (
+						self.time_control.btime as u64,
+						self.time_control.binc as u64
+					)
+				};
+				
+				let elapsed =
+					now.elapsed().as_secs_f32() * 1000.0;
+				
+				if time != u64::MAX && movetime.is_none() {
+				
+					let mtg =
+						movestogo.unwrap_or(30).max(1) as u64;
+				
+					let base_soft =
+						(time + timeinc) / mtg;
+				
+					let mut soft_timeout = base_soft;
+				
+					if let Some(best_move) = best_mv {
+				
+						let idx =
+							((best_move.from as usize) << 6)
+							| best_move.to as usize;
+				
+						let best_nodes =
+							self.root_move_nodes[idx];
+				
+						let share =
+							best_nodes as f32
+							/ self.nodes.max(1) as f32;
+				
+						let scale =
+							2.0 - 1.5 * share;
+				
+						soft_timeout =
+							((soft_timeout as f32) * scale) as u64;
+				
+						if Some(best_move) == self.last_best_move {
+							self.stable_depths += 1;
+						} else {
+							self.stable_depths = 0;
+						}
+				
+						self.last_best_move =
+							Some(best_move);
+				
+						if self.stable_depths >= 4 {
+							soft_timeout /= 2;
 						}
 					}
+				
+					if elapsed as u64 > soft_timeout {
+						break;
+					}
 				}
+
+				self.last_best_move = best_mv.clone();
 
 				if !is_main_thread {
 					continue;

@@ -471,6 +471,7 @@ impl Searcher<'_> {
 			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
 		}
 
+		let mut skip_all_quiets = false;
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
 		let mut tt_nodetype = NodeKind::UpperBound;
@@ -478,6 +479,12 @@ impl Searcher<'_> {
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
+
+			if skip_all_quiets && sm.movetype == MoveType::Quiet {
+				legal_index += 1;
+				continue;
+			}
+
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
 
@@ -508,21 +515,16 @@ impl Searcher<'_> {
 			} else {
 				//Pruning
 
-				//LMP
-				//We can skip specific quiet moves that are very late in a node
-				//IF isn't PV
-				//IF low depth
-				//IF move is quiet
-				//IF alpha is NOT a losing mate
-				//IF IS late move
-				//IF is NOT a check
-				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
-				&& sm.movetype == MoveType::Quiet 
+				//Late Move Pruning
+				if !skip_all_quiets
+				&& !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& alpha > -Score::CHECKMATE_BASE 
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& !in_check {
 					past_positions.pop();
-					break;
+					skip_all_quiets = true;
+					legal_index += 1;
+					continue;
 				}
 
 				//History Pruning

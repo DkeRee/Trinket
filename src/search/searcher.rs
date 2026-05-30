@@ -438,6 +438,7 @@ impl Searcher<'_> {
 			}
 		}
 
+		let mut init_tt_move: Option<SortedMove> = None;
 		let mut best_move = None;
 		let mut best_move_type = None;
 		let mut eval = Eval::new(i32::MIN, false);
@@ -637,7 +638,12 @@ impl Searcher<'_> {
 
 					if legal_index > 0 {
 						for i in 0..(legal_index - 1) {
+							if init_tt_move.is_some() {
+								init_tt_move.clone().unwrap().decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+								init_tt_move.clone().unwrap().decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+							}
 							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+							legal_moves[i as usize].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 						}
 					}
 
@@ -655,9 +661,6 @@ impl Searcher<'_> {
 				&& sm.movetype == MoveType::Quiet
 				&& !staged_movegen;
 			}
-
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-
 			if do_spp {
 				break;
 			}
@@ -668,7 +671,7 @@ impl Searcher<'_> {
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
 				legal_index = 0; 
-				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+				init_tt_move = Some(legal_moves[0].clone());
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
 			}
 		}

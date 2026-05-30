@@ -669,22 +669,15 @@ impl Searcher<'_> {
 		//Malus all non-capture histories up to beta-cutoff, if best move exists
 		if best_move.is_some() {
 			//malus tt stagedmovegen move, if the beta-cutoff isn't the staged movegen move
-			let loop_to = if tt_nodetype == NodeKind::LowerBound {
-				legal_index - 1
-			} else {
-				legal_index
-			};
+			if staged_movegen_move.clone().is_some() && !staged_movegen {
+				staged_movegen_move.clone().unwrap().decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+				staged_movegen_move.clone().unwrap().decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+			}
 
-			if loop_to != usize::MAX {
-				for i in 0..loop_to {
-					legal_moves[i as usize].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-					legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-				}
-
-				if staged_movegen_move.clone().is_some() && !staged_movegen {
-					staged_movegen_move.clone().unwrap().decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-					staged_movegen_move.clone().unwrap().decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-				}
+			//covers both lowerbound and non-lowerbound cases
+			for i in 0..legal_index {
+				legal_moves[i as usize].decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+				legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 			}
 		}
 

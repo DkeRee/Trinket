@@ -110,7 +110,7 @@ impl MoveSorter {
 							0
 						};
 					} else {
-						increment = 2 * self.get_history(mv_info.mv, board) + 6 * self.get_conthist(mv_info.mv, ply, board);
+						increment = self.get_history(mv_info.mv, board) + 2 * self.get_conthist(mv_info.mv, ply, board);
 						mv_info.history = self.get_history(mv_info.mv, board);
 					}
 				}
@@ -142,7 +142,7 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = i32::min(depth * depth + 50, 1660);
+		let bonus = depth * depth + 50;
 		
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
 
@@ -155,7 +155,7 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = -i32::min(depth * depth + 50, 1660);
+		let bonus = -(depth * depth + 50);
 		
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
 
@@ -174,7 +174,7 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = i32::min(depth * depth + 50, 1660);
+		let bonus = depth * depth + 50;
 		let entry = &mut self.conthist.0[idx];
 
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
@@ -185,7 +185,7 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = -i32::min(depth * depth + 50, 1660);
+		let bonus = -(depth * depth + 50);
 		let entry = &mut self.conthist.0[idx];
 
 		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;

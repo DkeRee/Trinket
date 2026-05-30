@@ -145,9 +145,9 @@ impl MoveSorter {
 
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = depth * depth + 50;
+		let bonus = i32::min(depth * depth + 50, 1660);
 		
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
 
 		*entry += delta as i32;
 	}
@@ -158,9 +158,9 @@ impl MoveSorter {
 
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let bonus = -(depth * depth + 50);
+		let bonus = -i32::min(depth * depth + 50, 1660);
 		
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
 
 		*entry += delta as i32;
 	}
@@ -177,10 +177,10 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = depth * depth + 20;
+		let bonus = i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
     	*entry += delta as i32;
 	}
 
@@ -188,10 +188,10 @@ impl MoveSorter {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 
-		let bonus = -(depth * depth + 20);
+		let bonus = -i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
     	*entry += delta as i32;
 	}
 
@@ -300,7 +300,6 @@ impl MoveSorter {
 	const LOSING_CAPTURE: i32 = -50000;
 	const UNDER_PROMO: i32 = -50000;
 
-	const HISTORY_MAX: i32 = 2000;
 	const CORRHIST_SIZE: usize = 16384;
 	const NULL_MOVE: (usize, usize) = (12, 64);
 }

@@ -80,7 +80,9 @@ impl Searcher<'_> {
 
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
+			let start_nodes = self.nodes;
 			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+			let elapsed_nodes = self.nodes - start_nodes;
 
 			if result != None {
 				let (best_mv, eval) = result.unwrap();
@@ -142,12 +144,11 @@ impl Searcher<'_> {
 						let idx =
 							((best_move.from as usize) << 6)
 							| best_move.to as usize;
-				
-						let best_nodes =
-							self.root_move_nodes[idx];
+
+						self.root_move_nodes[idx] = elapsed_nodes;
 				
 						let share =
-							best_nodes as f32
+							self.root_move_nodes[idx] as f32
 							/ self.nodes.max(1) as f32;
 				
 						let scale =

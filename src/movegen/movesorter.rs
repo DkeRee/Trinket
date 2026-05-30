@@ -110,11 +110,8 @@ impl MoveSorter {
 							0
 						};
 					} else {
-						let history = self.get_history(mv_info.mv, board);
-						let conthist = 2 * self.get_conthist(mv_info.mv, ply, board);
-
-						increment = history + conthist;
-						mv_info.history = history;
+						increment = 2 * self.get_history(mv_info.mv, board) + 6 * self.get_conthist(mv_info.mv, ply, board);
+						mv_info.history = self.get_history(mv_info.mv, board);
 					}
 				}
 	
@@ -147,7 +144,7 @@ impl MoveSorter {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let bonus = i32::min(depth * depth + 50, 1660);
 		
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
 
 		*entry += delta as i32;
 	}
@@ -160,7 +157,7 @@ impl MoveSorter {
 		let entry = &mut self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let bonus = -i32::min(depth * depth + 50, 1660);
 		
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
 
 		*entry += delta as i32;
 	}
@@ -180,7 +177,7 @@ impl MoveSorter {
 		let bonus = i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
     	*entry += delta as i32;
 	}
 
@@ -191,7 +188,7 @@ impl MoveSorter {
 		let bonus = -i32::min(depth * depth + 50, 1660);
 		let entry = &mut self.conthist.0[idx];
 
-		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 16384 as i64;
+		let delta = bonus as i64 - (*entry as i64 * bonus.abs() as i64) / 2000 as i64;
     	*entry += delta as i32;
 	}
 

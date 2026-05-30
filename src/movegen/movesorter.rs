@@ -146,10 +146,7 @@ impl MoveSorter {
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth + 50;
-
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
-		}
+		self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize].saturating_add(change - change * history / Self::HISTORY_MAX);
 	}
 
 	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
@@ -159,10 +156,7 @@ impl MoveSorter {
 	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth;
-
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
-		}
+		self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize].saturating_sub(change + change * history / Self::HISTORY_MAX);
 	}
 
 	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {

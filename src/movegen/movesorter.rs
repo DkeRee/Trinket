@@ -36,7 +36,7 @@ pub struct MoveSorter {
 	history_table: Box<[[[i32; 64]; 64]; 2]>,
 	countermove_table: Box<[[Option<Move>; 64]; 64]>,
 	conthist: Box<Cont_Hist_Array>,
-	conthist_stack: Box<[(usize, usize); 256]>,
+	conthist_stack: Box<[(usize, usize, f32); 256]>,
 	pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	non_pawn_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
 	material_corrhist: Box<[[f32; Self::CORRHIST_SIZE]; 2]>,
@@ -50,7 +50,7 @@ impl MoveSorter {
 			history_table: Box::new([[[0; 64]; 64]; 2]),
 			countermove_table: Box::new([[None; 64]; 64]),
 			conthist: Box::new(Cont_Hist_Array([0; 13 * 65 * 12 * 64])),
-			conthist_stack: Box::new([(0, 0); 256]),
+			conthist_stack: Box::new([(0, 0, 0.0); 256]),
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
@@ -143,6 +143,20 @@ impl MoveSorter {
 		}
 	}
 
+	pub fn add_cont_corrhist(&mut self, depth: i32, ply: i32, best_alpha: i32, static_eval: i32) {
+		let (mv_piece, mv_square, entry) = self.conthist_stack[ply as usize];
+
+		let weight = f32::min(depth as f32 * depth as f32 + 2.0, 62.0) / 596.0;
+		let new_entry = entry * (1.0 - weight) + ((best_alpha - static_eval) as f32).clamp(-81.0, 81.0) * 280.0 * weight;
+
+		self.conthist_stack[ply as usize] = (mv_piece, mv_square, new_entry);
+	}
+
+	pub fn read_cont_corrhist(&mut self, ply: i32) -> f32 {
+		let (_, _, entry) = self.conthist_stack[ply as usize];
+		entry / 180.0
+	}
+
 	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
 		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
 		let change = depth * depth + 50;
@@ -166,15 +180,17 @@ impl MoveSorter {
 	}
 
 	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
-		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
+		let (_, _, contcorrhist) = self.conthist_stack[(ply + 1) as usize];
+		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize, contcorrhist);
 	}
 
 	pub fn set_null_conthist(&mut self, ply: i32) {
-		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
+		let (_, _, contcorrhist) = self.conthist_stack[(ply + 1) as usize];
+		self.conthist_stack[(ply + 1) as usize] = (12, 64, contcorrhist);
 	}
 
 	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
+		let (prev_piece, prev_to, _) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
@@ -186,7 +202,7 @@ impl MoveSorter {
 	}
 
 	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
+		let (prev_piece, prev_to, _) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
 
@@ -269,7 +285,7 @@ impl MoveSorter {
 	}
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
-		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
+		let (counter_piece, counter_to, _) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
 		self.conthist.0[idx]
 	}

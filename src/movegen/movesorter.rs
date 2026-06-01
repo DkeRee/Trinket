@@ -166,14 +166,14 @@ impl MoveSorter {
 	}
 
 	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
-		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
+		self.conthist_stack[(ply + 2) as usize] = (get_piece_index(board, mv), mv.to as usize);
 	}
 
 	pub fn set_null_conthist(&mut self, ply: i32) {
-		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
+		self.conthist_stack[(ply + 2) as usize] = Self::NULL_MOVE;
 	}
 
-	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+	pub fn insert_conthist_ply(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
@@ -185,7 +185,7 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+	pub fn decay_conthist_ply(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
 		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
 		let conthist = &mut self.conthist.0[idx];
@@ -195,6 +195,22 @@ impl MoveSorter {
 		if !penalty.checked_mul(*conthist).is_none() {
 			*conthist -= penalty + penalty * (*conthist) / 2000;
 		}
+	}
+
+	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		//1 ply
+		self.insert_conthist_ply(mv, depth, ply + 1, board);
+
+		//2 ply
+		self.insert_conthist_ply(mv, depth, ply, board);
+	}
+
+	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
+		//1 ply
+		self.insert_conthist_ply(mv, depth, ply + 1, board);
+
+		//2 ply
+		self.insert_conthist_ply(mv, depth, ply, board);
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {

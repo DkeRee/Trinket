@@ -207,10 +207,10 @@ impl MoveSorter {
 
 	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
 		//1 ply
-		self.insert_conthist_ply(mv, depth, ply + 1, board);
+		self.decay_conthist_ply(mv, depth, ply + 1, board);
 
 		//2 ply
-		self.insert_conthist_ply(mv, depth, ply, board);
+		self.decay_conthist_ply(mv, depth, ply, board);
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
@@ -285,9 +285,11 @@ impl MoveSorter {
 	}
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
-		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
-		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
-		self.conthist.0[idx]
+		let (cp_1, ct_1) = self.conthist_stack[(ply + 1) as usize];
+		let (cp_2, ct_2) = self.conthist_stack[ply as usize];
+		let idx_1 = Cont_Hist_Array::index(cp_1, ct_1, get_piece_index(board, mv), mv.to as usize);
+		let idx_2 = Cont_Hist_Array::index(cp_2, ct_2, get_piece_index(board, mv), mv.to as usize);
+		self.conthist.0[idx_1] + self.conthist.0[idx_2]
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

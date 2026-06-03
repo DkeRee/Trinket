@@ -532,6 +532,27 @@ impl Searcher<'_> {
 					continue;
 				}
 
+				//Futility Pruning
+				//If static eval is so far below alpha that even a generous margin per depth
+				//can't rescue this move, skip it.
+				//IF not in check
+				//IF move is quiet
+				//IF not a killer or countermove (those are worth trying regardless)
+				//IF not a move that gives check
+				//IF alpha is not a winning mate score
+				if !in_check
+				&& sm.movetype == MoveType::Quiet
+				&& !sm.is_killer
+				&& !sm.is_countermove
+				&& !move_is_check
+				&& alpha > -Score::CHECKMATE_BASE
+				&& depth < Self::FUTILITY_DEPTH_MAX
+				&& static_eval + Self::FUTILITY_MARGIN_BASE + Self::FUTILITY_MARGIN_DEPTH * depth < alpha {
+					past_positions.pop();
+					legal_index += 1;
+					continue;
+				}
+
 				//get initial value with reduction and pv-search null window
 				let mut reduction = 0;
 
@@ -618,8 +639,6 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
-
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -645,22 +664,9 @@ impl Searcher<'_> {
 				} else {
 					tt_nodetype = NodeKind::Exact;
 				}
-			} else {
-				//SPP
-				do_spp = !is_pv 
-				&& depth <= Self::SPP_DEPTH_CAP 
-				&& !move_is_check 
-				&& !sm.is_killer
-				&& !sm.is_countermove
-				&& sm.movetype == MoveType::Quiet
-				&& !staged_movegen;
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-
-			if do_spp {
-				break;
-			}
 
 			moves_searched += 1;
 			legal_index += 1;
@@ -822,6 +828,8 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
-	const SPP_DEPTH_CAP: i32 = 3;
+	const FUTILITY_DEPTH_MAX: i32 = 8;
+	const FUTILITY_MARGIN_BASE: i32 = 80;
+	const FUTILITY_MARGIN_DEPTH: i32 = 80;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

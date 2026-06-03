@@ -474,6 +474,7 @@ impl Searcher<'_> {
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
 		let mut tt_nodetype = NodeKind::UpperBound;
+		let mut quiet_list: Vec<Move> = Vec::with_capacity(32);
 
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
@@ -618,8 +619,6 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
-
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -635,10 +634,16 @@ impl Searcher<'_> {
 					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 					sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						}
+					// Only penalize quiet moves that were searched before this cutoff
+					for &prev_mv in &quiet_list {
+						let movetype = if (prev_mv.to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
+							MoveType::Quiet
+						} else {
+							MoveType::Loud
+						};
+						let mut prev_sm = SortedMove::new(prev_mv, 0, movetype);
+						prev_sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+						prev_sm.decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 					}
 
 					break;
@@ -647,19 +652,24 @@ impl Searcher<'_> {
 				}
 			} else {
 				//SPP
-				do_spp = !is_pv 
-				&& depth <= Self::SPP_DEPTH_CAP 
-				&& !move_is_check 
+				//If a quiet move fails to beat alpha and we've searched enough moves,
+				//the remaining quiets are unlikely to help either.
+				if !is_pv
+				&& depth <= Self::SPP_DEPTH_CAP
+				&& !move_is_check
+				&& !in_check
 				&& !sm.is_killer
 				&& !sm.is_countermove
 				&& sm.movetype == MoveType::Quiet
-				&& !staged_movegen;
+				&& moves_searched >= 3
+				&& alpha > -Score::CHECKMATE_BASE {
+					break;
+				}
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-
-			if do_spp {
-				break;
+			// Track quiet moves searched so we can penalize them if a later move causes a cutoff
+			if sm.movetype == MoveType::Quiet {
+				quiet_list.push(mv);
 			}
 
 			moves_searched += 1;

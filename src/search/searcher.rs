@@ -474,6 +474,7 @@ impl Searcher<'_> {
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
 		let mut tt_nodetype = NodeKind::UpperBound;
+		let mut quiet_list: Vec<Move> = Vec::with_capacity(32); // track quiet moves searched before a cutoff
 
 		while legal_index < legal_moves.len() {
 			let mut mvlen = legal_moves.len() as i32;
@@ -618,8 +619,6 @@ impl Searcher<'_> {
 
 			past_positions.pop();
 
-			let mut do_spp = false;
-
 			if value.score > eval.score {
 				eval = value;
 				best_move = Some(mv);
@@ -635,31 +634,29 @@ impl Searcher<'_> {
 					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 					sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						}
+					// Penalize quiet moves that were searched before this cutoff move
+					for &prev_mv in &quiet_list {
+						// find the SortedMove for prev_mv and apply decay
+						// we need to call decay via a temporary SortedMove
+						let movetype = if (prev_mv.to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
+							MoveType::Quiet
+						} else {
+							MoveType::Loud
+						};
+						let mut prev_sm = SortedMove::new(prev_mv, 0, movetype);
+						prev_sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+						prev_sm.decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 					}
 
 					break;
 				} else {
 					tt_nodetype = NodeKind::Exact;
 				}
-			} else {
-				//SPP
-				do_spp = !is_pv 
-				&& depth <= Self::SPP_DEPTH_CAP 
-				&& !move_is_check 
-				&& !sm.is_killer
-				&& !sm.is_countermove
-				&& sm.movetype == MoveType::Quiet
-				&& !staged_movegen;
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-
-			if do_spp {
-				break;
+			// Track this quiet move so we can penalize it if a later move causes a cutoff
+			if sm.movetype == MoveType::Quiet {
+				quiet_list.push(mv);
 			}
 
 			moves_searched += 1;
@@ -822,6 +819,5 @@ impl Searcher<'_> {
 	const HISTORY_DEPTH_MIN: i32 = 5;
 	const IID_DEPTH_MIN: i32 = 6;
 	const LMP_DEPTH_MAX: i32 = 3;
-	const SPP_DEPTH_CAP: i32 = 3;
 	const UNDERPROMO_REDUC_DEPTH: i32 = 4;
 }

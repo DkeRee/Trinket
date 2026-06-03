@@ -503,7 +503,8 @@ impl Searcher<'_> {
 			//Extensions
 
 			//TT Extension/Cutting
-			if depth > 3 
+			if ply > 0
+			&& depth > 3 
 			&& tt_hit.as_ref().is_some() 
 			&& !globally_extended
 			&& excluded.is_none() {

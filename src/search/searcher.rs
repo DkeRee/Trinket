@@ -235,12 +235,22 @@ impl Searcher<'_> {
 	}
 
 	fn is_repetition(&self, board: &Board, past_positions: &mut Vec<u64>) -> bool {
-		if past_positions.len() > 0 {
-			for i in 0..past_positions.len() - 1 {
-				if past_positions[i] == board.hash() {
-					return true;
-				}
+		let len = past_positions.len();
+		if len < 2 {
+			return false;
+		}
+		// Step by 2: only check same-side positions (repetition requires the same side to move).
+		// past_positions contains hashes *after* each move was made, so same-side positions
+		// are 2 apart. Walk backwards from the most recent same-side entry.
+		let mut i = len - 2;
+		loop {
+			if past_positions[i] == board.hash() {
+				return true;
 			}
+			if i < 2 {
+				break;
+			}
+			i -= 2;
 		}
 		return false;
 	}

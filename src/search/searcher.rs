@@ -402,30 +402,30 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		let our_pieces = boardwrapper.board.colors(boardwrapper.board.side_to_move());
-		let sliding_pieces = boardwrapper.board.pieces(Piece::Rook) | boardwrapper.board.pieces(Piece::Bishop) | boardwrapper.board.pieces(Piece::Queen);
+		let non_pawns = boardwrapper.board.colors(boardwrapper.board.side_to_move())
+			& !(boardwrapper.board.pieces(Piece::Pawn) | boardwrapper.board.pieces(Piece::King));
 		let improving_nmp_check = if ply > 1 {
 			self.evals[ply as usize] - self.evals[ply as usize - 2] > -100
 		} else {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
+		if ply > 0 && !in_check && !non_pawns.is_empty() && static_eval >= beta && improving_nmp_check {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
 
 			self.movegen.sorter.set_null_conthist(ply);
 			
-			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?;
 
 			null_score.score *= -1;
-		
+
 			if null_score.score >= beta {
-				return Some((None, Eval::new(beta, false))); //return the lower bound produced by the fail high for this node since doing nothing in this position is insanely good
+				return Some((None, Eval::new(null_score.score, false)));
 			}
 		}
-
+		
 		//Razoring
 		if !is_pv
 		&& !in_check
@@ -440,7 +440,7 @@ impl Searcher<'_> {
 
 		let mut best_move = None;
 		let mut best_move_type = None;
-		let mut eval = Eval::new(i32::MIN, false);
+		let mut eval = Eval::new(-Score::CHECKMATE_BASE, false);
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time

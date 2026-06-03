@@ -60,19 +60,39 @@ impl Searcher<'_> {
 
 		let mut last_result = 0;
 		let mut depth_index = 0;
-		let mut window = 10;
-
-		let mut new_alpha = if depth_index + 1 > 3 { last_result - window } else { -i32::MAX };
-		let mut new_beta = if depth_index + 1 > 3 { last_result + window } else { i32::MAX };
 
 		while depth_index < self.time_control.depth && depth_index < 250 {
 			let boardwrapper = &mut self.boardwrapper.clone();
 			let mut past_positions = self.my_past_positions.clone();
-
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
+			let mut window = 10;
+			let mut new_alpha = if depth_index + 1 > 3 { last_result - window } else { -i32::MAX };
+			let mut new_beta = if depth_index + 1 > 3 { last_result + window } else { i32::MAX };
+
 			let start_nodes = self.nodes;
-			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+
+			// inner retry loop for aspiration
+			let result = loop {
+				let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+
+				match result {
+					None => break None,
+					Some((best_mv, eval)) => {
+						if eval.score <= new_alpha {
+							new_beta = (new_alpha + new_beta) / 2;
+							new_alpha = (eval.score - window).max(-i32::MAX);
+							window *= 2;
+						} else if eval.score >= new_beta {
+							new_beta = (eval.score + window).min(i32::MAX);
+							window *= 2;
+						} else {
+							break Some((best_mv, eval));
+						}
+					}
+				}
+			};
+
 			let elapsed_nodes = self.nodes - start_nodes;
 
 			if result != None {
@@ -88,7 +108,7 @@ impl Searcher<'_> {
 					window *= 2;
 					continue;
 				}
-				
+
 				window = 10;
 				last_result = eval.score;
 

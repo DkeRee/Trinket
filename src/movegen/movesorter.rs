@@ -289,7 +289,7 @@ impl MoveSorter {
 		let (cp_2, ct_2) = self.conthist_stack[ply as usize];
 		let idx_1 = Cont_Hist_Array::index(cp_1, ct_1, get_piece_index(board, mv), mv.to as usize);
 		let idx_2 = Cont_Hist_Array::index(cp_2, ct_2, get_piece_index(board, mv), mv.to as usize);
-		self.conthist.0[idx_1] + self.conthist.0[idx_2]
+		self.conthist.0[idx_1] + 2 * self.conthist.0[idx_2]
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {

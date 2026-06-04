@@ -782,7 +782,7 @@ impl Searcher<'_> {
 		for mut sm in move_list {
 			
 			//Futility Pruning
-			let futility_base = eval.score + 200;
+			let futility_base = eval.score;
 			if futility_base <= alpha && sm.see < 0 {
 				// Update eval to max of eval and futility_base (don't just continue blindly)
 				if futility_base > eval.score { 

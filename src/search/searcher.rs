@@ -780,10 +780,15 @@ impl Searcher<'_> {
 		let mut tt_nodetype = NodeKind::UpperBound;
 
 		for mut sm in move_list {
-
-			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
-				break;
+			
+			//Futility Pruning
+			let futility_base = eval.score + 200;
+			if futility_base <= alpha && sm.see < 0 {
+				// Update eval to max of eval and futility_base (don't just continue blindly)
+				if futility_base > eval.score { 
+					eval.score = futility_base; 
+				}
+				continue;
 			}
 
 			//Delta Pruning

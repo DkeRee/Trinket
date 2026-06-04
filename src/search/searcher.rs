@@ -759,12 +759,20 @@ impl Searcher<'_> {
 					NodeKind::Null => {}
 				}
 
-				move_list = self.movegen.qmove_gen(&boardwrapper.board, table_find.best_move, ply);
+				move_list = if in_check {
+					self.movegen.move_gen(&boardwrapper.board, table_find.best_move, ply, false, None) // all moves
+				} else {
+					self.movegen.qmove_gen(&boardwrapper.board, table_find.best_move, ply)
+				};
 
 				Some(table_find)
 			},
 			None => {
-				move_list = self.movegen.qmove_gen(&boardwrapper.board, None, ply);
+				move_list = if in_check {
+					self.movegen.move_gen(&boardwrapper.board, None, ply, false, None) // all moves
+				} else {
+					self.movegen.qmove_gen(&boardwrapper.board, None, ply)
+				};
 
 				None
 			}
@@ -787,9 +795,11 @@ impl Searcher<'_> {
 			}
 
 			//Delta Pruning
-			let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
-			if !in_check && eval.score + captured_value + 200 <= alpha {
-				continue;
+			if sm.movetype == MoveType::Loud {
+				let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
+				if !in_check && eval.score + captured_value + 200 <= alpha {
+					continue;
+				}
 			}
 
 			let mv = sm.mv;

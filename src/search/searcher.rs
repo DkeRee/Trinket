@@ -280,12 +280,6 @@ impl Searcher<'_> {
 			depth += 1;
 		}
 
-		match boardwrapper.board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
-			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
-			GameStatus::Ongoing => {}
-		}
-
 		if depth <= 0 {
 			return self.qsearch(&abort, boardwrapper, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
 		}
@@ -441,7 +435,7 @@ impl Searcher<'_> {
 
 		let mut best_move = None;
 		let mut best_move_type = None;
-		let mut eval = Eval::new(i32::MIN, false);
+		let mut eval = Eval::new(-Score::CHECKMATE_BASE, false);
 
 		//STAGED MOVEGEN
 		//Check if TT moves produce a cutoff before generating moves to same time
@@ -672,6 +666,12 @@ impl Searcher<'_> {
 				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
 			}
+		}
+
+		match boardwrapper.board.status() {
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
+			GameStatus::Ongoing => {}
 		}
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);

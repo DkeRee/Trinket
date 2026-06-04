@@ -721,13 +721,14 @@ impl Searcher<'_> {
 			}
 		}
 
-		//beta cutoff
-		if stand_pat.score >= beta {
-			return Some((None, Eval::new(beta, false)));
-		}
-
-		if alpha < stand_pat.score {
-			alpha = stand_pat.score;
+		//Stand Pat
+		if !in_check {
+			if stand_pat.score >= beta {
+				return Some((None, Eval::new(beta, false)));
+			}
+			if alpha < stand_pat.score {
+				alpha = stand_pat.score;
+			}
 		}
 
 		let mut move_list: Vec<SortedMove>;

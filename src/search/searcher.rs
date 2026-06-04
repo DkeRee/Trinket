@@ -12,6 +12,7 @@ use crate::search::search_master::*;
 use crate::movegen::movesorter::*;
 use crate::movegen::movegen::*;
 use crate::movegen::boardwrapper::*;
+use crate::movegen::see::*;
 
 pub struct SearchInfo {
 	pub boardwrapper: BoardWrapper,
@@ -783,6 +784,12 @@ impl Searcher<'_> {
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {
 				break;
+			}
+
+			//Delta Pruning
+			let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
+			if !in_check && eval.score + captured_value + 200 <= alpha {
+				continue;
 			}
 
 			let mv = sm.mv;

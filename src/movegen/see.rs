@@ -25,7 +25,7 @@ impl See {
 		let mv_piece = board.piece_on(mv.from).unwrap();
 
 		self.gains[0] = if let Some(piece) = board.piece_on(mv.to) {
-			self.piece_pts(piece)
+			Self::piece_pts(piece)
 		} else {
 			if mv_piece == Piece::King {
 				return 0;
@@ -35,7 +35,7 @@ impl See {
 
 		let mut color = !board.side_to_move();
 		let mut blockers = board.occupied() & !mv.from.bitboard();
-		let mut last_piece_pts = self.piece_pts(mv_piece);
+		let mut last_piece_pts = Self::piece_pts(mv_piece);
 	
 		'outer: for i in 1..32 {
 			self.gains[i] = last_piece_pts - self.gains[i - 1];
@@ -43,7 +43,7 @@ impl See {
 			let defenders = board.colors(color) & blockers;
 
 			for &piece in &Piece::ALL {
-				last_piece_pts = self.piece_pts(piece);
+				last_piece_pts = Self::piece_pts(piece);
 
 				let mut victim_square = match piece {
 					Piece::Pawn => {
@@ -83,7 +83,7 @@ impl See {
 		self.gains[0]
 	}
 
-	fn piece_pts(&self, piece: Piece) -> i32 {
+	pub fn piece_pts(piece: Piece) -> i32 {
 		match piece {
 			Piece::Pawn => 100,
 			Piece::Knight => 375,

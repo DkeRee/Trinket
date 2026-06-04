@@ -698,12 +698,6 @@ impl Searcher<'_> {
 
 		self.nodes += 1;
 
-		match boardwrapper.board.status() {
-			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
-			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
-			GameStatus::Ongoing => {}
-		}
-
 		let base_eval = evaluate(&boardwrapper.board) as f32;
 		let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
 		let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
@@ -815,6 +809,12 @@ impl Searcher<'_> {
 					tt_nodetype = NodeKind::Exact
 				}
 			}
+		}
+
+		match boardwrapper.board.status() {
+			GameStatus::Won => return Some((None, Eval::new(-Score::CHECKMATE_BASE + ply, true))),
+			GameStatus::Drawn => return Some((None, Eval::new(Score::DRAW, false))),
+			GameStatus::Ongoing => {}
 		}
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);

@@ -778,23 +778,36 @@ impl Searcher<'_> {
 		let mut best_move = None;
 		let mut eval = stand_pat;
 		let mut tt_nodetype = NodeKind::UpperBound;
+		let mut move_count = 0;
 
 		for mut sm in move_list {
-
-			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
-				break;
-			}
-
-			//Delta Pruning
-			let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
-			if !in_check && eval.score + captured_value + 200 <= alpha {
-				continue;
-			}
-
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
 			board_wrapper_cache.play_unchecked(&mut sm);
+
+			let move_is_check = !board_wrapper_cache.board.checkers().is_empty();
+
+			move_count += 1;
+
+			let futility_base = eval.score + 200;
+			if alpha > -Score::CHECKMATE_BASE + ply {
+				if !move_is_check && futility_base > -Score::CHECKMATE_BASE + ply && mv.promotion.is_none() {
+					if move_count > 2 {
+						continue;
+					}
+				}
+
+				//prune losing captures found through SEE swap algorithm
+				if sm.importance < 0 {
+					break;
+				}
+	
+				//Delta Pruning
+				let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
+				if !in_check && eval.score + captured_value + 200 <= alpha {
+					continue;
+				}
+			}
 
 			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;
 

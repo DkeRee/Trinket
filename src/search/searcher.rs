@@ -790,21 +790,21 @@ impl Searcher<'_> {
 			move_count += 1;
 
 			let futility_base = eval.score + 200;
-			if alpha > -Score::CHECKMATE_BASE + ply 
-			&& !move_is_check 
-			&& futility_base > -Score::CHECKMATE_BASE + ply 
-			&& mv.promotion.is_none() {
-				//Delta Pruning
-				let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
-				if !in_check && futility_base + captured_value <= alpha {
-					continue;
-				}
 
-				//See Futility
-				if sm.see < alpha - futility_base {
-					eval.score = i32::max(eval.score, i32::min(alpha, futility_base));
-					continue;
-				}
+			//Delta Pruning
+			let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
+			if !in_check && futility_base + captured_value <= alpha {
+				continue;
+			}
+
+			//See Futility
+			if sm.see < alpha - futility_base {
+				eval.score = i32::max(eval.score, i32::min(alpha, futility_base));
+				continue;
+			}
+
+			if sm.importance < 0 {
+				break;
 			}
 
 			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;

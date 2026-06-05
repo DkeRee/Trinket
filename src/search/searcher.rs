@@ -790,21 +790,19 @@ impl Searcher<'_> {
 			move_count += 1;
 
 			let futility_base = eval.score + 200;
-			if alpha > -Score::CHECKMATE_BASE + ply {
-				if !move_is_check && futility_base > -Score::CHECKMATE_BASE + ply && mv.promotion.is_none() {
-					if move_count > 2 {
-						continue;
-					}
-				}
-
-				//prune losing captures found through SEE swap algorithm
-				if sm.importance < 0 {
-					break;
-				}
-	
+			if alpha > -Score::CHECKMATE_BASE + ply 
+			&& !move_is_check 
+			&& futility_base > -Score::CHECKMATE_BASE + ply 
+			&& mv.promotion.is_none() {
 				//Delta Pruning
 				let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
-				if !in_check && eval.score + captured_value + 200 <= alpha {
+				if !in_check && futility_base + captured_value <= alpha {
+					continue;
+				}
+
+				//See Futility
+				if sm.see < alpha - futility_base {
+					eval.score = i32::max(eval.score, i32::min(alpha, futility_base));
 					continue;
 				}
 			}

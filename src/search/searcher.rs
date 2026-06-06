@@ -556,6 +556,11 @@ impl Searcher<'_> {
 						reduction += 1;
 					}
 				}
+				
+				//See Reduction
+				if sm.see < 0 {
+					reduction += 1;
+				}
 
 				//Passed Pawn Reduction
 				let all_pawns = boardwrapper.board.pieces(Piece::Pawn);

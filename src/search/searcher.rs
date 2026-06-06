@@ -789,6 +789,10 @@ impl Searcher<'_> {
 
 			move_count += 1;
 
+			if sm.importance < 0 {
+				break;
+			}
+
 			let futility_base = eval.score + 200;
 
 			//Delta Pruning
@@ -801,10 +805,6 @@ impl Searcher<'_> {
 			if sm.see < alpha - futility_base {
 				eval.score = i32::max(eval.score, i32::min(alpha, futility_base));
 				continue;
-			}
-
-			if sm.importance < 0 {
-				break;
 			}
 
 			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;

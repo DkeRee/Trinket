@@ -779,7 +779,14 @@ impl Searcher<'_> {
 		let mut eval = stand_pat;
 		let mut tt_nodetype = NodeKind::UpperBound;
 
+		let mut mvcount = 0;
+
 		for mut sm in move_list {
+			mvcount += 1;
+
+			if mvcount > 2 {
+				break;
+			}
 
 			//prune losing captures found through SEE swap algorithm
 			if sm.importance < 0 {

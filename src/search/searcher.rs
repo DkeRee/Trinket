@@ -82,7 +82,7 @@ impl Searcher<'_> {
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
 			let start_nodes = self.nodes;
-			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None, None);
 			let elapsed_nodes = self.nodes - start_nodes;
 
 			if result != None {
@@ -255,7 +255,7 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {		
+	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>, excluded: Option<Move>) -> Option<(Option<Move>, Eval)> {		
 		//abort?
 		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -287,7 +287,7 @@ impl Searcher<'_> {
 		}
 
 		if depth <= 0 {
-			return self.qsearch(&abort, boardwrapper, alpha, beta, ply); //proceed with qSearch to avoid horizon effect
+			return self.qsearch(&abort, boardwrapper, alpha, beta, ply, excluded); //proceed with qSearch to avoid horizon effect
 		}
 
 		//check for three move repetition
@@ -309,21 +309,23 @@ impl Searcher<'_> {
 						false
 					};
 
-					match table_find.node_kind {
-						NodeKind::Exact => {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						},
-						NodeKind::UpperBound => {
-							if table_find.eval <= alpha {
+					if excluded.is_none() {
+						match table_find.node_kind {
+							NodeKind::Exact => {
 								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-							}	
-						},
-						NodeKind::LowerBound => {
-							if table_find.eval >= beta {
-								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-							}
-						},
-						NodeKind::Null => {}
+							},
+							NodeKind::UpperBound => {
+								if table_find.eval <= alpha {
+									return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+								}	
+							},
+							NodeKind::LowerBound => {
+								if table_find.eval >= beta {
+									return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+								}
+							},
+							NodeKind::Null => {}
+						}
 					}
 				}
 
@@ -338,7 +340,7 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move, excluded)?;
 					iid_move = best_mv;
 				}
 
@@ -354,7 +356,8 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if tt_hit.as_ref().is_some() && tt_hit.as_ref().unwrap().depth >= depth {
+		let static_eval = if tt_hit.as_ref().is_some()
+		&& tt_hit.as_ref().unwrap().depth >= depth {
 			tt_hit.as_ref().unwrap().eval
 		} else {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
@@ -411,14 +414,14 @@ impl Searcher<'_> {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check {
+		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check && excluded.is_none() {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
 
 			self.movegen.sorter.set_null_conthist(ply);
 			
-			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None, None)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -432,7 +435,7 @@ impl Searcher<'_> {
 		&& !in_check
 		&& depth < 6
 		&& static_eval <= alpha - (250 + depth * 120) {
-			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply)?;
+			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply, excluded)?;
 
 			if v.score <= alpha {
 				return Some((None, Eval::new(v.score, false)));
@@ -455,18 +458,25 @@ impl Searcher<'_> {
 				None
 			};
 
-			if top_move.is_some() {
-				let movetype = if (top_move.unwrap().to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
-					MoveType::Quiet
+			if excluded.is_none() {
+				if top_move.is_some() {
+					let movetype = if (top_move.unwrap().to.bitboard() & boardwrapper.board.colors(!boardwrapper.board.side_to_move())).is_empty() {
+						MoveType::Quiet
+					} else {
+						MoveType::Loud
+					};
+					let mut sm = SortedMove::new(top_move.unwrap(), 0, movetype);
+		
+					legal_moves.push(sm);
 				} else {
-					MoveType::Loud
-				};
-				let mut sm = SortedMove::new(top_move.unwrap(), 0, movetype);
-	
-				legal_moves.push(sm);
+					staged_movegen = false;
+					legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+				}
 			} else {
+				//for tt extension, exclude generating the initial tt move
+				//in this search tt move excluded doesnt exist, then it wont skip, checked within move_gen, but it should exist
 				staged_movegen = false;
-				legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
+				legal_moves = self.movegen.move_gen(&boardwrapper.board, excluded, ply, true, last_move);
 			}
 		} else {
 			legal_moves = self.movegen.move_gen(&boardwrapper.board, None, ply, false, last_move);
@@ -481,8 +491,6 @@ impl Searcher<'_> {
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
-
-			sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
 				
 			board_wrapper_cache.play_unchecked(sm);
 
@@ -495,14 +503,37 @@ impl Searcher<'_> {
 
 			//Extensions
 
+			//TT Extension/Cutting
+			if depth > 7 
+			&& tt_hit.as_ref().is_some() 
+			&& !globally_extended
+			&& excluded.is_none() {
+				if tt_hit.as_ref().unwrap().best_move.is_some() {
+					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv
+					&& tt_hit.as_ref().unwrap().depth >= depth - 3
+					&& i32::abs(tt_hit.as_ref().unwrap().eval) < Score::CHECKMATE_BASE - ply
+					&& tt_hit.as_ref().unwrap().node_kind != NodeKind::UpperBound {
+						let singular_beta = i32::max(-Score::CHECKMATE_BASE + 1, tt_hit.as_ref().unwrap().eval - 2 * depth);
+	
+						let (_, mut se_eval) = self.search(&abort, boardwrapper, new_depth / 2, ply, singular_beta - 1, singular_beta, past_positions, last_move, Some(mv))?;
+	
+						if se_eval.score < singular_beta { 
+							new_depth += 1;
+						}
+					}
+				}
+			}
+
 			//King Pawn Endgame Extension
 			let non_pawns = boardwrapper.board.pieces(Piece::Rook) | boardwrapper.board.pieces(Piece::Bishop) | boardwrapper.board.pieces(Piece::Queen) | boardwrapper.board.pieces(Piece::Knight);
 			if !(boardwrapper.board.occupied() & non_pawns).is_empty() && (board_wrapper_cache.board.occupied() & non_pawns).is_empty() && !globally_extended && !staged_movegen {
 				new_depth += 1;
 			}
 
+			sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
+
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv), None)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -593,7 +624,7 @@ impl Searcher<'_> {
 					reduction = 0;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), None)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -601,7 +632,7 @@ impl Searcher<'_> {
 				//check if reductions should be removed
 				//search with full depth and null window
 				if value.score > alpha && reduction > 0 {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), None)?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -610,7 +641,7 @@ impl Searcher<'_> {
 				//if PV
 				//search with full depth and full window
 				if value.score > alpha && value.score < beta {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv), None)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	
@@ -674,7 +705,9 @@ impl Searcher<'_> {
 			}
 		}
 
-		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
+		if excluded.is_none() {
+			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
+		}
 
 		if best_move_type.is_some() {
 			if best_move_type.unwrap() == MoveType::Quiet
@@ -688,7 +721,7 @@ impl Searcher<'_> {
 		return Some((best_move, eval));
 	}
 
-	fn qsearch(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut alpha: i32, beta: i32, mut ply: i32) -> Option<(Option<Move>, Eval)> {
+	fn qsearch(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut alpha: i32, beta: i32, mut ply: i32, excluded: Option<Move>) -> Option<(Option<Move>, Eval)> {
 		//abort?
 		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -742,21 +775,23 @@ impl Searcher<'_> {
 					false
 				};
 
-				match table_find.node_kind {
-					NodeKind::Exact => {
-						return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-					},
-					NodeKind::UpperBound => {
-						if table_find.eval <= alpha {
+				if excluded.is_none() {
+					match table_find.node_kind {
+						NodeKind::Exact => {
 							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}	
-					},
-					NodeKind::LowerBound => {
-						if table_find.eval >= beta {
-							return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
-						}
-					},
-					NodeKind::Null => {}
+						},
+						NodeKind::UpperBound => {
+							if table_find.eval <= alpha {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}	
+						},
+						NodeKind::LowerBound => {
+							if table_find.eval >= beta {
+								return Some((table_find.best_move, Eval::new(table_find.eval, is_checkmate)));
+							}
+						},
+						NodeKind::Null => {}
+					}
 				}
 
 				move_list = self.movegen.qmove_gen(&boardwrapper.board, table_find.best_move, ply);
@@ -796,7 +831,7 @@ impl Searcher<'_> {
 			let mut board_wrapper_cache = boardwrapper.clone();
 			board_wrapper_cache.play_unchecked(&mut sm);
 
-			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1)?;
+			let (_, mut child_eval) = self.qsearch(&abort, &board_wrapper_cache, -beta, -alpha, ply + 1, None)?;
 
 			child_eval.score *= -1;
 
@@ -817,7 +852,9 @@ impl Searcher<'_> {
 			}
 		}
 
-		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+		if excluded.is_none() {
+			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, 0, tt_nodetype);
+		}
 
 		return Some((best_move, eval));
 	}

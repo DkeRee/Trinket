@@ -782,16 +782,18 @@ impl Searcher<'_> {
 		for mut sm in move_list {
 
 			//prune losing captures found through SEE swap algorithm
-			if sm.importance < 0 {
-				break;
-			}
+			if eval.score > -Score::CHECKMATE_BASE + ply {
+				if sm.importance < 0 {
+					break;
+				}
 
-			//Delta Pruning
-			let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
-			if !in_check && eval.score + captured_value + 200 <= alpha {
-				continue;
+				//Delta Pruning
+				let captured_value = See::piece_pts(boardwrapper.board.piece_on(sm.mv.to).unwrap());
+				if !in_check && eval.score + captured_value + 200 <= alpha {
+					continue;
+				}
 			}
-
+			
 			let mv = sm.mv;
 			let mut board_wrapper_cache = boardwrapper.clone();
 			board_wrapper_cache.play_unchecked(&mut sm);

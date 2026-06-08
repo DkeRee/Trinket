@@ -357,7 +357,7 @@ impl Searcher<'_> {
 
 		//static eval for tuning methods
 		let static_eval = if tt_hit.as_ref().is_some()
-		&& tt_hit.as_ref().unwrap().depth >= depth {
+		&& tt_hit.as_ref().unwrap().depth >= depth && excluded.is_none() {
 			tt_hit.as_ref().unwrap().eval
 		} else {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
@@ -390,7 +390,9 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if depth <= Self::MAX_DEPTH_RFP 
+		&& !in_check
+		&& excluded.is_none() {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -434,7 +436,8 @@ impl Searcher<'_> {
 		if !is_pv
 		&& !in_check
 		&& depth < 6
-		&& static_eval <= alpha - (250 + depth * 120) {
+		&& static_eval <= alpha - (250 + depth * 120)
+		&& excluded.is_none() {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply, excluded)?;
 
 			if v.score <= alpha {
@@ -504,7 +507,7 @@ impl Searcher<'_> {
 			//Extensions
 
 			//TT Extension/Cutting
-			if depth > 7 
+			if depth > 3 
 			&& tt_hit.as_ref().is_some() 
 			&& !globally_extended
 			&& excluded.is_none() {
@@ -709,7 +712,7 @@ impl Searcher<'_> {
 			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 		}
 
-		if best_move_type.is_some() {
+		if best_move_type.is_some() && excluded.is_none() {
 			if best_move_type.unwrap() == MoveType::Quiet
 			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

@@ -390,7 +390,9 @@ impl Searcher<'_> {
 		// THEN prune
 		*/
 
-		if depth <= Self::MAX_DEPTH_RFP && !in_check {
+		if depth <= Self::MAX_DEPTH_RFP 
+		&& !in_check
+		&& excluded.is_none() {
 			if static_eval - (Self::MULTIPLIER_RFP * depth) - (!improving as i32 * 30) >= beta {
 				return Some((None, Eval::new(static_eval, false)));
 			}
@@ -414,7 +416,12 @@ impl Searcher<'_> {
 			true
 		};
 
-		if ply > 0 && !in_check && !(our_pieces & sliding_pieces).is_empty() && static_eval >= beta && improving_nmp_check && excluded.is_none() {
+		if ply > 0 
+		&& !in_check 
+		&& !(our_pieces & sliding_pieces).is_empty() 
+		&& static_eval >= beta 
+		&& improving_nmp_check 
+		&& excluded.is_none() {
 			let r = self.get_nmp_reduction_amount(depth, static_eval - beta + (!improving as i32) * 30);
 
 			let nulled_board = &boardwrapper.clone().null_move();
@@ -434,7 +441,8 @@ impl Searcher<'_> {
 		if !is_pv
 		&& !in_check
 		&& depth < 6
-		&& static_eval <= alpha - (250 + depth * 120) {
+		&& static_eval <= alpha - (250 + depth * 120)
+		&& excluded.is_none() {
 			let (_, v) = self.qsearch(&abort, boardwrapper, alpha, beta, ply, excluded)?;
 
 			if v.score <= alpha {
@@ -709,7 +717,7 @@ impl Searcher<'_> {
 			self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 		}
 
-		if best_move_type.is_some() {
+		if best_move_type.is_some() && excluded.is_none() {
 			if best_move_type.unwrap() == MoveType::Quiet
 			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
 				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);

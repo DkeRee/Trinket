@@ -538,7 +538,9 @@ impl Searcher<'_> {
 				new_depth += 1;
 			}
 
-			sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
+			if excluded.is_none() {
+				sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
+			}
 
 			if moves_searched == 0 {
 				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv), None)?;
@@ -670,14 +672,16 @@ impl Searcher<'_> {
 				alpha = eval.score;
 				if alpha >= beta {
 					tt_nodetype = NodeKind::LowerBound;
-					sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
-					sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
-					sm.insert_countermove(&mut self.movegen.sorter, last_move);
+					if excluded.is_none() {
+						sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
+						sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+						sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+						sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+						if legal_index > 0 {
+							for i in 0..(legal_index - 1) {
+								legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
+							}
 						}
 					}
 
@@ -696,7 +700,9 @@ impl Searcher<'_> {
 				&& !staged_movegen;
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+			if excluded.is_none() {
+				sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+			}
 
 			if do_spp {
 				break;

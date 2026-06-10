@@ -609,7 +609,7 @@ impl Searcher<'_> {
 
 				//if PV
 				//search with full depth and full window
-				if value.score > alpha && value.score < beta {
+				if value.score > alpha && is_pv {
 					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
 					child_eval.score *= -1;		
 

@@ -512,9 +512,8 @@ impl Searcher<'_> {
 			//Extensions
 
 			//TT Extension/Cutting
-			if depth > 7 
+			if depth > 5
 			&& tt_hit.as_ref().is_some() 
-			&& !globally_extended
 			&& excluded.is_none() {
 				if tt_hit.as_ref().unwrap().best_move.is_some() {
 					if tt_hit.as_ref().unwrap().best_move.unwrap() == mv

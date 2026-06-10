@@ -676,13 +676,15 @@ impl Searcher<'_> {
 
 		self.shared_info.tt.insert(best_move, eval.score, boardwrapper.board.hash(), ply, depth, tt_nodetype);
 
-		if best_move_type.is_some() {
-			if best_move_type.unwrap() == MoveType::Quiet
-			&& ( (tt_nodetype == NodeKind::UpperBound && eval.score < static_eval) || (tt_nodetype == NodeKind::LowerBound && eval.score > static_eval) ) {
-				self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-				self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
-				self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
-			}
+		let best_move_is_capture = best_move_type.as_ref().map_or(false, |t| *t == MoveType::Loud);
+		let has_best_move = best_move.is_some();
+		
+		if !in_check
+		&& !best_move_is_capture
+		&& (eval.score > static_eval) == has_best_move {
+			self.movegen.sorter.add_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+			self.movegen.sorter.add_non_pawn_corrhist(boardwrapper, depth, eval.score, static_eval);
+			self.movegen.sorter.add_material_corrhist(boardwrapper, depth, eval.score, static_eval);
 		}
 
 		return Some((best_move, eval));

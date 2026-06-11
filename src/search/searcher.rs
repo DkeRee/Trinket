@@ -567,21 +567,29 @@ impl Searcher<'_> {
 				if exists && is_pv {
 					//pawn exists, check if it's a passer
 					let promo_rank = Rank::Eighth.relative_to(boardwrapper.board.side_to_move());
-					let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
-					let mut checking_file = get_between_rays(mv.from, pawn_goal);
-					let mut block_mask = checking_file;
 
-					//use this handy dandy attack function to add files to the right and left of pawn
+					// Build the block mask for the pawn's own file (inclusive of from-square and promo square)
+					let own_goal = Square::new(mv.from.file(), promo_rank);
+					let mut block_mask = get_between_rays(mv.from, own_goal)
+						| mv.from.bitboard()
+						| own_goal.bitboard();
+
+					// Add adjacent files (left/right), inclusive of attack square and its promo square
 					for attack_location in get_pawn_attacks(mv.from, boardwrapper.board.side_to_move()) {
-						pawn_goal = Square::new(attack_location.file(), promo_rank);
-						checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
+						let adj_goal = Square::new(attack_location.file(), promo_rank);
+						let adj_file = get_between_rays(attack_location, adj_goal)
+							| attack_location.bitboard()
+							| adj_goal.bitboard();
 
-						//add file to the BB block mask
-						block_mask |= checking_file | attack_location.bitboard();
+						block_mask |= adj_file;
 					}
 
-					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
-					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
+					// No enemy pawns on same/adjacent files ahead, and no friendly pawn ahead on same file (doubled)
+					let no_enemy_blockers = (enemy_pawns & block_mask).is_empty();
+					let own_file_ahead = get_between_rays(mv.from, own_goal) | own_goal.bitboard();
+					let no_friendly_ahead = (my_pawns & own_file_ahead).is_empty();
+
+					let passed = no_enemy_blockers && no_friendly_ahead;
 					if passed {
 						reduction -= 1;
 					} else {

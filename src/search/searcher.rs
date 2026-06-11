@@ -82,7 +82,7 @@ impl Searcher<'_> {
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
 			let start_nodes = self.nodes;
-			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
+			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None, true);
 			let elapsed_nodes = self.nodes - start_nodes;
 
 			if result != None {
@@ -255,7 +255,7 @@ impl Searcher<'_> {
 		return LMR_TABLE[usize::min(depth as usize, 63)][usize::min(moves_searched as usize, 63)] as i32; 
 	}
 
-	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>) -> Option<(Option<Move>, Eval)> {		
+	pub fn search(&mut self, abort: &AtomicBool, boardwrapper: &BoardWrapper, mut depth: i32, mut ply: i32, mut alpha: i32, mut beta: i32, past_positions: &mut Vec<u64>, last_move: Option<Move>, is_pv: bool) -> Option<(Option<Move>, Eval)> {		
 		//abort?
 		if self.time_control.depth > 1 && abort.load(Ordering::Relaxed) {
 			return None;
@@ -271,7 +271,6 @@ impl Searcher<'_> {
 
 		let mut globally_extended = false;
 		let in_check: bool = !boardwrapper.board.checkers().is_empty();
-		let is_pv = beta > alpha + 1;
 
 		//CHECK EXTENSION
 		if in_check {
@@ -338,7 +337,7 @@ impl Searcher<'_> {
 				//if sufficient depth
 				//if PV node
 				if depth >= Self::IID_DEPTH_MIN	&& is_pv {
-					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move)?;
+					let (best_mv, _) = self.search(&abort, boardwrapper, depth - 10, ply, alpha, beta, past_positions, last_move, is_pv)?;
 					iid_move = best_mv;
 				}
 
@@ -418,7 +417,7 @@ impl Searcher<'_> {
 
 			self.movegen.sorter.set_null_conthist(ply);
 			
-			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None)?; //perform a ZW search
+			let (_, mut null_score) = self.search(&abort, nulled_board, depth - r, ply + 1, -beta, -beta + 1, past_positions, None, false)?; //perform a ZW search
 
 			null_score.score *= -1;
 		
@@ -502,7 +501,7 @@ impl Searcher<'_> {
 			}
 
 			if moves_searched == 0 {
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv), is_pv)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -593,7 +592,7 @@ impl Searcher<'_> {
 					reduction = 0;
 				}
 
-				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+				let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth - reduction, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), false)?;
 				child_eval.score *= -1;
 
 				value = child_eval;
@@ -601,7 +600,7 @@ impl Searcher<'_> {
 				//check if reductions should be removed
 				//search with full depth and null window
 				if value.score > alpha && reduction > 0 {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv))?;
+					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -alpha - 1, -alpha, past_positions, Some(mv), false)?;
 					child_eval.score *= -1;
 
 					value = child_eval;	
@@ -609,8 +608,8 @@ impl Searcher<'_> {
 
 				//if PV
 				//search with full depth and full window
-				if value.score > alpha && is_pv {
-					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv))?;
+				if value.score > alpha && value.score < beta {
+					let (_, mut child_eval) = self.search(&abort, &board_wrapper_cache, new_depth, ply + 1, -beta, -alpha, past_positions, Some(mv), is_pv)?;
 					child_eval.score *= -1;		
 
 					value = child_eval;	

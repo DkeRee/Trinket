@@ -635,13 +635,6 @@ impl Searcher<'_> {
 					sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 					sm.insert_countermove(&mut self.movegen.sorter, last_move);
-
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						}
-					}
-
 					break;
 				} else {
 					tt_nodetype = NodeKind::Exact;
@@ -658,6 +651,7 @@ impl Searcher<'_> {
 			}
 
 			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+			sm.decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 
 			if do_spp {
 				break;
@@ -669,7 +663,6 @@ impl Searcher<'_> {
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
 				legal_index = 0; 
-				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
 			}
 		}

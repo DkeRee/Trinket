@@ -557,38 +557,6 @@ impl Searcher<'_> {
 					}
 				}
 
-				//Passed Pawn Reduction
-				let all_pawns = boardwrapper.board.pieces(Piece::Pawn);
-				let my_pawns = all_pawns & boardwrapper.board.colors(boardwrapper.board.side_to_move());
-				let enemy_pawns = all_pawns & boardwrapper.board.colors(!boardwrapper.board.side_to_move());
-				let ranks = Rank::Seventh.relative_to(boardwrapper.board.side_to_move()).bitboard() | Rank::Sixth.relative_to(boardwrapper.board.side_to_move()).bitboard();
-				let pawn_on_ranks = my_pawns & ranks;
-				let exists = !(mv.from.bitboard() & pawn_on_ranks).is_empty();
-				if exists && is_pv {
-					//pawn exists, check if it's a passer
-					let promo_rank = Rank::Eighth.relative_to(boardwrapper.board.side_to_move());
-					let mut pawn_goal = Square::new(mv.from.file(), promo_rank);
-					let mut checking_file = get_between_rays(mv.from, pawn_goal);
-					let mut block_mask = checking_file;
-
-					//use this handy dandy attack function to add files to the right and left of pawn
-					for attack_location in get_pawn_attacks(mv.from, boardwrapper.board.side_to_move()) {
-						pawn_goal = Square::new(attack_location.file(), promo_rank);
-						checking_file = get_between_rays(attack_location, pawn_goal); //check from the pawn
-
-						//add file to the BB block mask
-						block_mask |= checking_file | attack_location.bitboard();
-					}
-
-					//check to see if these three BB files contain enemy pawns in them && and if this is not a pawn island
-					let passed = (enemy_pawns & block_mask).is_empty() && (my_pawns & get_between_rays(mv.from, Square::new(mv.from.file(), promo_rank))).is_empty();
-					if passed {
-						reduction -= 1;
-					} else {
-						reduction += 1;
-					}
-				}
-
 				if reduction < 0 || sm.is_killer || sm.is_countermove {
 					reduction = 0;
 				}

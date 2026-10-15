@@ -50,7 +50,7 @@ impl MoveSorter {
 			history_table: Box::new([[[0; 64]; 64]; 2]),
 			countermove_table: Box::new([[None; 64]; 64]),
 			conthist: Box::new(Cont_Hist_Array([0; 13 * 65 * 12 * 64])),
-			conthist_stack: Box::new([(0, 0); 256]),
+			conthist_stack: Box::new([Self::NULL_MOVE; 256]),
 			pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			non_pawn_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
 			material_corrhist: Box::new([[0.0; Self::CORRHIST_SIZE]; 2]),
@@ -143,28 +143,43 @@ impl MoveSorter {
 		}
 	}
 
-	pub fn add_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth + 50;
-
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] += change - change * history / Self::HISTORY_MAX; //add quiet score into history table based on from and to squares
-		}
-	}
-
 	pub fn add_countermove(&mut self, mv: Move, last_move: Move) {
 		self.countermove_table[last_move.from as usize][last_move.to as usize] = Some(mv);
 	}
 
-	pub fn decay_history(&mut self, mv: Move, depth: i32, board: &Board) {
-		let history = self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize];
-		let change = depth * depth;
+	//Bonus/malus size for a given depth. Must stay well below HISTORY_MAX,
+	//otherwise the gravity formula overshoots and the table oscillates.
+	fn history_bonus(depth: i32) -> i32 {
+		(8 * depth * depth + 400).min(Self::HISTORY_MAX / 4)
+	}
 
-		if !change.checked_mul(history).is_none() {
-			self.history_table[board.side_to_move() as usize][mv.from as usize][mv.to as usize] -= change + change * history / Self::HISTORY_MAX; //decay quiet score into history table based on from and to squares
+	//History gravity: pulls the entry toward +/-HISTORY_MAX and keeps it bounded.
+	//Works for both bonuses (positive) and maluses (negative).
+	fn apply_gravity(entry: &mut i32, bonus: i32) {
+		*entry += bonus - *entry * bonus.abs() / Self::HISTORY_MAX;
+	}
+
+	//Called on a quiet beta cutoff:
+	//reward the cutoff move, punish every quiet that was searched before it at this node.
+	pub fn update_quiet_histories(&mut self, best: Move, quiets_tried: &[Move], depth: i32, ply: i32, board: &Board) {
+		let bonus = Self::history_bonus(depth);
+
+		self.update_quiet(best, bonus, ply, board);
+		for &mv in quiets_tried {
+			self.update_quiet(mv, -bonus, ply, board);
 		}
 	}
 
+	fn update_quiet(&mut self, mv: Move, bonus: i32, ply: i32, board: &Board) {
+		let stm = board.side_to_move() as usize;
+		Self::apply_gravity(&mut self.history_table[stm][mv.from as usize][mv.to as usize], bonus);
+
+		let idx = self.conthist_index(mv, ply, 1, board);
+		Self::apply_gravity(&mut self.conthist.0[idx], bonus);
+	}
+
+	//Records the move played from the node at `ply`, so the child (ply + 1) can use it as context.
+	//Must be called for EVERY move (captures included), or children read a stale entry.
 	pub fn set_conthist(&mut self, mv: Move, ply: i32, board: &Board) {
 		self.conthist_stack[(ply + 1) as usize] = (get_piece_index(board, mv), mv.to as usize);
 	}
@@ -173,28 +188,17 @@ impl MoveSorter {
 		self.conthist_stack[(ply + 1) as usize] = Self::NULL_MOVE;
 	}
 
-	pub fn insert_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
-		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
-		let conthist = &mut self.conthist.0[idx];
+	//Continuation history index for the move `plies_back` plies ago (1 = opponent's last move,
+	//2 = our own previous move, ...). Positions before the root use the null context.
+	fn conthist_index(&self, mv: Move, ply: i32, plies_back: i32, board: &Board) -> usize {
+		let stack_idx = ply + 1 - plies_back;
+		let (prev_piece, prev_to) = if stack_idx >= 0 {
+			self.conthist_stack[stack_idx as usize]
+		} else {
+			Self::NULL_MOVE
+		};
 
-		let bonus = depth * depth + 50;
-
-		if !bonus.checked_mul(*conthist).is_none() {
-			*conthist += bonus - bonus * (*conthist) / 2000;
-		}
-	}
-
-	pub fn decay_conthist(&mut self, mv: Move, depth: i32, ply: i32, board: &Board) {
-		let (prev_piece, prev_to) = self.conthist_stack[ply as usize];
-		let idx = Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize);
-		let conthist = &mut self.conthist.0[idx];
-
-		let penalty = depth * depth + 50;
-
-		if !penalty.checked_mul(*conthist).is_none() {
-			*conthist -= penalty + penalty * (*conthist) / 2000;
-		}
+		Cont_Hist_Array::index(prev_piece, prev_to, get_piece_index(board, mv), mv.to as usize)
 	}
 
 	fn is_killer(&self, mv: Move, board: &Board, ply: i32) -> bool {
@@ -269,9 +273,7 @@ impl MoveSorter {
 	}
 
 	pub fn get_conthist(&self, mv: Move, ply: i32, board: &Board) -> i32 {
-		let (counter_piece, counter_to) = self.conthist_stack[ply as usize];
-		let idx = Cont_Hist_Array::index(counter_piece, counter_to, get_piece_index(board, mv), mv.to as usize);
-		self.conthist.0[idx]
+		self.conthist.0[self.conthist_index(mv, ply, 1, board)]
 	}
 
 	fn is_countermove(&self, mv: Move, last_move: Option<Move>) -> bool {
@@ -288,21 +290,23 @@ impl MoveSorter {
 }
 
 impl MoveSorter {
-	const HASHMOVE_SCORE: i32 = 1000000;
+	//Buckets are spaced far apart so that no in-bucket score (SEE, MVV-LVA, history + conthist
+	//which can reach about +/-3 * HISTORY_MAX) can ever spill into a neighbouring bucket.
+	const HASHMOVE_SCORE: i32 = 100_000_000;
 
-	const PROMO: i32 = 50000;
-	const WINNING_CAPTURE: i32 = 50000;
+	const PROMO: i32 = 5_000_000;
+	const WINNING_CAPTURE: i32 = 5_000_000;
 
-	const NEUTRAL_CAPTURE: i32 = 30000;
+	const NEUTRAL_CAPTURE: i32 = 3_000_000;
 
-	const KILLER_QUIET: i32 = 15000;
-	const COUNTER_QUIET: i32 = 10000;
+	const KILLER_QUIET: i32 = 2_000_000;
+	const COUNTER_QUIET: i32 = 1_000_000;
 	const QUIET_MOVE: i32 = 0;
 
-	const LOSING_CAPTURE: i32 = -50000;
-	const UNDER_PROMO: i32 = -50000;
+	const LOSING_CAPTURE: i32 = -5_000_000;
+	const UNDER_PROMO: i32 = -5_000_000;
 
-	const HISTORY_MAX: i32 = 2000;
+	pub const HISTORY_MAX: i32 = 16384;
 	const CORRHIST_SIZE: usize = 16384;
 	const NULL_MOVE: (usize, usize) = (12, 64);
 }

@@ -474,6 +474,7 @@ impl Searcher<'_> {
 
 		let mut moves_searched = 0;
 		let mut legal_index = 0;
+		let mut quiets_tried: Vec<Move> = Vec::with_capacity(32);
 		let mut tt_nodetype = NodeKind::UpperBound;
 
 		while legal_index < legal_moves.len() {
@@ -527,7 +528,7 @@ impl Searcher<'_> {
 				}
 
 				//History Pruning
-				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -500 * depth {
+				if depth >= Self::HISTORY_DEPTH_MIN && sm.history < -4000 * depth {
 					past_positions.pop();
 					legal_index += 1;
 					continue;
@@ -537,7 +538,7 @@ impl Searcher<'_> {
 				let mut reduction = 0;
 
 				//History Leaf Reduction
-				reduction -= sm.history / 1500;
+				reduction -= sm.history / 12000;
 
 				//LMR can be applied
 				//IF depth is above sufficient depth
@@ -632,14 +633,10 @@ impl Searcher<'_> {
 				if alpha >= beta {
 					tt_nodetype = NodeKind::LowerBound;
 					sm.insert_killer(&mut self.movegen.sorter, ply, &boardwrapper.board);
-					sm.insert_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-					sm.insert_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
 					sm.insert_countermove(&mut self.movegen.sorter, last_move);
 
-					if legal_index > 0 {
-						for i in 0..(legal_index - 1) {
-							legal_moves[i as usize].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
-						}
+					if sm.movetype == MoveType::Quiet {
+						self.movegen.sorter.update_quiet_histories(mv, &quiets_tried, depth, ply, &boardwrapper.board);
 					}
 
 					break;
@@ -657,7 +654,9 @@ impl Searcher<'_> {
 				&& !staged_movegen;
 			}
 
-			sm.decay_history(&mut self.movegen.sorter, depth, &boardwrapper.board);
+			if sm.movetype == MoveType::Quiet {
+				quiets_tried.push(mv);
+			}
 
 			if do_spp {
 				break;
@@ -669,7 +668,6 @@ impl Searcher<'_> {
 			if staged_movegen && legal_index >= legal_moves.len() {
 				staged_movegen = false;
 				legal_index = 0; 
-				legal_moves[0].decay_conthist(&mut self.movegen.sorter, depth, ply, &boardwrapper.board);
 				legal_moves = self.movegen.move_gen(&boardwrapper.board, Some(mv), ply, true, last_move);
 			}
 		}

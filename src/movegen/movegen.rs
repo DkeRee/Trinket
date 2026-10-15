@@ -24,21 +24,7 @@ impl SortedMove {
 	}
 
 	pub fn set_conthist(&mut self, move_sorter: &mut MoveSorter, ply: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.set_conthist(self.mv, ply, board);
-		}
-	}
-
-	pub fn insert_conthist(&mut self, move_sorter: &mut MoveSorter, depth: i32, ply: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.insert_conthist(self.mv, depth, ply, board);
-		}
-	}
-
-	pub fn decay_conthist(&mut self, move_sorter: &mut MoveSorter, depth: i32, ply: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_conthist(self.mv, depth, ply, board);
-		}
+		move_sorter.set_conthist(self.mv, ply, board);
 	}
 
 
@@ -48,21 +34,9 @@ impl SortedMove {
 		}
 	}
 
-	pub fn insert_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.add_history(self.mv, depth, board);
-		}
-	}
-
 	pub fn insert_countermove(&mut self, move_sorter: &mut MoveSorter,  last_move: Option<Move>) {
 		if self.movetype == MoveType::Quiet && !last_move.is_none() {
 			move_sorter.add_countermove(self.mv, last_move.unwrap());
-		}
-	}
-
-	pub fn decay_history(&mut self, move_sorter: &mut MoveSorter, depth: i32, board: &Board) {
-		if self.movetype == MoveType::Quiet {
-			move_sorter.decay_history(self.mv, depth, board);
 		}
 	}
 }

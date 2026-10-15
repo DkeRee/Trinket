@@ -81,9 +81,7 @@ impl Searcher<'_> {
 
 			let search_handler: Arc<AtomicBool> = handler.clone();
 
-			let start_nodes = self.nodes;
 			let result = self.search(&search_handler, boardwrapper, depth_index + 1, 0, new_alpha, new_beta, &mut past_positions, None);
-			let elapsed_nodes = self.nodes - start_nodes;
 
 			if result != None {
 				let (best_mv, eval) = result.unwrap();
@@ -135,8 +133,9 @@ impl Searcher<'_> {
 					let mtg =
 						movestogo.unwrap_or(30).max(1) as u64;
 				
+					//spend a slice of the bank plus most of the increment we get back after this move
 					let base_soft =
-						(time + timeinc) / mtg;
+						time / mtg + timeinc * 3 / 4;
 				
 					let mut soft_timeout = base_soft;
 				
@@ -146,8 +145,6 @@ impl Searcher<'_> {
 							((best_move.from as usize) << 6)
 							| best_move.to as usize;
 
-						self.root_move_nodes[idx] = elapsed_nodes;
-				
 						let share =
 							self.root_move_nodes[idx] as f32
 							/ self.nodes.max(1) as f32;
@@ -480,6 +477,7 @@ impl Searcher<'_> {
 			let mut mvlen = legal_moves.len() as i32;
 			let mut sm = &mut legal_moves[legal_index];
 			let mv = sm.mv;
+			let nodes_before = self.nodes;
 			let mut board_wrapper_cache = boardwrapper.clone();
 
 			sm.set_conthist(&mut self.movegen.sorter, ply, &boardwrapper.board);
@@ -618,6 +616,11 @@ impl Searcher<'_> {
 			}
 
 			past_positions.pop();
+
+			//node-based time management: total nodes spent under each root move, over the whole search
+			if ply == 0 {
+				self.root_move_nodes[((mv.from as usize) << 6) | mv.to as usize] += self.nodes - nodes_before;
+			}
 
 			let mut do_spp = false;
 

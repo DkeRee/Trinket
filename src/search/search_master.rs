@@ -81,6 +81,8 @@ pub struct Engine<'a> {
 }
 
 impl Engine<'_> {
+	const MOVE_OVERHEAD: u64 = 10;
+
 	pub fn new(hash: u32, thread_count: u32) -> Engine<'static> {
 		Engine {
 			boardwrapper: BoardWrapper::new(),
@@ -125,7 +127,8 @@ impl Engine<'_> {
 						hard_timeout_div /= movestogo / 10;
 					}
 
-					(time + timeinc) / (hard_timeout_div) as u64
+					//never go past what is actually on the clock, minus GUI/network lag
+					((time + timeinc) / (hard_timeout_div) as u64).min(time.saturating_sub(Self::MOVE_OVERHEAD).max(1))
 				} else {
 					movetime.unwrap() as u64
 				};

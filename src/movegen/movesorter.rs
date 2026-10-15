@@ -86,7 +86,11 @@ impl MoveSorter {
 						Self::LOSING_CAPTURE
 					};
 
-					increment = capture_score;
+					increment = if capture_score == 0 {
+						board.piece_on(mv_info.mv.to).map_or(0, See::piece_pts) //even trades: take the most valuable victim first
+					} else {
+						capture_score
+					};
 				}
 	
 				if mv_info.movetype == MoveType::Quiet {

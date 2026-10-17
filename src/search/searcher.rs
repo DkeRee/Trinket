@@ -517,7 +517,7 @@ impl Searcher<'_> {
 				//IF is NOT a check
 				if !is_pv && depth <= Self::LMP_DEPTH_MAX 
 				&& sm.movetype == MoveType::Quiet 
-				&& eval.score > -(Score::CHECKMATE_BASE - 1000) 
+				&& eval.score > -Score::CHECKMATE_BASE
 				&& moves_searched > ((mvlen / 6) * depth) - (!improving as i32 * 3)
 				&& !in_check {
 					past_positions.pop();

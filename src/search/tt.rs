@@ -41,11 +41,16 @@ struct EncodedEntry {
 	node_kind: u8
 }
 
+//mate scores are CHECKMATE_BASE - ply, so they sit just below the base, never above it
+pub fn is_mate_score(eval: i32) -> bool {
+	eval.abs() >= Score::CHECKMATE_BASE - 1000
+}
+
 //adjust tricky mate scores to make valid eval
 fn add_mate_score(eval: i32, ply: i32) -> i32 {
-	if eval < -Score::CHECKMATE_BASE {
+	if eval <= -(Score::CHECKMATE_BASE - 1000) {
 		eval + ply
-	} else if eval > Score::CHECKMATE_BASE {
+	} else if eval >= Score::CHECKMATE_BASE - 1000 {
 		eval - ply
 	} else {
 		eval
@@ -53,9 +58,9 @@ fn add_mate_score(eval: i32, ply: i32) -> i32 {
 }
 
 fn remove_mate_score(eval: i32, ply: i32) -> i32 {
-	if eval < -Score::CHECKMATE_BASE {
+	if eval <= -(Score::CHECKMATE_BASE - 1000) {
 		eval - ply
-	} else if eval > Score::CHECKMATE_BASE {
+	} else if eval >= Score::CHECKMATE_BASE - 1000 {
 		eval + ply
 	} else {
 		eval
@@ -93,12 +98,12 @@ impl TTSlot {
 		self.data.store(data, Ordering::Relaxed);
 	}
 
-	fn load(&self, board: &Board, ply: i32) -> Option<TTEntry> {
+	fn load(&self, hash: u64, ply: i32) -> Option<TTEntry> {
 		let position_hash_data = self.position_hash.load(Ordering::Relaxed);
 		let data = self.data.load(Ordering::Relaxed);
 
 		//Invalid Probe
-		if data == 0 || position_hash_data ^ data != board.hash() {
+		if data == 0 || position_hash_data ^ data != hash {
 			return None;
 		} else {
 			let data: EncodedEntry = bytemuck::cast(data);
@@ -151,11 +156,25 @@ impl TT {
 		}
 	}
 
-	pub fn insert(&self, best_move: Option<Move>, eval: i32, position: u64, ply: i32, depth: i32, node_kind: NodeKind) {
-		self.table[(position % self.length) as usize].store(best_move, remove_mate_score(eval, ply), position, depth, node_kind);
+	pub fn insert(&self, mut best_move: Option<Move>, eval: i32, position: u64, ply: i32, depth: i32, node_kind: NodeKind) {
+		let slot = &self.table[(position % self.length) as usize];
+
+		//same position already stored: don't let a much shallower non-exact result (e.g. qsearch)
+		//wipe a deeper entry, and never throw away a known best move
+		if let Some(old) = slot.load(position, ply) {
+			if node_kind != NodeKind::Exact && depth + 4 <= old.depth {
+				return;
+			}
+
+			if best_move.is_none() {
+				best_move = old.best_move;
+			}
+		}
+
+		slot.store(best_move, remove_mate_score(eval, ply), position, depth, node_kind);
 	}
 
 	pub fn find(&self, board: &Board, ply: i32) -> Option<TTEntry> {
-		self.table[(board.hash() % self.length) as usize].load(board, ply)
+		self.table[(board.hash() % self.length) as usize].load(board.hash(), ply)
 	}
 }

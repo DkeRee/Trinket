@@ -300,7 +300,7 @@ impl Searcher<'_> {
 				//if sufficient depth
 				if table_find.depth >= depth {
 					//check if position from TT is a mate
-					let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
+					let mut is_checkmate = if is_mate_score(table_find.eval) {
 						true
 					} else {
 						false
@@ -739,7 +739,7 @@ impl Searcher<'_> {
 		let table_find = match self.shared_info.tt.find(&boardwrapper.board, ply) {
 			Some(table_find) => {
 				//check if position from TT is a mate
-				let mut is_checkmate = if table_find.eval < -Score::CHECKMATE_BASE || table_find.eval > Score::CHECKMATE_BASE {
+				let mut is_checkmate = if is_mate_score(table_find.eval) {
 					true
 				} else {
 					false

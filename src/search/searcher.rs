@@ -351,9 +351,7 @@ impl Searcher<'_> {
 		};
 
 		//static eval for tuning methods
-		let static_eval = if tt_hit.as_ref().is_some() && tt_hit.as_ref().unwrap().depth >= depth {
-			tt_hit.as_ref().unwrap().eval
-		} else {
+		let raw_eval = {
 			let base_eval = evaluate(&boardwrapper.board) as f32;
 			let pawn_corrhist = self.movegen.sorter.read_pawn_corrhist(boardwrapper);
 			let non_pawn_corrhist = self.movegen.sorter.read_non_pawn_corrhist(boardwrapper);
@@ -363,6 +361,18 @@ impl Searcher<'_> {
 				+ pawn_corrhist 
 				+ non_pawn_corrhist
 				+ material_corrhist) as i32
+		};
+
+		//a TT score may only replace the eval in the direction its bound proves:
+		//a lower bound can raise it, an upper bound can lower it (mate scores are never used)
+		let static_eval = match tt_hit.as_ref() {
+			Some(tt) if tt.depth >= depth && tt.eval.abs() < Score::CHECKMATE_BASE - 1000 && match tt.node_kind {
+				NodeKind::Exact => true,
+				NodeKind::LowerBound => tt.eval > raw_eval,
+				NodeKind::UpperBound => tt.eval < raw_eval,
+				NodeKind::Null => false
+			} => tt.eval,
+			_ => raw_eval
 		};
 
 		//Max Ply Cutoff
